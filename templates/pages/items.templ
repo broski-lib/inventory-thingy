@@ -49,12 +49,22 @@ templ ItemsCardList(items []models.Item) {
 
 templ ItemCard(item models.Item) {
 	<div id={ "item-card-" + item.ID } class="card card-side bg-base-200 shadow-sm rounded-xl overflow-hidden relative border border-base-300/30">
-		<div class="w-28 bg-base-300 flex items-center justify-center text-base-content/30 relative shrink-0">
-			<span class="text-2xl">🖼️</span>
+		<button
+			type="button"
+			hx-get={ "/items/" + item.ID + "/qr" }
+			hx-target="#modal-container"
+			class="w-28 bg-base-300 flex items-center justify-center relative shrink-0 p-2 hover:bg-base-300/80 transition-colors"
+			aria-label={ "View QR tag for " + item.Name }
+		>
+			<img
+				src={ "/items/" + item.ID + "/qr.png" }
+				alt=""
+				class="w-full aspect-square rounded-md bg-white p-1"
+			/>
 			<span class="absolute bottom-1 left-1 text-[9px] px-1 bg-black/60 rounded font-mono truncate max-w-[100px] text-white">
 				{ item.QRCode }
 			</span>
-		</div>
+		</button>
 		<div class="p-3 flex flex-col justify-between grow min-w-0">
 			<div>
 				<div class="flex items-start justify-between gap-1">

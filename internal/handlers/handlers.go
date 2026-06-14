@@ -3,11 +3,13 @@ package handlers
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
 
 	"inventory-thingy/internal/models"
+	"inventory-thingy/internal/qr"
 	"inventory-thingy/templates/components"
 	"inventory-thingy/templates/pages"
 
@@ -16,11 +18,15 @@ import (
 )
 
 type Handler struct {
-	db *sql.DB // Swapped mock store layout targets directly to Neon Postgres DB connection pool strings
+	db      *sql.DB
+	baseURL string
 }
 
-func New(db *sql.DB) *Handler {
-	return &Handler{db: db}
+func New(db *sql.DB, baseURL string) *Handler {
+	return &Handler{
+		db:      db,
+		baseURL: strings.TrimRight(baseURL, "/"),
+	}
 }
 
 func render(w http.ResponseWriter, r *http.Request, status int, t templ.Component) {
@@ -71,7 +77,7 @@ func (h *Handler) Dashboard(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ItemsList(w http.ResponseWriter, r *http.Request) {
 	search := strings.TrimSpace(r.URL.Query().Get("search"))
 
-	query := "SELECT id, qr_code, name, description, condition, location, status, taken_out_at, image_url FROM items"
+	query := `SELECT id, qr_code, name, description, "condition", location, status, taken_out_at, image_url FROM items`
 	var args []any
 
 	if search != "" {
@@ -105,14 +111,18 @@ func (h *Handler) OpenScanner(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) QRScanLookup(w http.ResponseWriter, r *http.Request) {
-	qrCode := strings.TrimSpace(r.URL.Query().Get("qr_code"))
+	raw := strings.TrimSpace(r.URL.Query().Get("qr_code"))
+	qrCode := qr.ParseScanned(raw, h.baseURL)
+	if qrCode == "" {
+		http.Error(w, "Missing QR tag data", http.StatusBadRequest)
+		return
+	}
 
 	var item models.Item
-	err := h.db.QueryRow("SELECT id, qr_code, name, description, condition, location, status, taken_out_at, image_url FROM items WHERE qr_code = $1", qrCode).
+	err := h.db.QueryRow(`SELECT id, qr_code, name, description, "condition", location, status, taken_out_at, image_url FROM items WHERE qr_code = $1`, qrCode).
 		Scan(&item.ID, &item.QRCode, &item.Name, &item.Description, &item.Condition, &item.Location, &item.Status, &item.TakenOutAt, &item.ImageURL)
 
 	if err == sql.ErrNoRows {
-		// QR code isn't cataloged yet; pre-populate form with scanned barcode sequence
 		newItem := models.Item{QRCode: qrCode, Status: "In Storage"}
 		render(w, r, http.StatusOK, components.ItemFormModal(newItem, false))
 		return
@@ -121,18 +131,64 @@ func (h *Handler) QRScanLookup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Found asset; jump directly into contextual update views
 	render(w, r, http.StatusOK, components.ItemFormModal(item, true))
 }
 
+func (h *Handler) ItemQRPNG(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	var code string
+	err := h.db.QueryRow(`SELECT qr_code FROM items WHERE id = $1`, id).Scan(&code)
+	if err == sql.ErrNoRows {
+		http.Error(w, "Asset not found", http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, "Lookup failed", http.StatusInternalServerError)
+		return
+	}
+
+	png, err := qr.PNG(qr.Payload(h.baseURL, code))
+	if err != nil {
+		log.Printf("qr png generation failed: %v", err)
+		http.Error(w, "Could not generate QR code", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+	_, _ = w.Write(png)
+}
+
+func (h *Handler) ItemQRModal(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	var item models.Item
+	err := h.db.QueryRow(`SELECT id, qr_code, name FROM items WHERE id = $1`, id).
+		Scan(&item.ID, &item.QRCode, &item.Name)
+	if err == sql.ErrNoRows {
+		http.Error(w, "Asset not found", http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, "Lookup failed", http.StatusInternalServerError)
+		return
+	}
+
+	render(w, r, http.StatusOK, components.QRTagModal(item))
+}
+
 func (h *Handler) ItemNew(w http.ResponseWriter, r *http.Request) {
-	render(w, r, http.StatusOK, components.ItemFormModal(models.Item{Status: "In Storage"}, false))
+	code, err := qr.NewCode()
+	if err != nil {
+		http.Error(w, "Could not generate asset tag", http.StatusInternalServerError)
+		return
+	}
+	render(w, r, http.StatusOK, components.ItemFormModal(models.Item{QRCode: code, Status: "In Storage"}, false))
 }
 
 func (h *Handler) ItemEdit(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var item models.Item
-	err := h.db.QueryRow("SELECT id, qr_code, name, description, condition, location, status, taken_out_at, image_url FROM items WHERE id = $1", id).
+	err := h.db.QueryRow(`SELECT id, qr_code, name, description, "condition", location, status, taken_out_at, image_url FROM items WHERE id = $1`, id).
 		Scan(&item.ID, &item.QRCode, &item.Name, &item.Description, &item.Condition, &item.Location, &item.Status, &item.TakenOutAt, &item.ImageURL)
 	if err != nil {
 		http.Error(w, "Asset Not Found", http.StatusNotFound)
@@ -142,32 +198,52 @@ func (h *Handler) ItemEdit(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ItemCreate(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form submission", http.StatusBadRequest)
+		return
+	}
+
 	uid := getUserID(r)
 	now := time.Now()
 
-	// Automatically handle the staging clock based on chosen tracking status
+	qrCode := strings.TrimSpace(r.FormValue("qr_code"))
+	if qrCode == "" {
+		var err error
+		qrCode, err = qr.NewCode()
+		if err != nil {
+			http.Error(w, "Could not generate asset tag", http.StatusInternalServerError)
+			return
+		}
+	}
+
 	var takenOutAt *time.Time
 	if r.FormValue("status") == "Staged" {
 		takenOutAt = &now
 	}
 
 	_, err := h.db.Exec(`
-		INSERT INTO items (id, qr_code, name, description, condition, location, status, taken_out_at, image_url, created_by, created_at, updated_at)
-		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, '', $8, $9, $9)`,
-		r.FormValue("qr_code"), r.FormValue("name"), r.FormValue("description"),
+		INSERT INTO items (qr_code, name, description, "condition", location, status, taken_out_at, image_url, created_by, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, '', $8, $9, $9)`,
+		qrCode, r.FormValue("name"), r.FormValue("description"),
 		r.FormValue("condition"), r.FormValue("location"), r.FormValue("status"),
 		takenOutAt, uid, now,
 	)
 	if err != nil {
-		http.Error(w, "Database allocation failure", http.StatusInternalServerError)
+		log.Printf("item create failed: %v", err)
+		http.Error(w, "Could not save item", http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("HX-Location", "/items")
+	w.Header().Set("HX-Redirect", "/items")
 	w.WriteHeader(http.StatusCreated)
 }
 
 func (h *Handler) ItemUpdate(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form submission", http.StatusBadRequest)
+		return
+	}
+
 	id := chi.URLParam(r, "id")
 	now := time.Now()
 
@@ -177,17 +253,18 @@ func (h *Handler) ItemUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err := h.db.Exec(`
-		UPDATE items SET qr_code=$1, name=$2, description=$3, condition=$4, location=$5, status=$6, taken_out_at=$7, updated_at=$8
+		UPDATE items SET qr_code=$1, name=$2, description=$3, "condition"=$4, location=$5, status=$6, taken_out_at=$7, updated_at=$8
 		WHERE id=$9`,
 		r.FormValue("qr_code"), r.FormValue("name"), r.FormValue("description"),
 		r.FormValue("condition"), r.FormValue("location"), r.FormValue("status"),
 		takenOutAt, now, id,
 	)
 	if err != nil {
-		http.Error(w, "Database modification error", http.StatusInternalServerError)
+		log.Printf("item update failed: %v", err)
+		http.Error(w, "Could not update item", http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("HX-Location", "/items")
+	w.Header().Set("HX-Redirect", "/items")
 	w.WriteHeader(http.StatusOK)
 }

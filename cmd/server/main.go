@@ -1,11 +1,12 @@
 package main
 
 import (
-	"database/sql"
+	"context"
 	"log"
 	"net/http"
 	"os"
 
+	"inventory-thingy/internal/db"
 	"inventory-thingy/internal/handlers"
 
 	"github.com/go-chi/chi/v5"
@@ -33,13 +34,13 @@ func main() {
 		log.Fatal("Missing NEON_AUTH_URL or BASE_URL for magic link orchestration.")
 	}
 
-	db, err := sql.Open("postgres", dsn)
+	db, err := db.Open(context.Background(), dsn)
 	if err != nil {
-		log.Fatal("Neon Connection Initialization Failure:", err)
+		log.Fatal("Neon connection failed:", err)
 	}
 	defer db.Close()
 
-	h := handlers.New(db)
+	h := handlers.New(db, appBaseURL(port))
 	r := chi.NewRouter()
 
 	r.Use(middleware.Logger)
@@ -49,16 +50,36 @@ func main() {
 	r.Post("/auth/magic-link", h.RequestMagicLink)
 
 	r.Group(func(protected chi.Router) {
+
 		protected.Get("/", h.Dashboard)
 		protected.Get("/scanner", h.OpenScanner)
 
 		protected.Route("/items", func(itemsRouter chi.Router) {
-			// ... [Keep item routes exactly identical] ...
+			itemsRouter.Get("/", h.ItemsList)
+			itemsRouter.Get("/list", h.ItemsList)
+			itemsRouter.Get("/scan-lookup", h.QRScanLookup)
+			itemsRouter.Get("/new", h.ItemNew)
+			itemsRouter.Post("/", h.ItemCreate)
+			itemsRouter.Route("/{id}", func(idRouter chi.Router) {
+				idRouter.Get("/edit", h.ItemEdit)
+				idRouter.Get("/qr", h.ItemQRModal)
+				idRouter.Get("/qr.png", h.ItemQRPNG)
+				idRouter.Put("/", h.ItemUpdate)
+			})
+
 		})
+
 	})
 
 	log.Printf("🚀 Staging application online listening smoothly at http://localhost:%s", port)
 	if err := http.ListenAndServe(":"+port, r); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func appBaseURL(port string) string {
+	if base := os.Getenv("BASE_URL"); base != "" {
+		return base
+	}
+	return "http://localhost:" + port
 }

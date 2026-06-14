@@ -4,50 +4,93 @@ templ ScannerModal() {
 	<dialog id="scanner-modal" class="modal modal-open modal-bottom sm:modal-middle">
 		<div class="modal-box bg-base-100 rounded-t-2xl p-4 max-w-sm">
 			<div class="flex items-center justify-between mb-3">
-				<h3 class="font-bold text-md flex items-center gap-2">📷 Scan Asset Tag</h3>
-				<button class="btn btn-sm btn-circle btn-ghost" onclick="stopScannerAndClose()">✕</button>
+				<h3 class="font-bold text-md">Scan Asset Tag</h3>
+				<button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="closeScanner()">✕</button>
 			</div>
+			<div id="scanner-status" class="hidden alert alert-error text-xs py-2 mb-2"></div>
 			<div class="overflow-hidden rounded-xl bg-black border border-base-300 aspect-square w-full relative">
 				<div id="qr-interactive-reader" class="w-full h-full"></div>
+				<div id="scanner-loading" class="absolute inset-0 flex items-center justify-center text-white/70 text-sm">
+					Starting camera...
+				</div>
 			</div>
-			<form id="qr-bridge-form" hx-get="/items/scan-lookup" hx-target="#modal-container" hx-swap="innerHTML" class="hidden">
-				<input type="text" id="qr-bridge-input" name="qr_code"/>
+			<form
+				id="qr-bridge-form"
+				hx-get="/items/scan-lookup"
+				hx-target="#modal-container"
+				hx-swap="innerHTML"
+				class="mt-3 space-y-2"
+			>
+				<label class="label py-0">
+					<span class="label-text text-xs font-semibold">Or enter tag ID manually</span>
+				</label>
+				<div class="join w-full">
+					<input
+						type="text"
+						id="qr-bridge-input"
+						name="qr_code"
+						placeholder="INV-ABC123 or scan above"
+						class="input input-bordered join-item flex-1 rounded-l-xl bg-base-200"
+					/>
+					<button type="submit" class="btn btn-primary join-item rounded-r-xl">Look up</button>
+				</div>
 			</form>
 			<script>
 				var html5QrcodeScanner;
+				var scannerHandled = false;
+
+				function showScannerError(message) {
+					var status = document.getElementById('scanner-status');
+					status.textContent = message;
+					status.classList.remove('hidden');
+					document.getElementById('scanner-loading').classList.add('hidden');
+				}
+
+				function stopScanner() {
+					if (!html5QrcodeScanner) {
+						return Promise.resolve();
+					}
+					return html5QrcodeScanner.stop().catch(function() {});
+				}
+
+				function closeScanner() {
+					stopScanner().finally(function() {
+						document.getElementById('modal-container').innerHTML = '';
+					});
+				}
+
+				function handleScan(decodedText) {
+					if (scannerHandled) return;
+					scannerHandled = true;
+					document.getElementById('qr-bridge-input').value = decodedText;
+					stopScanner().then(function() {
+						htmx.trigger('#qr-bridge-form', 'submit');
+					});
+				}
 
 				function startScanner() {
-					html5QrcodeScanner = new Html5Qrcode("qr-interactive-reader");
-					html5QrcodeScanner.start(
-						{ facingMode: "environment" },
-						{ fps: 10, qrbox: { width: 220, height: 220 } },
-						(decodedText) => {
-							document.getElementById('qr-bridge-input').value = decodedText;
-							stopScannerAndClose();
-							// Fire cross-platform synthetic event trigger loop patterns smoothly
-							document.getElementById('qr-bridge-input').dispatchEvent(new Event('input', { bubbles: true }));
-							htmx.trigger('#qr-bridge-form', 'submit');
-						},
-						(errorMessage) => { /* Keep scanning quietly without breaking UI */ }
-					).catch(err => console.error("Camera access failure: ", err));
-				}
-
-				function stopScannerAndClose() {
-					if (html5QrcodeScanner) {
-						html5QrcodeScanner.stop().then(() => {
-							document.getElementById('modal-container').innerHTML = '';
-						}).catch(err => {
-							document.getElementById('modal-container').innerHTML = '';
-						});
-					} else {
-						document.getElementById('modal-container').innerHTML = '';
+					if (typeof Html5Qrcode === 'undefined') {
+						showScannerError('Scanner library failed to load. Use manual entry below.');
+						return;
 					}
+
+					html5QrcodeScanner = new Html5Qrcode('qr-interactive-reader');
+					html5QrcodeScanner.start(
+						{ facingMode: 'environment' },
+						{ fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
+						handleScan,
+						function() {}
+					).then(function() {
+						document.getElementById('scanner-loading').classList.add('hidden');
+					}).catch(function(err) {
+						showScannerError('Camera unavailable. Enter the tag ID manually.');
+						console.error('Camera access failure:', err);
+					});
 				}
 
-				// Instantly initialize camera mount interface
 				setTimeout(startScanner, 100);
 			</script>
 		</div>
-		<div class="modal-backdrop bg-black/80" onclick="stopScannerAndClose()"></div>
+		<div class="modal-backdrop bg-black/80" onclick="closeScanner()"></div>
 	</dialog>
 }
