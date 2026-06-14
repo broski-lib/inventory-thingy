@@ -84,12 +84,3 @@ The `internal/store/store.go` file exposes a simple interface (`List`, `Get`, `C
 3. Wire it up in `cmd/server/main.go`
 
 Popular choices: **sqlc** + PostgreSQL, **GORM**, **Bun**, or **SQLite** via `modernc.org/sqlite`.
-
-## Features
-
-- 📦 Item CRUD with modal forms (no page reload)
-- 🔍 Real-time search & category filter via HTMX
-- 🏷️ Stock status badges (In Stock / Low Stock / Out of Stock)
-- 📊 Dashboard with inventory stats
-- 🌙 DaisyUI `night` theme (easily changed in `base.templ`)
-- ✅ Server-side form validation
