@@ -1,0 +1,152 @@
+package pages
+
+import (
+	"fmt"
+	"inventory-thingy/internal/models"
+	"inventory-thingy/templates/layouts"
+)
+
+templ Items(items []models.Item, search string, category string) {
+	@layouts.Base("Items") {
+		<div class="space-y-6">
+			<!-- Header -->
+			<div class="flex items-center justify-between">
+				<div>
+					<h1 class="text-3xl font-bold text-base-content">Inventory Items</h1>
+					<p class="text-base-content/60 mt-1">{ fmt.Sprintf("%d items", len(items)) }</p>
+				</div>
+				<button
+					class="btn btn-primary"
+					hx-get="/items/new"
+					hx-target="#modal-container"
+					hx-swap="innerHTML"
+				>
+					+ Add Item
+				</button>
+			</div>
+			<!-- Filters -->
+			<div class="card bg-base-200 shadow">
+				<div class="card-body p-4">
+					<form
+						hx-get="/items/list"
+						hx-target="#items-table"
+						hx-swap="innerHTML"
+						hx-trigger="input delay:300ms from:#search, change from:#category-filter"
+						class="flex flex-wrap gap-3 items-end"
+					>
+						<div class="form-control flex-1 min-w-48">
+							<label class="label pb-1">
+								<span class="label-text text-xs">Search</span>
+							</label>
+							<input
+								id="search"
+								type="text"
+								name="search"
+								placeholder="Name, SKU, description…"
+								class="input input-bordered input-sm w-full"
+								value={ search }
+							/>
+						</div>
+						<div class="form-control">
+							<label class="label pb-1">
+								<span class="label-text text-xs">Category</span>
+							</label>
+							<select id="category-filter" name="category" class="select select-bordered select-sm">
+								<option value="">All Categories</option>
+								for _, cat := range models.Categories {
+									<option value={ string(cat) } selected?={ string(cat) == category }>{ string(cat) }</option>
+								}
+							</select>
+						</div>
+						<button type="submit" class="btn btn-outline btn-sm">Search</button>
+					</form>
+				</div>
+			</div>
+			<!-- Items table -->
+			<div id="items-table">
+				@ItemsTable(items)
+			</div>
+		</div>
+	}
+}
+
+templ ItemsTable(items []models.Item) {
+	if len(items) == 0 {
+		<div class="card bg-base-200 shadow">
+			<div class="card-body items-center text-center py-16">
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-base-content/30 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+				</svg>
+				<p class="text-base-content/50 text-lg">No items found</p>
+				<p class="text-base-content/30 text-sm">Try adjusting your filters or add a new item</p>
+			</div>
+		</div>
+	} else {
+		<div class="card bg-base-200 shadow overflow-hidden">
+			<div class="overflow-x-auto">
+				<table class="table table-zebra">
+					<thead>
+						<tr class="bg-base-300">
+							<th>Item</th>
+							<th>SKU</th>
+							<th>Category</th>
+							<th class="text-right">Quantity</th>
+							<th class="text-right">Price</th>
+							<th>Status</th>
+							<th class="text-right">Actions</th>
+						</tr>
+					</thead>
+					<tbody id="items-tbody">
+						for _, item := range items {
+							@ItemRow(item)
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	}
+}
+
+templ ItemRow(item models.Item) {
+	<tr id={ "item-" + item.ID } class="hover">
+		<td>
+			<div class="font-medium">{ item.Name }</div>
+			if item.Description != "" {
+				<div class="text-xs text-base-content/50 truncate max-w-xs">{ item.Description }</div>
+			}
+		</td>
+		<td class="font-mono text-sm text-base-content/60">{ item.SKU }</td>
+		<td>
+			<span class="badge badge-outline badge-sm">{ string(item.Category) }</span>
+		</td>
+		<td class="text-right font-mono">{ fmt.Sprintf("%d", item.Quantity) }</td>
+		<td class="text-right font-mono">{ fmt.Sprintf("$%.2f", item.Price) }</td>
+		<td>
+			<span class={ "badge badge-sm", item.StockBadgeClass() }>{ item.StockLabel() }</span>
+		</td>
+		<td class="text-right">
+			<div class="flex justify-end gap-1">
+				<button
+					class="btn btn-ghost btn-xs"
+					hx-get={ "/items/" + item.ID + "/edit" }
+					hx-target="#modal-container"
+					hx-swap="innerHTML"
+					title="Edit"
+				>
+					✏️
+				</button>
+				<button
+					class="btn btn-ghost btn-xs text-error"
+					hx-delete={ "/items/" + item.ID }
+					hx-target={ "#item-" + item.ID }
+					hx-swap="outerHTML swap:300ms"
+					hx-confirm={ "Delete " + item.Name + "?" }
+					hx-indicator="#delete-spinner"
+					title="Delete"
+				>
+					🗑️
+				</button>
+			</div>
+		</td>
+	</tr>
+}
