@@ -48,8 +48,11 @@ func main() {
 
 	r.Get("/login", h.LoginPage)
 	r.Post("/auth/magic-link", h.RequestMagicLink)
+	r.Get("/auth/logout", h.Logout)
+	r.HandleFunc("/auth/*", h.AuthProxy)
 
 	r.Group(func(protected chi.Router) {
+		protected.Use(h.AuthMiddleware)
 
 		protected.Get("/", h.Dashboard)
 		protected.Get("/scanner", h.OpenScanner)

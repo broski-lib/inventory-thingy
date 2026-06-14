@@ -1,10 +1,17 @@
 package handlers
 
 import (
+	"bytes"
+	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -35,13 +42,91 @@ func render(w http.ResponseWriter, r *http.Request, status int, t templ.Componen
 	_ = t.Render(r.Context(), w)
 }
 
+type contextKey string
+
+const userContextKey contextKey = "user"
+
+type UserContext struct {
+	ID    string
+	Email string
+	Name  string
+}
+
 // Neon Auth Session Helper Extract
 func getUserID(r *http.Request) string {
-	// Neon Auth populates standard JWT payload attributes down inside matching request context blocks or request headers
+	if val := r.Context().Value(userContextKey); val != nil {
+		if u, ok := val.(UserContext); ok {
+			return u.Email
+		}
+	}
 	if claims := r.Header.Get("X-Neon-User-Id"); claims != "" {
 		return claims
 	}
 	return "anonymous-staging-agent"
+}
+
+// clearCookies removes all known auth cookies from the browser
+func clearCookies(w http.ResponseWriter) {
+	cookiesToClear := []string{"better-auth.session_token", "__Secure-neonauth.session_token", "neonauth.session_token"}
+	for _, name := range cookiesToClear {
+		http.SetCookie(w, &http.Cookie{
+			Name:     name,
+			Value:    "",
+			Path:     "/",
+			MaxAge:   -1,
+			HttpOnly: true,
+		})
+	}
+}
+
+// AuthMiddleware protects routes and validates session cookies directly from the database
+func (h *Handler) AuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var token string
+		if c, err := r.Cookie("better-auth.session_token"); err == nil {
+			token = c.Value
+		} else if c, err := r.Cookie("__Secure-neonauth.session_token"); err == nil {
+			token = c.Value
+		} else if c, err := r.Cookie("neonauth.session_token"); err == nil {
+			token = c.Value
+		}
+
+		if token == "" {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+
+		var user UserContext
+		var expiresAt time.Time
+		query := `
+			SELECT u.id::text, u.email, COALESCE(u.name, ''), s."expiresAt"
+			FROM neon_auth.session s
+			JOIN neon_auth.user u ON s."userId" = u.id
+			WHERE s.token = $1`
+		err := h.db.QueryRow(query, token).Scan(&user.ID, &user.Email, &user.Name, &expiresAt)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				// Clear invalid cookies
+				clearCookies(w)
+				http.Redirect(w, r, "/login", http.StatusSeeOther)
+				return
+			}
+			log.Printf("Auth DB query error: %v", err)
+			http.Error(w, "Authentication check failed", http.StatusInternalServerError)
+			return
+		}
+
+		if time.Now().After(expiresAt) {
+			// Clear expired cookies
+			clearCookies(w)
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+
+		// Store user in context
+		ctx := context.WithValue(r.Context(), userContextKey, user)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 // ─── Authentication Routing Targets ──────────────────────────────────────────
@@ -51,12 +136,142 @@ func (h *Handler) LoginPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) RequestMagicLink(w http.ResponseWriter, r *http.Request) {
-	email := r.FormValue("email")
+	email := strings.TrimSpace(r.FormValue("email"))
+	if email == "" {
+		render(w, r, http.StatusBadRequest, pages.Login("Email address is required"))
+		return
+	}
 
-	// Delegate programmatic magic link generation workflow directly out to Neon Auth Endpoint API Engine calls here.
-	// For example: neonAuthClient.SendMagicLink(email)
+	neonAuthURL := os.Getenv("NEON_AUTH_URL")
+	if neonAuthURL == "" {
+		http.Error(w, "Neon Auth URL configuration missing", http.StatusInternalServerError)
+		return
+	}
+
+	payload, err := json.Marshal(map[string]string{
+		"email": email,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	req, err := http.NewRequest("POST", neonAuthURL+"/sign-in/magic-link", bytes.NewBuffer(payload))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	// Set Origin to our app's base URL so Neon Auth constructs the redirect and verification link appropriately
+	req.Header.Set("Origin", h.baseURL)
+
+	// Propagate standard proxy headers so Better Auth constructs dynamic URLs relative to our Go backend
+	// appURL, err := url.Parse(h.baseURL)
+	// if err == nil {
+	// 	req.Header.Set("X-Forwarded-Host", appURL.Host)
+	// 	req.Header.Set("X-Forwarded-Proto", appURL.Scheme)
+	// }
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Printf("Failed to request magic link from Neon Auth: %v", err)
+		render(w, r, http.StatusInternalServerError, pages.Login("Failed to request login link. Please try again."))
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		log.Printf("Neon Auth returned error status %d: %s", resp.StatusCode, string(respBody))
+		render(w, r, http.StatusBadRequest, pages.Login("Error requesting magic link. Please check your email address."))
+		return
+	}
 
 	render(w, r, http.StatusOK, pages.Login(fmt.Sprintf("Check your inbox! An access key was transmitted to %s", email)))
+}
+
+func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+	// 1. Get the session token from the cookies
+	var token string
+	if c, err := r.Cookie("better-auth.session_token"); err == nil {
+		token = c.Value
+	} else if c, err := r.Cookie("__Secure-neonauth.session_token"); err == nil {
+		token = c.Value
+	} else if c, err := r.Cookie("neonauth.session_token"); err == nil {
+		token = c.Value
+	}
+
+	// 2. Clear all local cookies
+	clearCookies(w)
+
+	// 3. Call remote sign-out in backend if token exists
+	if token != "" {
+		neonAuthURL := os.Getenv("NEON_AUTH_URL")
+		if neonAuthURL != "" {
+			req, err := http.NewRequest("POST", neonAuthURL+"/sign-out", nil)
+			if err == nil {
+				req.Header.Set("Authorization", "Bearer "+token)
+				req.Header.Set("Cookie", "__Secure-neonauth.session_token="+token)
+				req.Header.Set("Content-Type", "application/json")
+				// Fire and forget
+				go func() {
+					resp, err := http.DefaultClient.Do(req)
+					if err == nil {
+						resp.Body.Close()
+					}
+				}()
+			}
+		}
+	}
+
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
+}
+
+// AuthProxy handles proxying authentication requests to the Neon Auth endpoint
+func (h *Handler) AuthProxy(w http.ResponseWriter, r *http.Request) {
+	neonAuthURL := os.Getenv("NEON_AUTH_URL")
+	target, err := url.Parse(neonAuthURL)
+	if err != nil {
+		http.Error(w, "Invalid Neon Auth URL configuration", http.StatusInternalServerError)
+		return
+	}
+
+	proxy := &httputil.ReverseProxy{
+		Director: func(req *http.Request) {
+			req.URL.Scheme = target.Scheme
+			req.URL.Host = target.Host
+			
+			// Strip prefix "/auth" from the request path before joining
+			path := req.URL.Path
+			if strings.HasPrefix(path, "/auth") {
+				path = path[5:]
+			}
+			req.URL.Path = singleJoiningSlash(target.Path, path)
+			
+			// Set Host to target host so SSL verification and routing work on Neon
+			req.Host = target.Host
+
+			// Set forwarding headers so Better Auth knows the actual client domain
+			// appURL, err := url.Parse(h.baseURL)
+			// if err == nil {
+			// 	req.Header.Set("X-Forwarded-Host", appURL.Host)
+			// 	req.Header.Set("X-Forwarded-Proto", appURL.Scheme)
+			// }
+		},
+	}
+	proxy.ServeHTTP(w, r)
+}
+
+func singleJoiningSlash(a, b string) string {
+	aslash := strings.HasSuffix(a, "/")
+	bslash := strings.HasPrefix(b, "/")
+	switch {
+	case aslash && bslash:
+		return a + b[1:]
+	case !aslash && !bslash:
+		return a + "/" + b
+	}
+	return a + b
 }
 
 // ─── Core Operations Handlers ────────────────────────────────────────────────

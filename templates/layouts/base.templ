@@ -1,5 +1,7 @@
 package layouts
 
+import "os"
+
 templ Base(title string, isAuthenticated bool) {
 	<!DOCTYPE html>
 	<html lang="en" data-theme="business">
@@ -53,6 +55,24 @@ templ Base(title string, isAuthenticated bool) {
 					}
 				});
 			</script>
+			if !isAuthenticated {
+				<script id="auth-sync" data-auth-url={ os.Getenv("NEON_AUTH_URL") }>
+					(function() {
+						const authUrl = document.getElementById("auth-sync").dataset.authUrl;
+						if (authUrl) {
+							fetch(authUrl + "/get-session", { credentials: "include" })
+								.then(res => res.json())
+								.then(data => {
+									if (data && data.session && data.session.token) {
+										document.cookie = "better-auth.session_token=" + data.session.token + "; path=/; max-age=31536000; SameSite=Lax";
+										window.location.reload();
+									}
+								})
+								.catch(err => console.error("Session sync failed:", err));
+						}
+					})();
+				</script>
+			}
 		</body>
 	</html>
 }
