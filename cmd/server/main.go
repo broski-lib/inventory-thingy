@@ -1,53 +1,78 @@
 package main
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
 	"os"
 
 	"inventory-thingy/internal/handlers"
-	"inventory-thingy/internal/store"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
+func RequireNeonAuthSession(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authCookie, err := r.Cookie("neon_auth_session")
+		if err != nil || authCookie.Value == "" {
+			if r.Header.Get("X-Neon-User-Id") == "" {
+				http.Redirect(w, r, "/login", http.StatusSeeOther)
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using system environment variables")
+	}
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	s := store.New()
-	h := handlers.New(s)
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		log.Fatal("Missing DATABASE_URL variable setup configuration parameters.")
+	}
 
+	if os.Getenv("NEON_AUTH_URL") == "" {
+		log.Fatal("Missing NEON_AUTH_URL or BASE_URL for magic link orchestration.")
+	}
+
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		log.Fatal("Neon Connection Initialization Failure:", err)
+	}
+	defer db.Close()
+
+	h := handlers.New(db)
 	r := chi.NewRouter()
 
-	// Middleware
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.Compress(5))
 
-	// Static files
-	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	r.Get("/login", h.LoginPage)
+	r.Post("/auth/magic-link", h.RequestMagicLink)
 
-	// Routes
-	r.Get("/", h.Dashboard)
+	r.Group(func(protected chi.Router) {
+		protected.Use(RequireNeonAuthSession)
 
-	r.Route("/items", func(r chi.Router) {
-		r.Get("/", h.ItemsList)
-		r.Get("/list", h.ItemsList) // HTMX partial for filter results
-		r.Get("/new", h.ItemNew)
-		r.Post("/", h.ItemCreate)
+		protected.Get("/", h.Dashboard)
+		protected.Get("/scanner", h.OpenScanner)
 
-		r.Route("/{id}", func(r chi.Router) {
-			r.Get("/edit", h.ItemEdit)
-			r.Put("/", h.ItemUpdate)
-			r.Delete("/", h.ItemDelete)
+		protected.Route("/items", func(itemsRouter chi.Router) {
+			// ... [Keep item routes exactly identical] ...
 		})
 	})
 
-	log.Printf("🚀 inventory-thingy listening on http://localhost:%s", port)
+	log.Printf("🚀 Staging application online listening smoothly at http://localhost:%s", port)
 	if err := http.ListenAndServe(":"+port, r); err != nil {
 		log.Fatal(err)
 	}

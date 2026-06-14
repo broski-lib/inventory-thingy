@@ -84,3 +84,5 @@ The `internal/store/store.go` file exposes a simple interface (`List`, `Get`, `C
 3. Wire it up in `cmd/server/main.go`
 
 Popular choices: **sqlc** + PostgreSQL, **GORM**, **Bun**, or **SQLite** via `modernc.org/sqlite`.
+
+Redesign for a mobile focus, streamline interaction for mobile interaction. This is for staging furniture so redesign around the necessary details for that (like current location, time take out, name, picture of item, etc) where objects are scanned via qr code in order to find them in the database (but still include search). it isn't so much quantity as it is unique items. use neon db for items. for now don't implement handing for pictures just add placeholder. Use neon auth with magic links for handling user sessions.

@@ -1,0 +1,53 @@
+package components
+
+templ ScannerModal() {
+	<dialog id="scanner-modal" class="modal modal-open modal-bottom sm:modal-middle">
+		<div class="modal-box bg-base-100 rounded-t-2xl p-4 max-w-sm">
+			<div class="flex items-center justify-between mb-3">
+				<h3 class="font-bold text-md flex items-center gap-2">📷 Scan Asset Tag</h3>
+				<button class="btn btn-sm btn-circle btn-ghost" onclick="stopScannerAndClose()">✕</button>
+			</div>
+			<div class="overflow-hidden rounded-xl bg-black border border-base-300 aspect-square w-full relative">
+				<div id="qr-interactive-reader" class="w-full h-full"></div>
+			</div>
+			<form id="qr-bridge-form" hx-get="/items/scan-lookup" hx-target="#modal-container" hx-swap="innerHTML" class="hidden">
+				<input type="text" id="qr-bridge-input" name="qr_code"/>
+			</form>
+			<script>
+				var html5QrcodeScanner;
+
+				function startScanner() {
+					html5QrcodeScanner = new Html5Qrcode("qr-interactive-reader");
+					html5QrcodeScanner.start(
+						{ facingMode: "environment" },
+						{ fps: 10, qrbox: { width: 220, height: 220 } },
+						(decodedText) => {
+							document.getElementById('qr-bridge-input').value = decodedText;
+							stopScannerAndClose();
+							// Fire cross-platform synthetic event trigger loop patterns smoothly
+							document.getElementById('qr-bridge-input').dispatchEvent(new Event('input', { bubbles: true }));
+							htmx.trigger('#qr-bridge-form', 'submit');
+						},
+						(errorMessage) => { /* Keep scanning quietly without breaking UI */ }
+					).catch(err => console.error("Camera access failure: ", err));
+				}
+
+				function stopScannerAndClose() {
+					if (html5QrcodeScanner) {
+						html5QrcodeScanner.stop().then(() => {
+							document.getElementById('modal-container').innerHTML = '';
+						}).catch(err => {
+							document.getElementById('modal-container').innerHTML = '';
+						});
+					} else {
+						document.getElementById('modal-container').innerHTML = '';
+					}
+				}
+
+				// Instantly initialize camera mount interface
+				setTimeout(startScanner, 100);
+			</script>
+		</div>
+		<div class="modal-backdrop bg-black/80" onclick="stopScannerAndClose()"></div>
+	</dialog>
+}

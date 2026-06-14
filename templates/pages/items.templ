@@ -1,152 +1,79 @@
 package pages
 
 import (
-	"fmt"
 	"inventory-thingy/internal/models"
 	"inventory-thingy/templates/layouts"
 )
 
-templ Items(items []models.Item, search string, category string) {
-	@layouts.Base("Items") {
-		<div class="space-y-6">
-			<!-- Header -->
-			<div class="flex items-center justify-between">
-				<div>
-					<h1 class="text-3xl font-bold text-base-content">Inventory Items</h1>
-					<p class="text-base-content/60 mt-1">{ fmt.Sprintf("%d items", len(items)) }</p>
-				</div>
-				<button
-					class="btn btn-primary"
-					hx-get="/items/new"
-					hx-target="#modal-container"
+templ Items(items []models.Item, search string) {
+	@layouts.Base("Catalog", true) {
+		<div class="space-y-4">
+			<div class="sticky top-[65px] z-30 bg-base-100 py-2">
+				<form
+					hx-get="/items/list"
+					hx-target="#items-list-container"
 					hx-swap="innerHTML"
+					hx-trigger="input delay:250ms from:#search-input"
+					class="relative"
 				>
-					+ Add Item
-				</button>
+					<input
+						id="search-input"
+						type="search"
+						name="search"
+						placeholder="Search unique items by asset ID or name..."
+						class="input input-bordered w-full rounded-xl pl-10 bg-base-200 border-none focus:outline-none focus:ring-2 focus:ring-primary"
+						value={ search }
+					/>
+					<span class="absolute left-3.5 top-3.5 text-base-content/40">🔍</span>
+				</form>
 			</div>
-			<!-- Filters -->
-			<div class="card bg-base-200 shadow">
-				<div class="card-body p-4">
-					<form
-						hx-get="/items/list"
-						hx-target="#items-table"
-						hx-swap="innerHTML"
-						hx-trigger="input delay:300ms from:#search, change from:#category-filter"
-						class="flex flex-wrap gap-3 items-end"
-					>
-						<div class="form-control flex-1 min-w-48">
-							<label class="label pb-1">
-								<span class="label-text text-xs">Search</span>
-							</label>
-							<input
-								id="search"
-								type="text"
-								name="search"
-								placeholder="Name, SKU, description…"
-								class="input input-bordered input-sm w-full"
-								value={ search }
-							/>
-						</div>
-						<div class="form-control">
-							<label class="label pb-1">
-								<span class="label-text text-xs">Category</span>
-							</label>
-							<select id="category-filter" name="category" class="select select-bordered select-sm">
-								<option value="">All Categories</option>
-								for _, cat := range models.Categories {
-									<option value={ string(cat) } selected?={ string(cat) == category }>{ string(cat) }</option>
-								}
-							</select>
-						</div>
-						<button type="submit" class="btn btn-outline btn-sm">Search</button>
-					</form>
-				</div>
-			</div>
-			<!-- Items table -->
-			<div id="items-table">
-				@ItemsTable(items)
+			<div id="items-list-container" class="space-y-3">
+				@ItemsCardList(items)
 			</div>
 		</div>
 	}
 }
 
-templ ItemsTable(items []models.Item) {
+templ ItemsCardList(items []models.Item) {
 	if len(items) == 0 {
-		<div class="card bg-base-200 shadow">
-			<div class="card-body items-center text-center py-16">
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-base-content/30 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
-				</svg>
-				<p class="text-base-content/50 text-lg">No items found</p>
-				<p class="text-base-content/30 text-sm">Try adjusting your filters or add a new item</p>
-			</div>
+		<div class="text-center py-12 bg-base-200 rounded-2xl border-2 border-dashed border-base-300">
+			<span class="text-3xl">🪑</span>
+			<p class="mt-2 text-sm text-base-content/60">No unique assets match parameters.</p>
 		</div>
 	} else {
-		<div class="card bg-base-200 shadow overflow-hidden">
-			<div class="overflow-x-auto">
-				<table class="table table-zebra">
-					<thead>
-						<tr class="bg-base-300">
-							<th>Item</th>
-							<th>SKU</th>
-							<th>Category</th>
-							<th class="text-right">Quantity</th>
-							<th class="text-right">Price</th>
-							<th>Status</th>
-							<th class="text-right">Actions</th>
-						</tr>
-					</thead>
-					<tbody id="items-tbody">
-						for _, item := range items {
-							@ItemRow(item)
-						}
-					</tbody>
-				</table>
-			</div>
-		</div>
+		for _, item := range items {
+			@ItemCard(item)
+		}
 	}
 }
 
-templ ItemRow(item models.Item) {
-	<tr id={ "item-" + item.ID } class="hover">
-		<td>
-			<div class="font-medium">{ item.Name }</div>
-			if item.Description != "" {
-				<div class="text-xs text-base-content/50 truncate max-w-xs">{ item.Description }</div>
-			}
-		</td>
-		<td class="font-mono text-sm text-base-content/60">{ item.SKU }</td>
-		<td>
-			<span class="badge badge-outline badge-sm">{ string(item.Category) }</span>
-		</td>
-		<td class="text-right font-mono">{ fmt.Sprintf("%d", item.Quantity) }</td>
-		<td class="text-right font-mono">{ fmt.Sprintf("$%.2f", item.Price) }</td>
-		<td>
-			<span class={ "badge badge-sm", item.StockBadgeClass() }>{ item.StockLabel() }</span>
-		</td>
-		<td class="text-right">
-			<div class="flex justify-end gap-1">
-				<button
-					class="btn btn-ghost btn-xs"
-					hx-get={ "/items/" + item.ID + "/edit" }
-					hx-target="#modal-container"
-					hx-swap="innerHTML"
-					title="Edit"
-				>
-					✏️
-				</button>
-				<button
-					class="btn btn-ghost btn-xs text-error"
-					hx-delete={ "/items/" + item.ID }
-					hx-target={ "#item-" + item.ID }
-					hx-swap="outerHTML swap:300ms"
-					hx-confirm={ "Delete " + item.Name + "?" }
-					hx-indicator="#delete-spinner"
-					title="Delete"
-				>
-					🗑️
-				</button>
+templ ItemCard(item models.Item) {
+	<div id={ "item-card-" + item.ID } class="card card-side bg-base-200 shadow-sm rounded-xl overflow-hidden relative border border-base-300/30">
+		<div class="w-28 bg-base-300 flex items-center justify-center text-base-content/30 relative shrink-0">
+			<span class="text-2xl">🖼️</span>
+			<span class="absolute bottom-1 left-1 text-[9px] px-1 bg-black/60 rounded font-mono truncate max-w-[100px] text-white">
+				{ item.QRCode }
+			</span>
+		</div>
+		<div class="p-3 flex flex-col justify-between grow min-w-0">
+			<div>
+				<div class="flex items-start justify-between gap-1">
+					<h3 class="font-bold text-sm tracking-tight truncate text-base-content">{ item.Name }</h3>
+					<span class={ "badge badge-xs whitespace-nowrap", item.StatusBadgeClass() }>{ item.Status }</span>
+				</div>
+				<p class="text-[11px] text-base-content/60 line-clamp-1 mt-0.5">{ item.Description }</p>
 			</div>
-		</td>
-	</tr>
+			<div class="mt-2 pt-1 border-t border-base-300/50 flex justify-between items-center text-[11px]">
+				<div>
+					<span class="text-base-content/40">Loc:</span>
+					<span class="font-medium text-primary truncate max-w-[100px] inline-block align-bottom">{ item.Location }</span>
+				</div>
+				<div class="flex gap-1">
+					<button hx-get={ "/items/" + item.ID + "/edit" } hx-target="#modal-container" class="btn btn-ghost btn-xs text-xs px-2 bg-base-300/50 rounded-md">
+						Manage
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
 }

@@ -2,84 +2,41 @@ package models
 
 import (
 	"time"
-
-	"github.com/google/uuid"
 )
 
-type Category string
+type Condition string
 
 const (
-	CategoryElectronics Category = "Electronics"
-	CategoryClothing    Category = "Clothing"
-	CategoryFood        Category = "Food"
-	CategoryTools       Category = "Tools"
-	CategoryOther       Category = "Other"
+	ConditionExcellent Condition = "Excellent"
+	ConditionGood      Condition = "Good"
+	ConditionWorn      Condition = "Worn"
+	ConditionDamaged   Condition = "Damaged"
 )
 
-var Categories = []Category{
-	CategoryElectronics,
-	CategoryClothing,
-	CategoryFood,
-	CategoryTools,
-	CategoryOther,
-}
-
 type Item struct {
-	ID          string
-	Name        string
-	Description string
-	Category    Category
-	Quantity    int
-	Price       float64
-	SKU         string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID          string     `db:"id"`
+	QRCode      string     `db:"qr_code"` // Target lookup value from barcode scans
+	Name        string     `db:"name"`
+	Description string     `db:"description"`
+	Condition   Condition  `db:"condition"`
+	Location    string     `db:"location"`     // e.g., "Warehouse A", "123 Maple St Staging"
+	Status      string     `db:"status"`       // e.g., "Staged", "In Storage", "In Transit"
+	TakenOutAt  *time.Time `db:"taken_out_at"` // Track timestamps for staging deployment
+	ImageURL    string     `db:"image_url"`    // Future proofing asset path
+	CreatedBy   string     `db:"created_by"`   // Bound to Neon Auth User ID
+	CreatedAt   time.Time  `db:"created_at"`
+	UpdatedAt   time.Time  `db:"updated_at"`
 }
 
-func NewItem(name, description string, category Category, quantity int, price float64, sku string) Item {
-	now := time.Now()
-	return Item{
-		ID:          uuid.New().String(),
-		Name:        name,
-		Description: description,
-		Category:    category,
-		Quantity:    quantity,
-		Price:       price,
-		SKU:         sku,
-		CreatedAt:   now,
-		UpdatedAt:   now,
-	}
-}
-
-func (i Item) StockStatus() string {
-	switch {
-	case i.Quantity == 0:
-		return "out-of-stock"
-	case i.Quantity <= 5:
-		return "low-stock"
-	default:
-		return "in-stock"
-	}
-}
-
-func (i Item) StockBadgeClass() string {
-	switch i.StockStatus() {
-	case "out-of-stock":
-		return "badge-error"
-	case "low-stock":
+func (i Item) StatusBadgeClass() string {
+	switch i.Status {
+	case "Staged":
+		return "badge-primary"
+	case "In Storage":
+		return "badge-success"
+	case "In Transit":
 		return "badge-warning"
 	default:
-		return "badge-success"
-	}
-}
-
-func (i Item) StockLabel() string {
-	switch i.StockStatus() {
-	case "out-of-stock":
-		return "Out of Stock"
-	case "low-stock":
-		return "Low Stock"
-	default:
-		return "In Stock"
+		return "badge-neutral"
 	}
 }

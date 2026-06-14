@@ -1,171 +1,81 @@
 package components
 
-import (
-	"fmt"
-	"inventory-thingy/internal/models"
-)
+import "inventory-thingy/internal/models"
 
-templ ItemFormModal(item models.Item, isEdit bool, errs map[string]string) {
-	<dialog id="item-modal" class="modal modal-open">
-		<div class="modal-box w-11/12 max-w-2xl">
-			<!-- Header -->
-			<div class="flex items-center justify-between mb-6">
-				<h3 class="font-bold text-xl">
+templ ItemFormModal(item models.Item, isEdit bool) {
+	<dialog id="item-modal" class="modal modal-open modal-bottom sm:modal-middle">
+		<div class="modal-box bg-base-100 rounded-t-2xl p-5 border-t border-base-300">
+			<div class="flex items-center justify-between mb-4">
+				<h3 class="font-bold text-lg">
 					if isEdit {
-						Edit Item
+						Edit Asset
 					} else {
-						Add New Item
+						Add Asset
 					}
 				</h3>
-				<button
-					class="btn btn-sm btn-circle btn-ghost"
-					onclick="document.getElementById('modal-container').innerHTML=''"
-				>✕</button>
+				<button type="button" class="btn btn-sm btn-circle btn-ghost" onclick="document.getElementById('modal-container').innerHTML=''">✕</button>
 			</div>
-			<!-- Form -->
 			<form
 				if isEdit {
 					hx-put={ "/items/" + item.ID }
+					hx-swap="innerHTML"
 				} else {
 					hx-post="/items"
+					hx-swap="beforeend"
 				}
-				hx-target-error="#form-error"
-				hx-target="#items-tbody"
-				hx-swap="beforeend"
+				hx-target="#items-list-container"
 				hx-on::after-request="if(event.detail.successful){ document.getElementById('modal-container').innerHTML='' }"
+				class="space-y-4"
 			>
-				<!-- Error banner -->
-				<div id="form-error" class="mb-4"></div>
-				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-					<!-- Name -->
-					<div class="form-control md:col-span-2">
-						<label class="label">
-							<span class="label-text">Name <span class="text-error">*</span></span>
-						</label>
-						<input
-							type="text"
-							name="name"
-							class={ "input input-bordered", templ.KV("input-error", errs["name"] != "") }
-							value={ item.Name }
-							placeholder="Product name"
-							required
-						/>
-						if errs["name"] != "" {
-							<label class="label"><span class="label-text-alt text-error">{ errs["name"] }</span></label>
-						}
-					</div>
-					<!-- SKU -->
+				<div class="form-control">
+					<label class="label py-1"><span class="label-text text-xs font-semibold">QR Asset Tag String / ID</span></label>
+					<input type="text" name="qr_code" value={ item.QRCode } required placeholder="Scan code or type custom identifier..." class="input input-bordered input-md rounded-xl bg-base-200"/>
+				</div>
+				<div class="form-control">
+					<label class="label py-1"><span class="label-text text-xs font-semibold">Item Name</span></label>
+					<input type="text" name="name" value={ item.Name } required placeholder="e.g., Velvet Tufted Sofa" class="input input-bordered input-md rounded-xl bg-base-200"/>
+				</div>
+				<div class="grid grid-cols-2 gap-2">
 					<div class="form-control">
-						<label class="label">
-							<span class="label-text">SKU <span class="text-error">*</span></span>
-						</label>
-						<input
-							type="text"
-							name="sku"
-							class={ "input input-bordered font-mono", templ.KV("input-error", errs["sku"] != "") }
-							value={ item.SKU }
-							placeholder="e.g. ELEC-001"
-							required
-						/>
-						if errs["sku"] != "" {
-							<label class="label"><span class="label-text-alt text-error">{ errs["sku"] }</span></label>
-						}
-					</div>
-					<!-- Category -->
-					<div class="form-control">
-						<label class="label">
-							<span class="label-text">Category <span class="text-error">*</span></span>
-						</label>
-						<select name="category" class="select select-bordered" required>
-							<option value="">Select category…</option>
-							for _, cat := range models.Categories {
-								<option value={ string(cat) } selected?={ item.Category == cat }>{ string(cat) }</option>
-							}
+						<label class="label py-1"><span class="label-text text-xs font-semibold">Current Lifecycle Status</span></label>
+						<select name="status" class="select select-bordered rounded-xl bg-base-200">
+							<option value="In Storage" selected?={ item.Status == "In Storage" }>In Storage</option>
+							<option value="Staged" selected?={ item.Status == "Staged" }>Staged</option>
+							<option value="In Transit" selected?={ item.Status == "In Transit" }>In Transit</option>
 						</select>
 					</div>
-					<!-- Quantity -->
 					<div class="form-control">
-						<label class="label">
-							<span class="label-text">Quantity <span class="text-error">*</span></span>
-						</label>
-						<input
-							type="number"
-							name="quantity"
-							class={ "input input-bordered", templ.KV("input-error", errs["quantity"] != "") }
-							value={ fmt.Sprintf("%d", item.Quantity) }
-							min="0"
-							required
-						/>
-						if errs["quantity"] != "" {
-							<label class="label"><span class="label-text-alt text-error">{ errs["quantity"] }</span></label>
-						}
-					</div>
-					<!-- Price -->
-					<div class="form-control">
-						<label class="label">
-							<span class="label-text">Price (USD) <span class="text-error">*</span></span>
-						</label>
-						<label class="input input-bordered flex items-center gap-2">
-							<span class="text-base-content/50">$</span>
-							<input
-								type="number"
-								name="price"
-								class="grow"
-								value={ fmt.Sprintf("%.2f", item.Price) }
-								step="0.01"
-								min="0"
-								placeholder="0.00"
-								required
-							/>
-						</label>
-						if errs["price"] != "" {
-							<label class="label"><span class="label-text-alt text-error">{ errs["price"] }</span></label>
-						}
-					</div>
-					<!-- Description -->
-					<div class="form-control md:col-span-2">
-						<label class="label">
-							<span class="label-text">Description</span>
-						</label>
-						<textarea
-							name="description"
-							class="textarea textarea-bordered h-20 resize-none"
-							placeholder="Optional product description…"
-						>{ item.Description }</textarea>
+						<label class="label py-1"><span class="label-text text-xs font-semibold">Placement Location</span></label>
+						<input type="text" name="location" value={ item.Location } required placeholder="Warehouse or Address" class="input input-bordered input-md rounded-xl bg-base-200"/>
 					</div>
 				</div>
-				<!-- Actions -->
-				<div class="modal-action mt-6">
-					<button
-						type="button"
-						class="btn btn-ghost"
-						onclick="document.getElementById('modal-container').innerHTML=''"
-					>Cancel</button>
-					<button type="submit" class="btn btn-primary">
+				<div class="form-control">
+					<label class="label py-1"><span class="label-text text-xs font-semibold">Condition Assessment</span></label>
+					<select name="condition" class="select select-bordered rounded-xl bg-base-200">
+						<option value="Excellent" selected?={ string(item.Condition) == "Excellent" }>Excellent</option>
+						<option value="Good" selected?={ string(item.Condition) == "Good" }>Good</option>
+						<option value="Worn" selected?={ string(item.Condition) == "Worn" }>Worn</option>
+						<option value="Damaged" selected?={ string(item.Condition) == "Damaged" }>Damaged</option>
+					</select>
+				</div>
+				<div class="form-control">
+					<label class="label py-1"><span class="label-text text-xs font-semibold">Item Description</span></label>
+					<textarea name="description" placeholder="Notes, color variants, dimensions details..." class="textarea textarea-bordered rounded-xl bg-base-200 h-16">{ item.Description }</textarea>
+				</div>
+				<div class="p-3 rounded-xl bg-base-200 text-center border border-base-300 text-xs text-base-content/50">
+					📸 Image attachment workflows configured for staging deployment placeholder
+				</div>
+				<div class="pt-2">
+					<button type="submit" class="btn btn-primary w-full rounded-xl shadow-md">
 						if isEdit {
-							Save Changes
+							Save Updates
 						} else {
-							Add Item
+							Commit Asset
 						}
 					</button>
 				</div>
 			</form>
 		</div>
-		<div class="modal-backdrop bg-black/50" onclick="document.getElementById('modal-container').innerHTML=''"></div>
+		<div class="modal-backdrop bg-black/60" onclick="document.getElementById('modal-container').innerHTML=''"></div>
 	</dialog>
-}
-
-templ Toast(message, kind string) {
-	<div class={ "alert", "alert-" + kind, "shadow-lg" }>
-		<span>{ message }</span>
-	</div>
-}
-
-templ FormError(message string) {
-	<div class="alert alert-error">
-		<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-		</svg>
-		<span>{ message }</span>
-	</div>
 }

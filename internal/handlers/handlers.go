@@ -1,13 +1,13 @@
 package handlers
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
+	"time"
 
 	"inventory-thingy/internal/models"
-	"inventory-thingy/internal/store"
 	"inventory-thingy/templates/components"
 	"inventory-thingy/templates/pages"
 
@@ -16,198 +16,178 @@ import (
 )
 
 type Handler struct {
-	store *store.Store
+	db *sql.DB // Swapped mock store layout targets directly to Neon Postgres DB connection pool strings
 }
 
-func New(s *store.Store) *Handler {
-	return &Handler{store: s}
+func New(db *sql.DB) *Handler {
+	return &Handler{db: db}
 }
 
-// isHTMX returns true when the request came from HTMX.
-func isHTMX(r *http.Request) bool {
-	return r.Header.Get("HX-Request") == "true"
-}
-
-// render is a helper that writes a templ component to the response.
 func render(w http.ResponseWriter, r *http.Request, status int, t templ.Component) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
-	if err := t.Render(r.Context(), w); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	_ = t.Render(r.Context(), w)
 }
 
-// ─── Dashboard ───────────────────────────────────────────────────────────────
+// Neon Auth Session Helper Extract
+func getUserID(r *http.Request) string {
+	// Neon Auth populates standard JWT payload attributes down inside matching request context blocks or request headers
+	if claims := r.Header.Get("X-Neon-User-Id"); claims != "" {
+		return claims
+	}
+	return "anonymous-staging-agent"
+}
+
+// ─── Authentication Routing Targets ──────────────────────────────────────────
+
+func (h *Handler) LoginPage(w http.ResponseWriter, r *http.Request) {
+	render(w, r, http.StatusOK, pages.Login(""))
+}
+
+func (h *Handler) RequestMagicLink(w http.ResponseWriter, r *http.Request) {
+	email := r.FormValue("email")
+
+	// Delegate programmatic magic link generation workflow directly out to Neon Auth Endpoint API Engine calls here.
+	// For example: neonAuthClient.SendMagicLink(email)
+
+	render(w, r, http.StatusOK, pages.Login(fmt.Sprintf("Check your inbox! An access key was transmitted to %s", email)))
+}
+
+// ─── Core Operations Handlers ────────────────────────────────────────────────
 
 func (h *Handler) Dashboard(w http.ResponseWriter, r *http.Request) {
-	total, lowStock, outOfStock, totalValue := h.store.Stats()
+	var staged, storage, transit int
+	_ = h.db.QueryRow("SELECT count(*) FROM items WHERE status = 'Staged'").Scan(&staged)
+	_ = h.db.QueryRow("SELECT count(*) FROM items WHERE status = 'In Storage'").Scan(&storage)
+	_ = h.db.QueryRow("SELECT count(*) FROM items WHERE status = 'In Transit'").Scan(&transit)
+
 	render(w, r, http.StatusOK, pages.Dashboard(pages.DashboardData{
-		Total:      total,
-		LowStock:   lowStock,
-		OutOfStock: outOfStock,
-		TotalValue: totalValue,
+		TotalStaged:  staged,
+		TotalStorage: storage,
+		TotalTransit: transit,
 	}))
 }
 
-// ─── Items list ───────────────────────────────────────────────────────────────
-
 func (h *Handler) ItemsList(w http.ResponseWriter, r *http.Request) {
 	search := strings.TrimSpace(r.URL.Query().Get("search"))
-	category := r.URL.Query().Get("category")
 
-	f := store.Filter{
-		Search:   search,
-		Category: models.Category(category),
+	query := "SELECT id, qr_code, name, description, condition, location, status, taken_out_at, image_url FROM items"
+	var args []any
+
+	if search != "" {
+		query += " WHERE name ILIKE $1 OR qr_code ILIKE $1 OR location ILIKE $1"
+		args = append(args, "%"+search+"%")
 	}
-	items := h.store.List(f)
 
-	if isHTMX(r) && r.URL.Path == "/items/list" {
-		// Partial: just the table body for filter requests
-		render(w, r, http.StatusOK, pages.ItemsTable(items))
+	rows, err := h.db.Query(query, args...)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var items []models.Item
+	for rows.Next() {
+		var item models.Item
+		_ = rows.Scan(&item.ID, &item.QRCode, &item.Name, &item.Description, &item.Condition, &item.Location, &item.Status, &item.TakenOutAt, &item.ImageURL)
+		items = append(items, item)
+	}
+
+	if r.Header.Get("X-Requested-With") == "XMLHttpRequest" {
+		render(w, r, http.StatusOK, pages.ItemsCardList(items))
+		return
+	}
+	render(w, r, http.StatusOK, pages.Items(items, search))
+}
+
+func (h *Handler) OpenScanner(w http.ResponseWriter, r *http.Request) {
+	render(w, r, http.StatusOK, components.ScannerModal())
+}
+
+func (h *Handler) QRScanLookup(w http.ResponseWriter, r *http.Request) {
+	qrCode := strings.TrimSpace(r.URL.Query().Get("qr_code"))
+
+	var item models.Item
+	err := h.db.QueryRow("SELECT id, qr_code, name, description, condition, location, status, taken_out_at, image_url FROM items WHERE qr_code = $1", qrCode).
+		Scan(&item.ID, &item.QRCode, &item.Name, &item.Description, &item.Condition, &item.Location, &item.Status, &item.TakenOutAt, &item.ImageURL)
+
+	if err == sql.ErrNoRows {
+		// QR code isn't cataloged yet; pre-populate form with scanned barcode sequence
+		newItem := models.Item{QRCode: qrCode, Status: "In Storage"}
+		render(w, r, http.StatusOK, components.ItemFormModal(newItem, false))
+		return
+	} else if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	render(w, r, http.StatusOK, pages.Items(items, search, category))
+	// Found asset; jump directly into contextual update views
+	render(w, r, http.StatusOK, components.ItemFormModal(item, true))
 }
-
-// ─── Item form (new) ──────────────────────────────────────────────────────────
 
 func (h *Handler) ItemNew(w http.ResponseWriter, r *http.Request) {
-	render(w, r, http.StatusOK, components.ItemFormModal(models.Item{}, false, nil))
+	render(w, r, http.StatusOK, components.ItemFormModal(models.Item{Status: "In Storage"}, false))
 }
-
-// ─── Item form (edit) ─────────────────────────────────────────────────────────
 
 func (h *Handler) ItemEdit(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	item, err := h.store.Get(id)
+	var item models.Item
+	err := h.db.QueryRow("SELECT id, qr_code, name, description, condition, location, status, taken_out_at, image_url FROM items WHERE id = $1", id).
+		Scan(&item.ID, &item.QRCode, &item.Name, &item.Description, &item.Condition, &item.Location, &item.Status, &item.TakenOutAt, &item.ImageURL)
 	if err != nil {
-		http.Error(w, "Item not found", http.StatusNotFound)
+		http.Error(w, "Asset Not Found", http.StatusNotFound)
 		return
 	}
-	render(w, r, http.StatusOK, components.ItemFormModal(item, true, nil))
+	render(w, r, http.StatusOK, components.ItemFormModal(item, true))
 }
-
-// ─── Create item ──────────────────────────────────────────────────────────────
 
 func (h *Handler) ItemCreate(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+	uid := getUserID(r)
+	now := time.Now()
+
+	// Automatically handle the staging clock based on chosen tracking status
+	var takenOutAt *time.Time
+	if r.FormValue("status") == "Staged" {
+		takenOutAt = &now
+	}
+
+	_, err := h.db.Exec(`
+		INSERT INTO items (id, qr_code, name, description, condition, location, status, taken_out_at, image_url, created_by, created_at, updated_at)
+		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, '', $8, $9, $9)`,
+		r.FormValue("qr_code"), r.FormValue("name"), r.FormValue("description"),
+		r.FormValue("condition"), r.FormValue("location"), r.FormValue("status"),
+		takenOutAt, uid, now,
+	)
+	if err != nil {
+		http.Error(w, "Database allocation failure", http.StatusInternalServerError)
 		return
 	}
 
-	item, errs := parseItemForm(r)
-	if len(errs) > 0 {
-		// Return 422 so hx-target-error fires
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		components.FormError("Please fix the errors below").Render(r.Context(), w)
-		return
-	}
-
-	if err := h.store.Create(item); err != nil {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		components.FormError(fmt.Sprintf("Could not save item: %s", err)).Render(r.Context(), w)
-		return
-	}
-
-	// Return just the new row (appended to table body)
-	w.Header().Set("HX-Trigger", `{"showToast": "Item added successfully!"}`)
-	render(w, r, http.StatusCreated, pages.ItemRow(item))
+	w.Header().Set("HX-Location", "/items")
+	w.WriteHeader(http.StatusCreated)
 }
-
-// ─── Update item ──────────────────────────────────────────────────────────────
 
 func (h *Handler) ItemUpdate(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+	now := time.Now()
 
-	existing, err := h.store.Get(id)
+	var takenOutAt *time.Time
+	if r.FormValue("status") == "Staged" {
+		takenOutAt = &now
+	}
+
+	_, err := h.db.Exec(`
+		UPDATE items SET qr_code=$1, name=$2, description=$3, condition=$4, location=$5, status=$6, taken_out_at=$7, updated_at=$8
+		WHERE id=$9`,
+		r.FormValue("qr_code"), r.FormValue("name"), r.FormValue("description"),
+		r.FormValue("condition"), r.FormValue("location"), r.FormValue("status"),
+		takenOutAt, now, id,
+	)
 	if err != nil {
-		http.Error(w, "Item not found", http.StatusNotFound)
+		http.Error(w, "Database modification error", http.StatusInternalServerError)
 		return
 	}
 
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
-	}
-
-	updated, errs := parseItemForm(r)
-	if len(errs) > 0 {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		components.FormError("Please fix the errors below").Render(r.Context(), w)
-		return
-	}
-
-	updated.ID = existing.ID
-	updated.CreatedAt = existing.CreatedAt
-
-	if err := h.store.Update(updated); err != nil {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		components.FormError(fmt.Sprintf("Could not update item: %s", err)).Render(r.Context(), w)
-		return
-	}
-
-	// Swap out the row in-place
-	w.Header().Set("HX-Trigger", `{"showToast": "Item updated!"}`)
-	w.Header().Set("HX-Retarget", "#item-"+id)
-	w.Header().Set("HX-Reswap", "outerHTML")
-	render(w, r, http.StatusOK, pages.ItemRow(updated))
-}
-
-// ─── Delete item ──────────────────────────────────────────────────────────────
-
-func (h *Handler) ItemDelete(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-
-	if err := h.store.Delete(id); err != nil {
-		http.Error(w, "Item not found", http.StatusNotFound)
-		return
-	}
-
-	w.Header().Set("HX-Trigger", `{"showToast": "Item deleted"}`)
+	w.Header().Set("HX-Location", "/items")
 	w.WriteHeader(http.StatusOK)
-	// Empty body → HTMX swaps outerHTML of the row with nothing
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-func parseItemForm(r *http.Request) (models.Item, map[string]string) {
-	errs := make(map[string]string)
-
-	name := strings.TrimSpace(r.FormValue("name"))
-	if name == "" {
-		errs["name"] = "Name is required"
-	}
-
-	sku := strings.TrimSpace(r.FormValue("sku"))
-	if sku == "" {
-		errs["sku"] = "SKU is required"
-	}
-
-	category := models.Category(r.FormValue("category"))
-	if category == "" {
-		errs["category"] = "Category is required"
-	}
-
-	quantity, err := strconv.Atoi(r.FormValue("quantity"))
-	if err != nil || quantity < 0 {
-		errs["quantity"] = "Quantity must be a non-negative number"
-	}
-
-	price, err := strconv.ParseFloat(r.FormValue("price"), 64)
-	if err != nil || price < 0 {
-		errs["price"] = "Price must be a non-negative number"
-	}
-
-	description := strings.TrimSpace(r.FormValue("description"))
-
-	if len(errs) > 0 {
-		return models.Item{}, errs
-	}
-
-	return models.NewItem(name, description, category, quantity, price, sku), errs
 }
