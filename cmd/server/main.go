@@ -14,19 +14,6 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func RequireNeonAuthSession(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authCookie, err := r.Cookie("neon_auth_session")
-		if err != nil || authCookie.Value == "" {
-			if r.Header.Get("X-Neon-User-Id") == "" {
-				http.Redirect(w, r, "/login", http.StatusSeeOther)
-				return
-			}
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
 func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using system environment variables")
@@ -62,8 +49,6 @@ func main() {
 	r.Post("/auth/magic-link", h.RequestMagicLink)
 
 	r.Group(func(protected chi.Router) {
-		protected.Use(RequireNeonAuthSession)
-
 		protected.Get("/", h.Dashboard)
 		protected.Get("/scanner", h.OpenScanner)
 
