@@ -109,12 +109,39 @@ func QRTagModal(item models.Item) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" class=\"btn btn-outline btn-sm flex-1 rounded-xl\">Download</a> <button type=\"button\" class=\"btn btn-primary btn-sm flex-1 rounded-xl\" onclick=\"window.print()\">Print</button></div></div><div class=\"modal-backdrop bg-black/60\" onclick=\"document.getElementById('modal-container').innerHTML=''\"></div></dialog>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" class=\"btn btn-outline btn-sm flex-1 rounded-xl\">Download</a> ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templ.RenderScriptItems(ctx, templ_7745c5c3_Buffer, printQR(item.ID))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<button type=\"button\" class=\"btn btn-primary btn-sm flex-1 rounded-xl\" onclick=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var8 templ.ComponentScript = printQR(item.ID)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8.Call)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\">Print</button></div></div><div class=\"modal-backdrop bg-black/60\" onclick=\"document.getElementById('modal-container').innerHTML=''\"></div></dialog>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		return nil
 	})
+}
+
+func printQR(id string) templ.ComponentScript {
+	return templ.ComponentScript{
+		Name: `__templ_printQR_553b`,
+		Function: `function __templ_printQR_553b(id){window.open('/items/' + id + '/qr/print', '_blank');
+}`,
+		Call:       templ.SafeScript(`__templ_printQR_553b`, id),
+		CallInline: templ.SafeScriptInline(`__templ_printQR_553b`, id),
+	}
 }
 
 var _ = templruntime.GeneratedTemplate

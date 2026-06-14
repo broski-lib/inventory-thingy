@@ -176,6 +176,53 @@ func (h *Handler) ItemQRModal(w http.ResponseWriter, r *http.Request) {
 	render(w, r, http.StatusOK, components.QRTagModal(item))
 }
 
+func (h *Handler) ItemQRPrint(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	var item models.Item
+	err := h.db.QueryRow(`SELECT id, qr_code FROM items WHERE id = $1`, id).
+		Scan(&item.ID, &item.QRCode)
+	if err == sql.ErrNoRows {
+		http.Error(w, "Asset not found", http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, "Lookup failed", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	fmt.Fprintf(w, `<!DOCTYPE html>
+<html>
+<head>
+	<title>QR Tag</title>
+	<style>
+		* { margin: 0; padding: 0; box-sizing: border-box; }
+		body {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			padding: 16px;
+			font-family: monospace;
+			font-size: 14px;
+		}
+		img { width: 200px; height: 200px; display: block; }
+		p { margin: 8px 0 0 0; }
+		@page { margin: 0; size: auto; }
+	</style>
+</head>
+<body>
+	<img src="/items/%s/qr.png" />
+	<p>%s</p>
+	<script>
+		window.onload = function() {
+			window.print();
+			window.onafterprint = function() { window.close(); };
+		};
+	</script>
+</body>
+</html>`, item.ID, item.QRCode)
+}
+
 func (h *Handler) ItemNew(w http.ResponseWriter, r *http.Request) {
 	code, err := qr.NewCode()
 	if err != nil {

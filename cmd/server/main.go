@@ -64,6 +64,7 @@ func main() {
 				idRouter.Get("/edit", h.ItemEdit)
 				idRouter.Get("/qr", h.ItemQRModal)
 				idRouter.Get("/qr.png", h.ItemQRPNG)
+				idRouter.Get("/qr/print", h.ItemQRPrint)
 				idRouter.Put("/", h.ItemUpdate)
 			})
 

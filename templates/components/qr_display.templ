@@ -27,11 +27,19 @@ templ QRTagModal(item models.Item) {
 				>
 					Download
 				</a>
-				<button type="button" class="btn btn-primary btn-sm flex-1 rounded-xl" onclick="window.print()">
+				<button
+					type="button"
+					class="btn btn-primary btn-sm flex-1 rounded-xl"
+					onclick={ printQR(item.ID) }
+				>
 					Print
 				</button>
 			</div>
 		</div>
 		<div class="modal-backdrop bg-black/60" onclick="document.getElementById('modal-container').innerHTML=''"></div>
 	</dialog>
+}
+
+script printQR(id string) {
+    window.open('/items/' + id + '/qr/print', '_blank');
 }
