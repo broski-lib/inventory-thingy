@@ -8,6 +8,58 @@ package components
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
+func submitScan(qrCode string) templ.ComponentScript {
+	return templ.ComponentScript{
+		Name: `__templ_submitScan_fc69`,
+		Function: `function __templ_submitScan_fc69(qrCode){htmx.ajax('GET', '/items/scan-lookup', {
+		target: '#modal-container',
+		swap:   'innerHTML',
+		values: { qr_code: qrCode },
+	});
+}`,
+		Call:       templ.SafeScript(`__templ_submitScan_fc69`, qrCode),
+		CallInline: templ.SafeScriptInline(`__templ_submitScan_fc69`, qrCode),
+	}
+}
+
+func handleCapturedImage() templ.ComponentScript {
+	return templ.ComponentScript{
+		Name: `__templ_handleCapturedImage_3451`,
+		Function: `function __templ_handleCapturedImage_3451(){var input = document.getElementById('qr-capture-input');
+	if (!input || !input.files || !input.files[0]) return;
+
+	var file = input.files[0];
+
+	if (typeof Html5Qrcode === 'undefined') {
+		alert('QR scanner library not loaded.');
+		return;
+	}
+
+	var reader = new FileReader();
+	reader.onload = function () {
+		Html5Qrcode.scanFile(file, true)
+			.then(function (decodedText) {
+				document.getElementById('qr-bridge-input').value = decodedText;
+				htmx.ajax('GET', '/items/scan-lookup', {
+					target: '#modal-container',
+					swap:   'innerHTML',
+					values: { qr_code: decodedText },
+				});
+			})
+			.catch(function (err) {
+				var s = document.getElementById('scanner-status');
+				s.textContent = 'Could not read QR code from image. Try again or enter manually.';
+				s.classList.remove('hidden');
+				console.error('QR decode error:', err);
+			});
+	};
+	reader.readAsDataURL(file);
+}`,
+		Call:       templ.SafeScript(`__templ_handleCapturedImage_3451`),
+		CallInline: templ.SafeScriptInline(`__templ_handleCapturedImage_3451`),
+	}
+}
+
 func ScannerModal() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -29,7 +81,7 @@ func ScannerModal() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<dialog id=\"scanner-modal\" class=\"modal modal-open modal-bottom sm:modal-middle\"><div class=\"modal-box bg-base-100 rounded-t-2xl p-4 max-w-sm\"><div class=\"flex items-center justify-between mb-3\"><h3 class=\"font-bold text-md\">Scan Asset Tag</h3><button type=\"button\" class=\"btn btn-sm btn-circle btn-ghost\" onclick=\"closeScanner()\">✕</button></div><div id=\"scanner-status\" class=\"hidden alert alert-error text-xs py-2 mb-2\"></div><div class=\"overflow-hidden rounded-xl bg-black border border-base-300 aspect-square w-full relative\"><div id=\"qr-interactive-reader\" class=\"w-full h-full\"></div><div id=\"scanner-loading\" class=\"absolute inset-0 flex items-center justify-center text-white/70 text-sm\">Starting camera...</div></div><form id=\"qr-bridge-form\" hx-get=\"/items/scan-lookup\" hx-target=\"#modal-container\" hx-swap=\"innerHTML\" class=\"mt-3 space-y-2\"><label class=\"label py-0\"><span class=\"label-text text-xs font-semibold\">Or enter tag ID manually</span></label><div class=\"join w-full\"><input type=\"text\" id=\"qr-bridge-input\" name=\"qr_code\" placeholder=\"INV-ABC123 or scan above\" class=\"input input-bordered join-item flex-1 rounded-l-xl bg-base-200\"> <button type=\"submit\" class=\"btn btn-primary join-item rounded-r-xl\">Look up</button></div></form><script>\n\t\t\t\tvar html5QrcodeScanner;\n\t\t\t\tvar scannerHandled = false;\n\n\t\t\t\tfunction showScannerError(message) {\n\t\t\t\t\tvar status = document.getElementById('scanner-status');\n\t\t\t\t\tstatus.textContent = message;\n\t\t\t\t\tstatus.classList.remove('hidden');\n\t\t\t\t\tdocument.getElementById('scanner-loading').classList.add('hidden');\n\t\t\t\t}\n\n\t\t\t\tfunction stopScanner() {\n\t\t\t\t\tif (!html5QrcodeScanner) {\n\t\t\t\t\t\treturn Promise.resolve();\n\t\t\t\t\t}\n\t\t\t\t\treturn html5QrcodeScanner.stop().catch(function() {});\n\t\t\t\t}\n\n\t\t\t\tfunction closeScanner() {\n\t\t\t\t\tstopScanner().finally(function() {\n\t\t\t\t\t\tdocument.getElementById('modal-container').innerHTML = '';\n\t\t\t\t\t});\n\t\t\t\t}\n\n\t\t\t\tfunction handleScan(decodedText) {\n\t\t\t\t\tif (scannerHandled) return;\n\t\t\t\t\tscannerHandled = true;\n\t\t\t\t\tdocument.getElementById('qr-bridge-input').value = decodedText;\n\t\t\t\t\tstopScanner().then(function() {\n\t\t\t\t\t\thtmx.trigger('#qr-bridge-form', 'submit');\n\t\t\t\t\t});\n\t\t\t\t}\n\n\t\t\t\tfunction startScanner() {\n\t\t\t\t\tif (typeof Html5Qrcode === 'undefined') {\n\t\t\t\t\t\tshowScannerError('Scanner library failed to load. Use manual entry below.');\n\t\t\t\t\t\treturn;\n\t\t\t\t\t}\n\n\t\t\t\t\thtml5QrcodeScanner = new Html5Qrcode('qr-interactive-reader');\n\t\t\t\t\thtml5QrcodeScanner.start(\n\t\t\t\t\t\t{ facingMode: 'environment' },\n\t\t\t\t\t\t{ fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },\n\t\t\t\t\t\thandleScan,\n\t\t\t\t\t\tfunction() {}\n\t\t\t\t\t).then(function() {\n\t\t\t\t\t\tdocument.getElementById('scanner-loading').classList.add('hidden');\n\t\t\t\t\t}).catch(function(err) {\n\t\t\t\t\t\tshowScannerError('Camera unavailable. Enter the tag ID manually.');\n\t\t\t\t\t\tconsole.error('Camera access failure:', err);\n\t\t\t\t\t});\n\t\t\t\t}\n\n\t\t\t\tsetTimeout(startScanner, 100);\n\t\t\t</script></div><div class=\"modal-backdrop bg-black/80\" onclick=\"closeScanner()\"></div></dialog>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<dialog id=\"scanner-modal\" class=\"modal modal-open modal-bottom sm:modal-middle\"><div class=\"modal-box bg-base-100 rounded-t-2xl p-5 border-t border-base-300\"><!-- Header --><div class=\"flex items-center justify-between mb-4\"><h3 class=\"font-bold text-lg\">Scan Asset Tag</h3><button type=\"button\" class=\"btn btn-sm btn-circle btn-ghost\" onclick=\"document.getElementById('modal-container').innerHTML=''\">✕</button></div><!-- Error status --><div id=\"scanner-status\" class=\"hidden alert alert-error text-xs py-2 mb-3\"></div><!-- Camera trigger --><label for=\"qr-capture-input\" class=\"flex flex-col items-center justify-center gap-3 w-full rounded-xl border-2 border-dashed border-base-300 bg-base-200 py-10 cursor-pointer active:bg-base-300 transition-colors\"><svg xmlns=\"http://www.w3.org/2000/svg\" class=\"w-10 h-10 text-base-content/40\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"1.5\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M3 7.5A1.5 1.5 0 0 1 4.5 6h.75A.75.75 0 0 0 6 5.25V4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5v.75c0 .414.336.75.75.75h.75A1.5 1.5 0 0 1 21 7.5v10.5A1.5 1.5 0 0 1 19.5 19.5h-15A1.5 1.5 0 0 1 3 18V7.5Z\"></path> <path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z\"></path></svg> <span class=\"text-sm font-semibold text-base-content/60\">Tap to open camera</span> <span class=\"text-xs text-base-content/40\">Point at a QR tag to scan</span></label> <input type=\"file\" id=\"qr-capture-input\" accept=\"image/*\" capture=\"environment\" class=\"hidden\" onchange=\"handleCapturedImage()\"><div class=\"divider text-xs text-base-content/40 my-3\">or enter manually</div><!-- Manual entry form --><form id=\"qr-bridge-form\" hx-get=\"/items/scan-lookup\" hx-target=\"#modal-container\" hx-swap=\"innerHTML\" hx-indicator=\"#scanner-submit-indicator\" class=\"space-y-2\"><div class=\"join w-full\"><input type=\"text\" id=\"qr-bridge-input\" name=\"qr_code\" placeholder=\"INV-ABC123\" class=\"input input-bordered join-item flex-1 rounded-l-xl bg-base-200\" autocomplete=\"off\" inputmode=\"text\"> <button type=\"submit\" class=\"btn btn-primary join-item rounded-r-xl\"><span id=\"scanner-submit-indicator\" class=\"loading loading-spinner loading-xs htmx-indicator\"></span> Look up</button></div></form><p class=\"text-[11px] text-base-content/40 text-center mt-4\">Uses your device's built-in camera and QR reader.</p></div><div class=\"modal-backdrop bg-black/60\" onclick=\"document.getElementById('modal-container').innerHTML=''\"></div></dialog>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
