@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { desc } from "drizzle-orm"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { getDb } from "@/lib/db"
 import { items } from "@/lib/schema"
 import { requireUser, getItemByQrCode, updateItem } from "@/lib/inventory"
@@ -10,6 +10,8 @@ import { requireAuth } from "@/lib/auth-guard"
 import { AppHeader } from "@/components/AppHeader"
 import { BottomNav } from "@/components/BottomNav"
 import { ScannerModal } from "@/components/ScannerModal"
+import { BulkScannerModal } from "@/components/BulkScannerModal"
+import type { BulkResult } from "@/components/BulkScannerModal"
 import { ItemEditModal } from "@/components/ItemEditModal"
 import { ItemCreateModal } from "@/components/ItemCreateModal"
 import { QRTagModal } from "@/components/QRTagModal"
@@ -63,6 +65,7 @@ function ScanRoute() {
   const [createOpen, setCreateOpen] = useState(false)
   const [qrOpen, setQrOpen] = useState(false)
   const [createPrefillQr, setCreatePrefillQr] = useState<string | undefined>()
+  const [bulkOpen, setBulkOpen] = useState(false)
   const initialCodeRef = useRef<string | undefined>(search.code)
 
   const handleDetected = async (code: string) => {
@@ -110,6 +113,31 @@ function ScanRoute() {
     setCreateOpen(true)
   }
 
+  const bulkLookupAndUpdate = useCallback(
+    async (qrCode: string, status: ItemStatus, location: string): Promise<BulkResult> => {
+      if (!location.trim()) {
+        return { qrCode, ok: false, message: "Location is required for bulk updates" }
+      }
+      try {
+        const found = await getItemByQrCode({ data: qrCode })
+        if (!found) {
+          return { qrCode, ok: false, message: "Tag not found in inventory" }
+        }
+        const updated = await updateItem({
+          data: { id: found.id, item: { status, location: location.trim() } },
+        })
+        return { qrCode, ok: true, message: `${status} · ${location.trim()}`, itemName: updated.name }
+      } catch (err) {
+        return {
+          qrCode,
+          ok: false,
+          message: err instanceof Error ? err.message : "Update failed",
+        }
+      }
+    },
+    [],
+  )
+
   return (
     <main className="min-h-svh bg-[#f7f8f4] text-[#20231f] pb-24">
       <section className="mx-auto flex w-full max-w-md flex-col px-4 pt-4">
@@ -137,14 +165,24 @@ function ScanRoute() {
           )}
 
           {!scannerOpen && !scannedItem && (
-            <button
-              type="button"
-              onClick={() => setScannerOpen(true)}
-              className="w-full flex items-center justify-center gap-2 rounded-lg border border-[#dfe3dc] bg-white py-3 cursor-pointer hover:bg-[#f7f8f4] text-xs font-semibold uppercase tracking-wider text-[#20231f]"
-            >
-              <HugeiconsIcon icon={BoxIcon} size={18} strokeWidth={1.5} />
-              Open scanner
-            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setScannerOpen(true)}
+                className="flex items-center justify-center gap-2 rounded-lg border border-[#dfe3dc] bg-white py-3 cursor-pointer hover:bg-[#f7f8f4] text-xs font-semibold uppercase tracking-wider text-[#20231f]"
+              >
+                <HugeiconsIcon icon={BoxIcon} size={18} strokeWidth={1.5} />
+                Scan one
+              </button>
+              <button
+                type="button"
+                onClick={() => setBulkOpen(true)}
+                className="flex items-center justify-center gap-2 rounded-lg border border-[#23312b] bg-[#23312b] text-white py-3 cursor-pointer hover:bg-[#1a2520] text-xs font-semibold uppercase tracking-wider"
+              >
+                <BoltIcon />
+                Bulk scan
+              </button>
+            </div>
           )}
 
           {scanError && (
@@ -272,6 +310,7 @@ function ScanRoute() {
       <BottomNav active="scan" />
 
       <ScannerModal open={scannerOpen} onClose={() => setScannerOpen(false)} onDetected={handleDetected} />
+      <BulkScannerModal open={bulkOpen} onClose={() => setBulkOpen(false)} lookupAndUpdate={bulkLookupAndUpdate} />
       <ItemEditModal
         open={editOpen}
         item={scannedItem}

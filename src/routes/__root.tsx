@@ -1,7 +1,5 @@
 import { ClerkProvider } from "@clerk/tanstack-react-start"
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
-import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
-import { TanStackDevtools } from "@tanstack/react-devtools"
 
 import appCss from "../styles.css?url"
 
@@ -34,20 +32,6 @@ export const Route = createRootRoute({
   ),
   shellComponent: RootDocument,
 })
-
-/*
-<TanStackDevtools
-  config={{
-    position: "bottom-right",
-  }}
-  plugins={[
-    {
-      name: "Tanstack Router",
-      render: <TanStackRouterDevtoolsPanel />,
-    },
-  ]}
-/>
-*/
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
