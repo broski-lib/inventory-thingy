@@ -67,15 +67,24 @@ export const getStats = createServerFn({ method: "GET" }).handler(async () => {
 
 export const getItemByQrCode = createServerFn({ method: "GET" })
   .validator((qrCode: string) => qrCode)
-  .handler(async ({ data: qrCode }): Promise<(typeof items.$inferSelect) | null> => {
-    await requireUser()
-    const db = getDb()
-    const result = await db.select().from(items).where(eq(items.qrCode, qrCode)).limit(1)
-    return result[0] ?? null
-  })
+  .handler(
+    async ({ data: qrCode }): Promise<typeof items.$inferSelect | null> => {
+      await requireUser()
+      const db = getDb()
+      const result = await db
+        .select()
+        .from(items)
+        .where(eq(items.qrCode, qrCode))
+        .limit(1)
+      return result[0] ?? null
+    }
+  )
 
 export const createItem = createServerFn({ method: "POST" })
-  .validator((item: Omit<typeof items.$inferInsert, "id" | "createdAt" | "updatedAt">) => item)
+  .validator(
+    (item: Omit<typeof items.$inferInsert, "id" | "createdAt" | "updatedAt">) =>
+      item
+  )
   .handler(async ({ data: item }) => {
     const userId = await requireUser()
     const db = getDb()
@@ -94,7 +103,9 @@ export const createItem = createServerFn({ method: "POST" })
   })
 
 export const updateItem = createServerFn({ method: "POST" })
-  .validator((data: { id: string; item: Partial<typeof items.$inferInsert> }) => data)
+  .validator(
+    (data: { id: string; item: Partial<typeof items.$inferInsert> }) => data
+  )
   .handler(async ({ data: { id, item } }) => {
     await requireUser()
     const db = getDb()

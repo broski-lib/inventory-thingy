@@ -16,12 +16,7 @@ export const ITEM_STATUSES = [
   "Retired",
 ] as const
 
-export const ITEM_CONDITIONS = [
-  "Excellent",
-  "Good",
-  "Worn",
-  "Repair",
-] as const
+export const ITEM_CONDITIONS = ["Excellent", "Good", "Worn", "Repair"] as const
 
 export type ItemStatus = (typeof ITEM_STATUSES)[number]
 export type ItemCondition = (typeof ITEM_CONDITIONS)[number]

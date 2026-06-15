@@ -10,11 +10,24 @@ type LiveScannerProps = {
   onStatusChange?: (status: LiveScannerStatus) => void
 }
 
-export type LiveScannerStatus = "idle" | "starting" | "scanning" | "paused" | "denied" | "error" | "stopped"
+export type LiveScannerStatus =
+  | "idle"
+  | "starting"
+  | "scanning"
+  | "paused"
+  | "denied"
+  | "error"
+  | "stopped"
 
 const ELEMENT_ID = "live-qr-reader"
 
-export function LiveScanner({ active, paused, onDetected, onError, onStatusChange }: LiveScannerProps) {
+export function LiveScanner({
+  active,
+  paused,
+  onDetected,
+  onError,
+  onStatusChange,
+}: LiveScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const [status, setStatus] = useState<LiveScannerStatus>("idle")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -31,7 +44,7 @@ export function LiveScanner({ active, paused, onDetected, onError, onStatusChang
       if (msg !== undefined) setErrorMessage(msg)
       onStatusChange?.(next)
     },
-    [onStatusChange],
+    [onStatusChange]
   )
 
   useEffect(() => {
@@ -68,7 +81,7 @@ export function LiveScanner({ active, paused, onDetected, onError, onStatusChang
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 240, height: 240 } },
         onSuccess,
-        onFailure,
+        onFailure
       )
       .then(() => {
         if (cancelled) {
@@ -81,7 +94,10 @@ export function LiveScanner({ active, paused, onDetected, onError, onStatusChang
         if (cancelled) return
         const message = err instanceof Error ? err.message : String(err)
         if (/permission|denied|notallowed/i.test(message)) {
-          updateStatus("denied", "Camera access denied. Allow camera in your browser settings.")
+          updateStatus(
+            "denied",
+            "Camera access denied. Allow camera in your browser settings."
+          )
         } else if (/notfound|no\scamera/i.test(message)) {
           updateStatus("error", "No camera found on this device.")
         } else {
@@ -139,16 +155,18 @@ export function LiveScanner({ active, paused, onDetected, onError, onStatusChang
     <div className="space-y-2">
       <div
         id={ELEMENT_ID}
-        className="relative w-full aspect-square max-w-sm mx-auto rounded-xl overflow-hidden bg-black [&_video]:w-full [&_video]:h-full [&_video]:object-cover [&_img]:hidden [&_div]:!border-none"
+        className="relative mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-xl bg-black [&_div]:!border-none [&_img]:hidden [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
       />
       {status === "starting" && (
-        <p className="text-xs text-[#6d7569] text-center">Starting camera…</p>
+        <p className="text-center text-xs text-muted-foreground">
+          Starting camera…
+        </p>
       )}
       {status === "denied" && (
-        <p className="text-xs text-rose-700 text-center">{errorMessage}</p>
+        <p className="text-center text-xs text-destructive">{errorMessage}</p>
       )}
       {status === "error" && (
-        <p className="text-xs text-rose-700 text-center">{errorMessage}</p>
+        <p className="text-center text-xs text-destructive">{errorMessage}</p>
       )}
     </div>
   )

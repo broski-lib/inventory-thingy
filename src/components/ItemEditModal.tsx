@@ -1,6 +1,25 @@
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { CloseIcon, TrashIcon } from "@/components/icons"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { TrashIcon } from "@/components/icons"
+import {
+  Modal,
+  ModalHeader,
+  ModalTitle,
+  ModalDescription,
+  ModalBody,
+  ModalFooter,
+} from "@/components/ui/modal"
 import type { items } from "@/lib/schema"
 import { ITEM_CONDITIONS, ITEM_STATUSES } from "@/lib/item-status"
 import type { ItemCondition, ItemStatus } from "@/lib/item-status"
@@ -15,7 +34,13 @@ type ItemEditModalProps = {
   onDelete: (id: string) => Promise<void>
 }
 
-export function ItemEditModal({ open, item, onClose, onSubmit, onDelete }: ItemEditModalProps) {
+export function ItemEditModal({
+  open,
+  item,
+  onClose,
+  onSubmit,
+  onDelete,
+}: ItemEditModalProps) {
   const [formName, setFormName] = useState("")
   const [formDescription, setFormDescription] = useState("")
   const [formCondition, setFormCondition] = useState<ItemCondition>("Good")
@@ -37,7 +62,9 @@ export function ItemEditModal({ open, item, onClose, onSubmit, onDelete }: ItemE
     setBusy(false)
   }, [open, item])
 
-  if (!open || !item) return null
+  const handleOpenChange = (next: boolean) => {
+    if (!next) onClose()
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -60,6 +87,7 @@ export function ItemEditModal({ open, item, onClose, onSubmit, onDelete }: ItemE
   }
 
   const handleDelete = async () => {
+    if (!item) return
     if (!confirm("Are you sure you want to delete this item?")) return
     setBusy(true)
     try {
@@ -71,126 +99,120 @@ export function ItemEditModal({ open, item, onClose, onSubmit, onDelete }: ItemE
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-xs p-0 sm:items-center sm:p-4">
-      <div className="w-full max-w-md rounded-t-2xl sm:rounded-2xl bg-white border border-[#dfe3dc] shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="p-4 border-b border-[#dfe3dc] flex items-center justify-between">
-          <div>
-            <h3 className="font-semibold text-base text-[#20231f]">Edit Item</h3>
-            <p className="text-[10px] text-[#6d7569] font-mono mt-0.5">{item.qrCode}</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1 rounded-full hover:bg-neutral-100 text-neutral-500 cursor-pointer"
-            aria-label="Close edit modal"
-          >
-            <CloseIcon />
-          </button>
-        </div>
+    <Modal open={open} onOpenChange={handleOpenChange}>
+      <ModalHeader onClose={onClose}>
+        <ModalTitle>Edit Item</ModalTitle>
+        <ModalDescription>{item?.qrCode}</ModalDescription>
+      </ModalHeader>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
+      <form onSubmit={handleSubmit} className="contents">
+        <ModalBody>
           {error && (
-            <div className="p-3 bg-rose-50 text-rose-800 text-xs border border-rose-100 rounded-xl">
-              {error}
-            </div>
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
 
-          <div className="space-y-1">
-            <label className="text-xs font-semibold uppercase tracking-wider text-[#6d7569]">Item Name</label>
-            <input
-              type="text"
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-name">Item Name</Label>
+            <Input
+              id="edit-name"
               required
               value={formName}
               onChange={(e) => setFormName(e.target.value)}
-              className="w-full h-11 px-3 border border-[#dfe3dc] rounded-lg bg-transparent outline-none focus:border-[#23312b] transition-colors text-sm"
             />
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-semibold uppercase tracking-wider text-[#6d7569]">Description</label>
-            <textarea
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-description">Description</Label>
+            <Textarea
+              id="edit-description"
               value={formDescription}
               onChange={(e) => setFormDescription(e.target.value)}
-              className="w-full min-h-20 px-3 py-2 border border-[#dfe3dc] rounded-lg bg-transparent outline-none focus:border-[#23312b] transition-colors text-sm resize-none"
               placeholder="Elegant cream-colored fabric sofa..."
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold uppercase tracking-wider text-[#6d7569]">Status</label>
-              <select
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-status">Status</Label>
+              <Select
                 value={formStatus}
-                onChange={(e) => setFormStatus(e.target.value as ItemStatus)}
-                className="w-full h-11 px-2 border border-[#dfe3dc] rounded-lg bg-white outline-none focus:border-[#23312b] transition-colors text-xs text-[#20231f]"
+                onValueChange={(v) => setFormStatus(v as ItemStatus)}
               >
-                {ITEM_STATUSES.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id="edit-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ITEM_STATUSES.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-semibold uppercase tracking-wider text-[#6d7569]">Condition</label>
-              <select
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-condition">Condition</Label>
+              <Select
                 value={formCondition}
-                onChange={(e) => setFormCondition(e.target.value as ItemCondition)}
-                className="w-full h-11 px-2 border border-[#dfe3dc] rounded-lg bg-white outline-none focus:border-[#23312b] transition-colors text-xs text-[#20231f]"
+                onValueChange={(v) => setFormCondition(v as ItemCondition)}
               >
-                {ITEM_CONDITIONS.map((cond) => (
-                  <option key={cond} value={cond}>
-                    {cond}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id="edit-condition">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ITEM_CONDITIONS.map((cond) => (
+                    <SelectItem key={cond} value={cond}>
+                      {cond}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-semibold uppercase tracking-wider text-[#6d7569]">Location</label>
-            <input
-              type="text"
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-location">Location</Label>
+            <Input
+              id="edit-location"
               required
               value={formLocation}
               onChange={(e) => setFormLocation(e.target.value)}
-              className="w-full h-11 px-3 border border-[#dfe3dc] rounded-lg bg-transparent outline-none focus:border-[#23312b] transition-colors text-sm"
               placeholder="Warehouse B, Aisle 3"
             />
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-semibold uppercase tracking-wider text-[#6d7569]">Image URL</label>
-            <input
-              type="text"
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-image">Image URL</Label>
+            <Input
+              id="edit-image"
               value={formImageUrl}
               onChange={(e) => setFormImageUrl(e.target.value)}
-              className="w-full h-11 px-3 border border-[#dfe3dc] rounded-lg bg-transparent outline-none focus:border-[#23312b] transition-colors text-sm text-[#20231f]"
               placeholder="https://images.unsplash.com/..."
             />
           </div>
+        </ModalBody>
 
-          <div className="pt-2 flex gap-2">
-            <button
+        <ModalFooter>
+          <div className="flex gap-2">
+            <Button
               type="button"
+              variant="outline"
               onClick={handleDelete}
               disabled={busy}
-              className="flex-1 h-11 border border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 text-xs font-semibold rounded-lg cursor-pointer flex items-center justify-center gap-1 disabled:opacity-50"
+              className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
             >
               <TrashIcon />
               Delete
-            </button>
-            <Button
-              type="submit"
-              disabled={busy}
-              className="flex-1 h-11 bg-[#23312b] text-white hover:bg-[#1a2520] text-xs font-semibold rounded-lg cursor-pointer"
-            >
+            </Button>
+            <Button type="submit" disabled={busy} className="flex-1">
               {busy ? "Saving..." : "Save Changes"}
             </Button>
           </div>
-        </form>
-      </div>
-    </div>
+        </ModalFooter>
+      </form>
+    </Modal>
   )
 }

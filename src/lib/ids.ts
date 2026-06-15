@@ -12,13 +12,7 @@ export type PieceCategory =
   | "STL"
   | "ACC"
 
-export type StagingArea =
-  | "STG"
-  | "WRH"
-  | "IN"
-  | "OUT"
-  | "RET"
-  | "REP"
+export type StagingArea = "STG" | "WRH" | "IN" | "OUT" | "RET" | "REP"
 
 export const PIECE_CATEGORIES: { code: PieceCategory; label: string }[] = [
   { code: "SOF", label: "Sofa" },

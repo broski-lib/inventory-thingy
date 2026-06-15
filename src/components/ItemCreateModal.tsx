@@ -1,6 +1,24 @@
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { CloseIcon } from "@/components/icons"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Modal,
+  ModalHeader,
+  ModalTitle,
+  ModalDescription,
+  ModalBody,
+  ModalFooter,
+} from "@/components/ui/modal"
 import { generateQrCode } from "@/lib/ids"
 import { ITEM_CONDITIONS, ITEM_STATUSES } from "@/lib/item-status"
 import type { ItemCondition, ItemStatus } from "@/lib/item-status"
@@ -23,7 +41,12 @@ type ItemCreateModalProps = {
 const DEFAULT_IMAGE =
   "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=500&auto=format&fit=crop&q=60"
 
-export function ItemCreateModal({ open, onClose, onSubmit, initialQrCode }: ItemCreateModalProps) {
+export function ItemCreateModal({
+  open,
+  onClose,
+  onSubmit,
+  initialQrCode,
+}: ItemCreateModalProps) {
   const [qrCode, setQrCode] = useState("")
   const [formName, setFormName] = useState("")
   const [formDescription, setFormDescription] = useState("")
@@ -47,7 +70,9 @@ export function ItemCreateModal({ open, onClose, onSubmit, initialQrCode }: Item
     setBusy(false)
   }, [open, initialQrCode])
 
-  if (!open) return null
+  const handleOpenChange = (next: boolean) => {
+    if (!next) onClose()
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -76,136 +101,129 @@ export function ItemCreateModal({ open, onClose, onSubmit, initialQrCode }: Item
   const handleReroll = () => setQrCode(generateQrCode())
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-xs p-0 sm:items-center sm:p-4">
-      <div className="w-full max-w-md rounded-t-2xl sm:rounded-2xl bg-white border border-[#dfe3dc] shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="p-4 border-b border-[#dfe3dc] flex items-center justify-between">
-          <div className="min-w-0 flex-1">
-            <h3 className="font-semibold text-base text-[#20231f]">Register New Item</h3>
-            <div className="flex items-center gap-2 mt-0.5">
-              <p className="text-[10px] text-[#6d7569] font-mono">{qrCode || "—"}</p>
-              <button
-                type="button"
-                onClick={handleReroll}
-                className="text-[10px] text-[#23312b] hover:underline cursor-pointer font-semibold uppercase tracking-wider"
-              >
-                Re-roll
-              </button>
-            </div>
-          </div>
+    <Modal open={open} onOpenChange={handleOpenChange}>
+      <ModalHeader onClose={onClose}>
+        <ModalTitle>Register New Item</ModalTitle>
+        <div className="mt-0.5 flex items-center gap-2">
+          <ModalDescription>{qrCode || "—"}</ModalDescription>
           <button
             type="button"
-            onClick={onClose}
-            className="p-1 rounded-full hover:bg-neutral-100 text-neutral-500 cursor-pointer"
-            aria-label="Close create modal"
+            onClick={handleReroll}
+            className="cursor-pointer text-[10px] font-semibold tracking-wider text-primary uppercase hover:underline"
           >
-            <CloseIcon />
+            Re-roll
           </button>
         </div>
+      </ModalHeader>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
+      <form onSubmit={handleSubmit} className="contents">
+        <ModalBody>
           {error && (
-            <div className="p-3 bg-rose-50 text-rose-800 text-xs border border-rose-100 rounded-xl">
-              {error}
-            </div>
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
 
-          <div className="space-y-1">
-            <label className="text-xs font-semibold uppercase tracking-wider text-[#6d7569]">Item Name</label>
-            <input
-              type="text"
+          <div className="space-y-1.5">
+            <Label htmlFor="create-name">Item Name</Label>
+            <Input
+              id="create-name"
               required
               placeholder="e.g. Nolan boucle sofa"
               value={formName}
               onChange={(e) => setFormName(e.target.value)}
-              className="w-full h-11 px-3 border border-[#dfe3dc] rounded-lg bg-transparent outline-none focus:border-[#23312b] transition-colors text-sm"
             />
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-semibold uppercase tracking-wider text-[#6d7569]">Description</label>
-            <textarea
+          <div className="space-y-1.5">
+            <Label htmlFor="create-description">Description</Label>
+            <Textarea
+              id="create-description"
               value={formDescription}
               onChange={(e) => setFormDescription(e.target.value)}
-              className="w-full min-h-20 px-3 py-2 border border-[#dfe3dc] rounded-lg bg-transparent outline-none focus:border-[#23312b] transition-colors text-sm resize-none"
               placeholder="Elegant cream-colored fabric sofa..."
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold uppercase tracking-wider text-[#6d7569]">Status</label>
-              <select
+            <div className="space-y-1.5">
+              <Label htmlFor="create-status">Status</Label>
+              <Select
                 value={formStatus}
-                onChange={(e) => setFormStatus(e.target.value as ItemStatus)}
-                className="w-full h-11 px-2 border border-[#dfe3dc] rounded-lg bg-white outline-none focus:border-[#23312b] transition-colors text-xs text-[#20231f]"
+                onValueChange={(v) => setFormStatus(v as ItemStatus)}
               >
-                {ITEM_STATUSES.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id="create-status" size="default">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ITEM_STATUSES.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-semibold uppercase tracking-wider text-[#6d7569]">Condition</label>
-              <select
+            <div className="space-y-1.5">
+              <Label htmlFor="create-condition">Condition</Label>
+              <Select
                 value={formCondition}
-                onChange={(e) => setFormCondition(e.target.value as ItemCondition)}
-                className="w-full h-11 px-2 border border-[#dfe3dc] rounded-lg bg-white outline-none focus:border-[#23312b] transition-colors text-xs text-[#20231f]"
+                onValueChange={(v) => setFormCondition(v as ItemCondition)}
               >
-                {ITEM_CONDITIONS.map((cond) => (
-                  <option key={cond} value={cond}>
-                    {cond}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id="create-condition" size="default">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ITEM_CONDITIONS.map((cond) => (
+                    <SelectItem key={cond} value={cond}>
+                      {cond}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-semibold uppercase tracking-wider text-[#6d7569]">Location</label>
-            <input
-              type="text"
+          <div className="space-y-1.5">
+            <Label htmlFor="create-location">Location</Label>
+            <Input
+              id="create-location"
               required
               placeholder="e.g. Warehouse B, Aisle 3"
               value={formLocation}
               onChange={(e) => setFormLocation(e.target.value)}
-              className="w-full h-11 px-3 border border-[#dfe3dc] rounded-lg bg-transparent outline-none focus:border-[#23312b] transition-colors text-sm"
             />
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-semibold uppercase tracking-wider text-[#6d7569]">Image URL</label>
-            <input
-              type="text"
+          <div className="space-y-1.5">
+            <Label htmlFor="create-image">Image URL</Label>
+            <Input
+              id="create-image"
               value={formImageUrl}
               onChange={(e) => setFormImageUrl(e.target.value)}
-              className="w-full h-11 px-3 border border-[#dfe3dc] rounded-lg bg-transparent outline-none focus:border-[#23312b] transition-colors text-sm text-[#20231f]"
               placeholder="https://images.unsplash.com/... (optional)"
             />
           </div>
+        </ModalBody>
 
-          <div className="pt-2 flex gap-2">
+        <ModalFooter>
+          <div className="flex gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={busy}
-              className="flex-1 h-11 border-[#dfe3dc] text-xs font-semibold rounded-lg cursor-pointer"
+              className="flex-1"
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={busy}
-              className="flex-1 h-11 bg-[#23312b] text-white hover:bg-[#1a2520] text-xs font-semibold rounded-lg cursor-pointer"
-            >
+            <Button type="submit" disabled={busy} className="flex-1">
               {busy ? "Creating..." : "Create Item"}
             </Button>
           </div>
-        </form>
-      </div>
-    </div>
+        </ModalFooter>
+      </form>
+    </Modal>
   )
 }
