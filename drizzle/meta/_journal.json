@@ -8,6 +8,27 @@
       "when": 1781491635323,
       "tag": "0000_brown_doomsday",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1781562121556,
+      "tag": "0001_tearful_thunderball",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781563450479,
+      "tag": "0002_medical_the_santerians",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1781590000000,
+      "tag": "0003_bumpy_silver_surfer",
+      "breakpoints": true
     }
   ]
 }

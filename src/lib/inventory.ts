@@ -1,8 +1,12 @@
 import { createServerFn } from "@tanstack/react-start"
 import { auth } from "@clerk/tanstack-react-start/server"
+import { and, eq, ilike, or, desc, sql } from "drizzle-orm"
+import type { SQL } from "drizzle-orm"
 import { getDb } from "./db"
 import { items } from "./schema"
-import { eq, ilike, or, desc, sql } from "drizzle-orm"
+import { generateUlid } from "./ids"
+import { logActivity, resolveActor } from "./activity"
+import type { ActivityActor } from "./activity"
 
 export async function requireUser() {
   const { userId } = await auth()
@@ -12,30 +16,95 @@ export async function requireUser() {
   return userId
 }
 
-export const getItems = createServerFn({ method: "GET" })
-  .validator((search: string | undefined) => search)
-  .handler(async ({ data: search }) => {
+export const STOCK_STATUS_FILTERS = [
+  "All",
+  "Available",
+  "Staged",
+  "Repair",
+] as const
+export type StockStatusFilter = (typeof STOCK_STATUS_FILTERS)[number]
+
+export type ItemsPage = {
+  items: (typeof items.$inferSelect)[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
+export type GetItemsPageArgs = {
+  page: number
+  pageSize: number
+  search?: string
+  statusFilter?: StockStatusFilter
+}
+
+function buildItemsWhere(
+  search: string | undefined,
+  statusFilter: StockStatusFilter | undefined
+): SQL | undefined {
+  const conditions: SQL[] = []
+  if (search && search.trim() !== "") {
+    const s = `%${search.trim()}%`
+    // Cast enum column to text so ilike works on it.
+    conditions.push(
+      or(
+        ilike(items.name, s),
+        ilike(items.qrCode, s),
+        ilike(items.location, s),
+        sql`${items.status}::text ILIKE ${s}`,
+        ilike(items.description, s)
+      )!
+    )
+  }
+  if (statusFilter && statusFilter !== "All") {
+    if (statusFilter === "Available") {
+      conditions.push(
+        or(eq(items.status, "Available"), eq(items.status, "In Storage"))!
+      )
+    } else if (statusFilter === "Staged") {
+      conditions.push(
+        or(eq(items.status, "Staged"), eq(items.status, "Reserved"))!
+      )
+    } else {
+      conditions.push(eq(items.status, statusFilter))
+    }
+  }
+  return conditions.length > 0 ? and(...conditions) : undefined
+}
+
+export const getItemsPage = createServerFn({ method: "GET" })
+  .validator((args: GetItemsPageArgs) => args)
+  .handler(async ({ data: args }): Promise<ItemsPage> => {
     await requireUser()
     const db = getDb()
+    const page = Math.max(1, Math.floor(args.page))
+    const pageSize = Math.max(1, Math.min(100, Math.floor(args.pageSize)))
+    const where = buildItemsWhere(args.search, args.statusFilter)
+    const offset = (page - 1) * pageSize
 
-    if (search && search.trim() !== "") {
-      const normalizedSearch = `%${search.trim()}%`
-      return await db
+    const [rows, totalResult] = await Promise.all([
+      db
         .select()
         .from(items)
-        .where(
-          or(
-            ilike(items.name, normalizedSearch),
-            ilike(items.qrCode, normalizedSearch),
-            ilike(items.location, normalizedSearch),
-            ilike(items.status, normalizedSearch),
-            ilike(items.description, normalizedSearch)
-          )
-        )
+        .where(where)
         .orderBy(desc(items.updatedAt))
-    }
+        .limit(pageSize)
+        .offset(offset),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(items)
+        .where(where),
+    ])
 
-    return await db.select().from(items).orderBy(desc(items.updatedAt))
+    const total = totalResult[0]?.count ?? 0
+    return {
+      items: rows,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    }
   })
 
 export const getStats = createServerFn({ method: "GET" }).handler(async () => {
@@ -65,6 +134,84 @@ export const getStats = createServerFn({ method: "GET" }).handler(async () => {
   }
 })
 
+function statusAction(
+  toStatus: typeof items.$inferSelect.status
+): "checked_out" | "checked_in" | "reported_damaged" | "updated" {
+  if (toStatus === "Reserved" || toStatus === "Staged") return "checked_out"
+  if (toStatus === "In Storage" || toStatus === "Available") return "checked_in"
+  if (toStatus === "Repair") return "reported_damaged"
+  return "updated"
+}
+
+async function logItemDiff(
+  actor: ActivityActor,
+  current: typeof items.$inferSelect,
+  updated: typeof items.$inferSelect,
+  patch: Partial<typeof items.$inferInsert>
+): Promise<void> {
+  const statusChanged =
+    patch.status !== undefined && patch.status !== current.status
+  const locationChanged =
+    patch.location !== undefined && patch.location !== current.location
+  const conditionChanged =
+    patch.condition !== undefined && patch.condition !== current.condition
+
+  if (statusChanged) {
+    await logActivity(actor, {
+      itemId: updated.id,
+      itemName: updated.name,
+      itemQrCode: updated.qrCode,
+      action: statusAction(updated.status),
+      fromLocation: current.location,
+      toLocation: updated.location,
+      fromCondition: current.condition,
+      toCondition: updated.condition,
+    })
+    return
+  }
+
+  if (locationChanged) {
+    await logActivity(actor, {
+      itemId: updated.id,
+      itemName: updated.name,
+      itemQrCode: updated.qrCode,
+      action: "moved",
+      fromLocation: current.location,
+      toLocation: updated.location,
+      fromCondition: current.condition,
+      toCondition: updated.condition,
+    })
+    return
+  }
+
+  if (conditionChanged) {
+    await logActivity(actor, {
+      itemId: updated.id,
+      itemName: updated.name,
+      itemQrCode: updated.qrCode,
+      action: "condition_changed",
+      fromLocation: current.location,
+      toLocation: updated.location,
+      fromCondition: current.condition,
+      toCondition: updated.condition,
+    })
+    return
+  }
+
+  // Other field changes (name, description, image, qrCode) — log as a
+  // generic update so the change is still visible in the activity feed.
+  await logActivity(actor, {
+    itemId: updated.id,
+    itemName: updated.name,
+    itemQrCode: updated.qrCode,
+    action: "updated",
+    fromLocation: current.location,
+    toLocation: updated.location,
+    fromCondition: current.condition,
+    toCondition: updated.condition,
+  })
+}
+
 export const getItemByQrCode = createServerFn({ method: "GET" })
   .validator((qrCode: string) => qrCode)
   .handler(
@@ -92,12 +239,23 @@ export const createItem = createServerFn({ method: "POST" })
     const [inserted] = await db
       .insert(items)
       .values({
+        id: generateUlid(),
         ...item,
         createdBy: userId,
         createdAt: new Date(),
         updatedAt: new Date(),
       })
       .returning()
+
+    const actor = await resolveActor(userId)
+    await logActivity(actor, {
+      itemId: inserted.id,
+      itemName: inserted.name,
+      itemQrCode: inserted.qrCode,
+      action: "created",
+      toLocation: inserted.location,
+      toCondition: inserted.condition,
+    })
 
     return inserted
   })
@@ -107,8 +265,16 @@ export const updateItem = createServerFn({ method: "POST" })
     (data: { id: string; item: Partial<typeof items.$inferInsert> }) => data
   )
   .handler(async ({ data: { id, item } }) => {
-    await requireUser()
+    const userId = await requireUser()
     const db = getDb()
+
+    const currentRows = await db
+      .select()
+      .from(items)
+      .where(eq(items.id, id))
+      .limit(1)
+    if (currentRows.length === 0) throw new Error("Item not found")
+    const current = currentRows[0]
 
     const updateData: Partial<typeof items.$inferInsert> = {
       ...item,
@@ -129,14 +295,28 @@ export const updateItem = createServerFn({ method: "POST" })
       .where(eq(items.id, id))
       .returning()
 
+    const actor = await resolveActor(userId)
+    await logItemDiff(actor, current, updated, item)
+
     return updated
   })
 
 export const deleteItem = createServerFn({ method: "POST" })
   .validator((id: string) => id)
   .handler(async ({ data: id }) => {
-    await requireUser()
+    const userId = await requireUser()
     const db = getDb()
     const [deleted] = await db.delete(items).where(eq(items.id, id)).returning()
+
+    const actor = await resolveActor(userId)
+    await logActivity(actor, {
+      itemId: deleted.id,
+      itemName: deleted.name,
+      itemQrCode: deleted.qrCode,
+      action: "deleted",
+      fromLocation: deleted.location,
+      fromCondition: deleted.condition,
+    })
+
     return deleted
   })

@@ -1,0 +1,263 @@
+import type { ActivityLog } from "@/lib/activity"
+import type { ActivityAction } from "@/lib/schema"
+import { HugeiconsIcon } from "@hugeicons/react"
+import {
+  Add01Icon,
+  ArrowDown01Icon,
+  ArrowUp01Icon,
+  CheckmarkCircle01Icon,
+  ArrowLeftRightIcon,
+  PackageRemoveIcon,
+  Settings02Icon,
+  Tick02Icon,
+  Wrench01Icon,
+} from "@hugeicons/core-free-icons"
+import { useNavigate } from "@tanstack/react-router"
+import { cn } from "@/lib/utils"
+
+type ActivityEntryProps = {
+  log: ActivityLog
+  className?: string
+  showItem?: boolean
+  interactive?: boolean
+}
+
+const ACTION_META: Record<
+  ActivityAction,
+  {
+    label: string
+    icon: typeof Settings02Icon
+    tone: "default" | "success" | "warning" | "destructive" | "muted"
+  }
+> = {
+  created: {
+    label: "Registered",
+    icon: Add01Icon,
+    tone: "default",
+  },
+  updated: {
+    label: "Updated details",
+    icon: Settings02Icon,
+    tone: "muted",
+  },
+  deleted: {
+    label: "Removed",
+    icon: PackageRemoveIcon,
+    tone: "destructive",
+  },
+  checked_out: {
+    label: "Checked out",
+    icon: ArrowUp01Icon,
+    tone: "default",
+  },
+  checked_in: {
+    label: "Checked in",
+    icon: ArrowDown01Icon,
+    tone: "success",
+  },
+  reported_damaged: {
+    label: "Reported damaged",
+    icon: Wrench01Icon,
+    tone: "destructive",
+  },
+  moved: {
+    label: "Relocated",
+    icon: ArrowLeftRightIcon,
+    tone: "default",
+  },
+  condition_changed: {
+    label: "Condition updated",
+    icon: CheckmarkCircle01Icon,
+    tone: "warning",
+  },
+}
+
+function formatRelative(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date
+  const now = Date.now()
+  const diffMs = now - d.getTime()
+  const sec = Math.round(diffMs / 1000)
+  if (sec < 60) return "just now"
+  const min = Math.round(sec / 60)
+  if (min < 60) return `${min}m ago`
+  const hr = Math.round(min / 60)
+  if (hr < 24) return `${hr}h ago`
+  const day = Math.round(hr / 24)
+  if (day < 7) return `${day}d ago`
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  })
+}
+
+function toneClasses(
+  tone: "default" | "success" | "warning" | "destructive" | "muted"
+) {
+  switch (tone) {
+    case "success":
+      return "bg-success/10 text-success"
+    case "warning":
+      return "bg-warning/10 text-warning-foreground"
+    case "destructive":
+      return "bg-destructive/10 text-destructive"
+    case "muted":
+      return "bg-muted text-muted-foreground"
+    default:
+      return "bg-primary/10 text-primary"
+  }
+}
+
+export function ActivityEntry({
+  log,
+  className,
+  showItem = true,
+  interactive = false,
+}: ActivityEntryProps) {
+  const meta = ACTION_META[log.action]
+  const Icon = meta.icon
+  const navigate = useNavigate()
+  const canNavigate = interactive && Boolean(log.itemQrCode)
+
+  const handleClick = () => {
+    if (!canNavigate) return
+    navigate({ to: "/stock", search: { q: log.itemQrCode, page: 1 } })
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!canNavigate) return
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault()
+      handleClick()
+    }
+  }
+
+  return (
+    <div
+      role={canNavigate ? "button" : undefined}
+      tabIndex={canNavigate ? 0 : undefined}
+      onClick={canNavigate ? handleClick : undefined}
+      onKeyDown={canNavigate ? handleKeyDown : undefined}
+      className={cn(
+        "flex items-start gap-3 py-3",
+        canNavigate &&
+          "-mx-2 cursor-pointer rounded-md px-2 transition-colors hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none",
+        className
+      )}
+    >
+      <div
+        className={cn(
+          "flex size-8 shrink-0 items-center justify-center rounded-full",
+          toneClasses(meta.tone)
+        )}
+        aria-hidden
+      >
+        <HugeiconsIcon icon={Icon} size={16} strokeWidth={1.8} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="truncate text-sm font-medium text-foreground">
+            {meta.label}
+            {showItem && log.itemName && (
+              <>
+                {" "}
+                <span className="font-normal text-muted-foreground">
+                  ·
+                </span>{" "}
+                <span className="text-foreground">{log.itemName}</span>
+              </>
+            )}
+          </p>
+          <span className="text-[10px] tracking-wider whitespace-nowrap text-muted-foreground uppercase">
+            {formatRelative(log.createdAt)}
+          </span>
+        </div>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {log.userName || "Unknown user"}
+          {log.itemQrCode ? (
+            <span className="font-mono"> · {log.itemQrCode}</span>
+          ) : null}
+        </p>
+        <ActivityDetails log={log} />
+      </div>
+    </div>
+  )
+}
+
+function ActivityDetails({ log }: { log: ActivityLog }) {
+  const hasLocationChange =
+    log.fromLocation !== null &&
+    log.toLocation !== null &&
+    log.fromLocation !== log.toLocation
+  const hasConditionChange =
+    log.fromCondition !== null &&
+    log.toCondition !== null &&
+    log.fromCondition !== log.toCondition
+
+  if (!hasLocationChange && !hasConditionChange) return null
+
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-2 text-[10px] font-semibold tracking-wider uppercase">
+      {hasLocationChange && (
+        <span className="inline-flex items-center gap-1 rounded-md border border-border bg-secondary px-2 py-0.5 text-muted-foreground">
+          <span className="text-foreground/60">From</span>
+          <span className="tracking-normal text-foreground normal-case">
+            {log.fromLocation}
+          </span>
+          <span className="text-foreground/60">→</span>
+          <span className="tracking-normal text-foreground normal-case">
+            {log.toLocation}
+          </span>
+        </span>
+      )}
+      {hasConditionChange && (
+        <span className="inline-flex items-center gap-1 rounded-md border border-border bg-secondary px-2 py-0.5 text-muted-foreground">
+          <HugeiconsIcon icon={Tick02Icon} size={10} strokeWidth={2.5} />
+          <span className="tracking-normal text-foreground normal-case">
+            {log.fromCondition} → {log.toCondition}
+          </span>
+        </span>
+      )}
+    </div>
+  )
+}
+
+type ActivityListProps = {
+  logs: ActivityLog[]
+  emptyMessage?: string
+  showItem?: boolean
+  interactive?: boolean
+  className?: string
+}
+
+export function ActivityList({
+  logs,
+  emptyMessage = "No activity yet.",
+  showItem = true,
+  interactive = false,
+  className,
+}: ActivityListProps) {
+  if (logs.length === 0) {
+    return (
+      <p
+        className={cn(
+          "py-4 text-center text-xs text-muted-foreground",
+          className
+        )}
+      >
+        {emptyMessage}
+      </p>
+    )
+  }
+  return (
+    <div className={cn("divide-y divide-border", className)}>
+      {logs.map((log) => (
+        <ActivityEntry
+          key={log.id}
+          log={log}
+          showItem={showItem}
+          interactive={interactive}
+        />
+      ))}
+    </div>
+  )
+}

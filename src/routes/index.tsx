@@ -5,18 +5,19 @@ import { useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Camera01Icon, DeliveryTruck01Icon } from "@hugeicons/core-free-icons"
 import { SignInButton, SignUpButton } from "@clerk/tanstack-react-start"
-import { desc, sql } from "drizzle-orm"
+import { sql } from "drizzle-orm"
 import { getDb } from "@/lib/db"
 import { items } from "@/lib/schema"
 import { requireUser } from "@/lib/inventory"
+import { getRecentActivity } from "@/lib/activity"
+import type { ActivityLog } from "@/lib/activity"
 import { AppHeader } from "@/components/AppHeader"
 import { BottomNav } from "@/components/BottomNav"
-import { ItemCard } from "@/components/ItemCard"
+import { ActivityList } from "@/components/ActivityLog"
 import { ScannerModal } from "@/components/ScannerModal"
 import { SearchInput } from "@/components/SearchInput"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import type { InventoryItem } from "@/components/ItemEditModal"
 import type { ItemStatus } from "@/lib/item-status"
 
 const loadHome = createServerFn({ method: "GET" }).handler(async () => {
@@ -24,7 +25,7 @@ const loadHome = createServerFn({ method: "GET" }).handler(async () => {
   if (!isAuthenticated) {
     return {
       signedIn: false as const,
-      recentItems: [],
+      recentActivity: [] as ActivityLog[],
       stats: {
         statusCounts: [] as { status: string; count: number }[],
         movesToday: 0,
@@ -34,11 +35,7 @@ const loadHome = createServerFn({ method: "GET" }).handler(async () => {
   await requireUser()
   const db = getDb()
 
-  const recentItems = await db
-    .select()
-    .from(items)
-    .orderBy(desc(items.updatedAt))
-    .limit(3)
+  const recentActivity = await getRecentActivity({ data: 10 })
 
   const statusCounts = await db
     .select({ status: items.status, count: sql<number>`count(*)::int` })
@@ -59,7 +56,7 @@ const loadHome = createServerFn({ method: "GET" }).handler(async () => {
 
   return {
     signedIn: true as const,
-    recentItems,
+    recentActivity,
     totalCount,
     stats: { statusCounts, movesToday: movesTodayResult[0]?.count || 0 },
   }
@@ -121,7 +118,7 @@ function SignedInView({ data }: { data: SignedInData }) {
     navigate({ to: "/scan", search: { code } })
   }
 
-  const { recentItems, totalCount, stats } = data
+  const { recentActivity, totalCount, stats } = data
   const getCount = (statuses: readonly ItemStatus[]) =>
     stats.statusCounts
       .filter((sc: { status: string; count: number }) =>
@@ -137,7 +134,7 @@ function SignedInView({ data }: { data: SignedInData }) {
 
   const handleSearch = (value: string) => {
     setSearchQuery(value)
-    navigate({ to: "/stock", search: { q: value } })
+    navigate({ to: "/stock", search: { q: value, page: 1 } })
   }
 
   return (
@@ -205,35 +202,30 @@ function SignedInView({ data }: { data: SignedInData }) {
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-foreground">
-                Recent Activity
+                Activity Log
               </h2>
               <Link
                 to="/stock"
                 className="inline-flex h-8 items-center px-2 text-xs font-medium text-muted-foreground hover:text-primary"
               >
-                View all ({totalCount}) →
+                View inventory ({totalCount}) →
               </Link>
             </div>
-            <div className="space-y-3">
-              {recentItems.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center">
-                  <p className="text-xs text-muted-foreground">
-                    No inventory items found. Add some in the Stock tab!
+            <Card>
+              <CardContent>
+                {recentActivity.length === 0 ? (
+                  <p className="py-6 text-center text-xs text-muted-foreground">
+                    No activity yet. Add or update an item to see it here.
                   </p>
-                </div>
-              ) : (
-                recentItems.map((item: InventoryItem) => (
-                  <ItemCard
-                    key={item.id}
-                    item={item}
-                    onClick={() =>
-                      navigate({ to: "/stock", search: { q: item.qrCode } })
-                    }
-                    size="sm"
+                ) : (
+                  <ActivityList
+                    logs={recentActivity}
+                    interactive
+                    emptyMessage="No activity yet."
                   />
-                ))
-              )}
-            </div>
+                )}
+              </CardContent>
+            </Card>
           </section>
         </div>
       </section>
