@@ -4,7 +4,7 @@ import { getDb } from "./db"
 import { items } from "./schema"
 import { eq, ilike, or, desc, sql } from "drizzle-orm"
 
-async function requireUser() {
+export async function requireUser() {
   const { userId } = await auth()
   if (!userId) {
     throw new Error("Unauthorized")
