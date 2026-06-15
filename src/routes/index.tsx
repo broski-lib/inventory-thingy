@@ -15,6 +15,7 @@ import { ItemCard } from "@/components/ItemCard"
 import { ScannerModal } from "@/components/ScannerModal"
 import { Button } from "@/components/ui/button"
 import type { InventoryItem } from "@/components/ItemEditModal"
+import type { ItemStatus } from "@/lib/item-status"
 
 const loadHome = createServerFn({ method: "GET" }).handler(async () => {
   const { isAuthenticated } = await auth()
@@ -110,9 +111,11 @@ function SignedInView({ data }: { data: SignedInData }) {
   }
 
   const { recentItems, totalCount, stats } = data
-  const getCount = (statuses: string[]) =>
+  const getCount = (statuses: readonly ItemStatus[]) =>
     stats.statusCounts
-      .filter((sc: { status: string; count: number }) => statuses.includes(sc.status))
+      .filter((sc: { status: string; count: number }) =>
+        (statuses as readonly string[]).includes(sc.status),
+      )
       .reduce((sum: number, sc: { status: string; count: number }) => sum + sc.count, 0)
   const availableCount = getCount(["Available", "In Storage"])
   const stagedCount = getCount(["Staged", "Reserved"])

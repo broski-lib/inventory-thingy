@@ -1,13 +1,13 @@
-CREATE TYPE "public"."condition" AS ENUM('excellent', 'good', 'worn', 'repair');--> statement-breakpoint
-CREATE TYPE "public"."item_status" AS ENUM('available', 'reserved', 'staged', 'repair', 'retired');--> statement-breakpoint
+CREATE TYPE "public"."condition" AS ENUM('Excellent', 'Good', 'Worn', 'Repair');--> statement-breakpoint
+CREATE TYPE "public"."item_status" AS ENUM('Available', 'In Storage', 'Reserved', 'Staged', 'Repair', 'Retired');--> statement-breakpoint
 CREATE TABLE "items" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"qr_code" text NOT NULL,
 	"name" text NOT NULL,
 	"description" text DEFAULT '' NOT NULL,
-	"condition" text DEFAULT 'Good' NOT NULL,
+	"condition" "condition" DEFAULT 'Good' NOT NULL,
 	"location" text NOT NULL,
-	"status" text DEFAULT 'In Storage' NOT NULL,
+	"status" "item_status" DEFAULT 'In Storage' NOT NULL,
 	"taken_out_at" timestamp with time zone,
 	"image_url" text DEFAULT '' NOT NULL,
 	"created_by" text DEFAULT '' NOT NULL,

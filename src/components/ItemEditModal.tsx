@@ -2,6 +2,8 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { CloseIcon, TrashIcon } from "@/components/icons"
 import type { items } from "@/lib/schema"
+import { ITEM_CONDITIONS, ITEM_STATUSES } from "@/lib/item-status"
+import type { ItemCondition, ItemStatus } from "@/lib/item-status"
 
 export type InventoryItem = typeof items.$inferSelect
 
@@ -16,9 +18,9 @@ type ItemEditModalProps = {
 export function ItemEditModal({ open, item, onClose, onSubmit, onDelete }: ItemEditModalProps) {
   const [formName, setFormName] = useState("")
   const [formDescription, setFormDescription] = useState("")
-  const [formCondition, setFormCondition] = useState("Good")
+  const [formCondition, setFormCondition] = useState<ItemCondition>("Good")
   const [formLocation, setFormLocation] = useState("")
-  const [formStatus, setFormStatus] = useState("In Storage")
+  const [formStatus, setFormStatus] = useState<ItemStatus>("In Storage")
   const [formImageUrl, setFormImageUrl] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -119,15 +121,14 @@ export function ItemEditModal({ open, item, onClose, onSubmit, onDelete }: ItemE
               <label className="text-xs font-semibold uppercase tracking-wider text-[#6d7569]">Status</label>
               <select
                 value={formStatus}
-                onChange={(e) => setFormStatus(e.target.value)}
+                onChange={(e) => setFormStatus(e.target.value as ItemStatus)}
                 className="w-full h-11 px-2 border border-[#dfe3dc] rounded-lg bg-white outline-none focus:border-[#23312b] transition-colors text-xs text-[#20231f]"
               >
-                <option value="Available">Available</option>
-                <option value="In Storage">In Storage</option>
-                <option value="Reserved">Reserved</option>
-                <option value="Staged">Staged</option>
-                <option value="Repair">Repair</option>
-                <option value="Retired">Retired</option>
+                {ITEM_STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -135,13 +136,14 @@ export function ItemEditModal({ open, item, onClose, onSubmit, onDelete }: ItemE
               <label className="text-xs font-semibold uppercase tracking-wider text-[#6d7569]">Condition</label>
               <select
                 value={formCondition}
-                onChange={(e) => setFormCondition(e.target.value)}
+                onChange={(e) => setFormCondition(e.target.value as ItemCondition)}
                 className="w-full h-11 px-2 border border-[#dfe3dc] rounded-lg bg-white outline-none focus:border-[#23312b] transition-colors text-xs text-[#20231f]"
               >
-                <option value="Excellent">Excellent</option>
-                <option value="Good">Good</option>
-                <option value="Worn">Worn</option>
-                <option value="Repair">Repair</option>
+                {ITEM_CONDITIONS.map((cond) => (
+                  <option key={cond} value={cond}>
+                    {cond}
+                  </option>
+                ))}
               </select>
             </div>
           </div>

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react"
 import { getDb } from "@/lib/db"
 import { items } from "@/lib/schema"
 import { requireUser, getItemByQrCode, updateItem } from "@/lib/inventory"
+import type { ItemStatus } from "@/lib/item-status"
 import { requireAuth } from "@/lib/auth-guard"
 import { AppHeader } from "@/components/AppHeader"
 import { BottomNav } from "@/components/BottomNav"
@@ -91,7 +92,7 @@ function ScanRoute() {
     }
   }, [])
 
-  const handleQuickStatus = async (item: InventoryItem, newStatus: string, newLocation?: string) => {
+  const handleQuickStatus = async (item: InventoryItem, newStatus: ItemStatus, newLocation?: string) => {
     const updates: Partial<InventoryItem> = { status: newStatus }
     if (newLocation) updates.location = newLocation
     if (newStatus === "Repair") updates.condition = "Repair"

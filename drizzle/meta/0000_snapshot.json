@@ -1,5 +1,5 @@
 {
-  "id": "9e74d640-0e62-449c-99e3-4aad28b2231a",
+  "id": "344cdf9c-7376-402c-83e7-d6d7f3977778",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -36,7 +36,8 @@
         },
         "condition": {
           "name": "condition",
-          "type": "text",
+          "type": "condition",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "'Good'"
@@ -49,7 +50,8 @@
         },
         "status": {
           "name": "status",
-          "type": "text",
+          "type": "item_status",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "'In Storage'"
@@ -157,21 +159,22 @@
       "name": "condition",
       "schema": "public",
       "values": [
-        "excellent",
-        "good",
-        "worn",
-        "repair"
+        "Excellent",
+        "Good",
+        "Worn",
+        "Repair"
       ]
     },
     "public.item_status": {
       "name": "item_status",
       "schema": "public",
       "values": [
-        "available",
-        "reserved",
-        "staged",
-        "repair",
-        "retired"
+        "Available",
+        "In Storage",
+        "Reserved",
+        "Staged",
+        "Repair",
+        "Retired"
       ]
     }
   },
