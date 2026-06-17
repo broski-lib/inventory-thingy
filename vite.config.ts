@@ -7,6 +7,13 @@ import { cloudflare } from "@cloudflare/vite-plugin"
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
+  // Clerk's React SDK lazy-loaded chunk references the Node.js `global`
+  // symbol, which doesn't exist in the browser. Alias it to `globalThis`
+  // at build time so every page (not just the SSR-rendered home route)
+  // can hydrate without `ReferenceError: global is not defined`.
+  define: {
+    global: "globalThis",
+  },
   plugins: [
     devtools(),
     tailwindcss(),
