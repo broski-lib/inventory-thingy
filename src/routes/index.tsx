@@ -207,10 +207,10 @@ function SignedInView({ data }: { data: SignedInData }) {
                 Activity Log
               </h2>
               <Link
-                to="/stock"
+                to="/activity"
                 className="inline-flex h-8 items-center px-2 text-xs font-medium text-muted-foreground hover:text-primary"
               >
-                View inventory ({totalCount}) →
+                View all activity →
               </Link>
             </div>
             <Card>
