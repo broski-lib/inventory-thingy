@@ -82,6 +82,14 @@ function ActivityRoute() {
       })
   }
 
+  const handleItemClick = (log: ActivityLog) => {
+    if (!log.itemQrCode) return
+    navigate({
+      to: "/stock",
+      search: { q: log.itemQrCode, page: 1 },
+    })
+  }
+
   return (
     <main className="min-h-svh bg-secondary pb-24 text-foreground">
       <section className="mx-auto flex w-full max-w-md flex-col px-4 pt-4">
@@ -124,7 +132,7 @@ function ActivityRoute() {
             <>
               <Card>
                 <CardContent className="px-2 sm:px-3">
-                  <ActivityList logs={logs} interactive />
+                  <ActivityList logs={logs} onItemClick={handleItemClick} />
                 </CardContent>
               </Card>
               {loading && (

@@ -17,7 +17,7 @@ import { ItemCreateModal } from "@/components/ItemCreateModal"
 import { QRTagModal } from "@/components/QRTagModal"
 import { BoltIcon, WrenchIcon, PlusIcon, EditIcon } from "@/components/icons"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { BoxIcon } from "@hugeicons/core-free-icons"
+import { BoxIcon, Tag01Icon } from "@hugeicons/core-free-icons"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -179,9 +179,14 @@ function ScanRoute() {
                       key={item.id}
                       type="button"
                       onClick={() => handleDetected(item.qrCode)}
-                      className="cursor-pointer rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-medium text-foreground transition-all hover:border-primary hover:bg-accent"
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-medium text-foreground transition-all hover:border-primary hover:bg-accent"
                     >
-                      🏷️ {item.name}
+                      <HugeiconsIcon
+                        icon={Tag01Icon}
+                        size={12}
+                        strokeWidth={1.5}
+                      />
+                      {item.name}
                     </button>
                   ))}
                 </div>
@@ -189,7 +194,7 @@ function ScanRoute() {
             </Card>
           )}
 
-          {!scannerOpen && !scannedItem && (
+          {!scannerOpen && !bulkOpen && !scannedItem && (
             <div className="grid grid-cols-2 gap-2">
               <Button
                 variant="outline"

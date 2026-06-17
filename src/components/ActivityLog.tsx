@@ -12,14 +12,13 @@ import {
   Tick02Icon,
   Wrench01Icon,
 } from "@hugeicons/core-free-icons"
-import { useNavigate } from "@tanstack/react-router"
 import { cn } from "@/lib/utils"
 
 type ActivityEntryProps = {
   log: ActivityLog
   className?: string
   showItem?: boolean
-  interactive?: boolean
+  onClick?: (log: ActivityLog) => void
 }
 
 const ACTION_META: Record<
@@ -111,20 +110,19 @@ export function ActivityEntry({
   log,
   className,
   showItem = true,
-  interactive = false,
+  onClick,
 }: ActivityEntryProps) {
   const meta = ACTION_META[log.action]
   const Icon = meta.icon
-  const navigate = useNavigate()
-  const canNavigate = interactive && Boolean(log.itemQrCode)
+  const isClickable = Boolean(onClick) && Boolean(log.itemId)
 
   const handleClick = () => {
-    if (!canNavigate) return
-    navigate({ to: "/stock", search: { q: log.itemQrCode, page: 1 } })
+    if (!onClick || !log.itemId) return
+    onClick(log)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!canNavigate) return
+    if (!isClickable) return
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault()
       handleClick()
@@ -133,13 +131,13 @@ export function ActivityEntry({
 
   return (
     <div
-      role={canNavigate ? "button" : undefined}
-      tabIndex={canNavigate ? 0 : undefined}
-      onClick={canNavigate ? handleClick : undefined}
-      onKeyDown={canNavigate ? handleKeyDown : undefined}
+      role={isClickable ? "button" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onClick={isClickable ? handleClick : undefined}
+      onKeyDown={isClickable ? handleKeyDown : undefined}
       className={cn(
         "flex items-start gap-3 py-3",
-        canNavigate &&
+        isClickable &&
           "-mx-2 cursor-pointer rounded-md px-2 transition-colors hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none",
         className
       )}
@@ -225,7 +223,7 @@ type ActivityListProps = {
   logs: ActivityLog[]
   emptyMessage?: string
   showItem?: boolean
-  interactive?: boolean
+  onItemClick?: (log: ActivityLog) => void
   className?: string
 }
 
@@ -233,7 +231,7 @@ export function ActivityList({
   logs,
   emptyMessage = "No activity yet.",
   showItem = true,
-  interactive = false,
+  onItemClick,
   className,
 }: ActivityListProps) {
   if (logs.length === 0) {
@@ -255,7 +253,7 @@ export function ActivityList({
           key={log.id}
           log={log}
           showItem={showItem}
-          interactive={interactive}
+          onClick={onItemClick}
         />
       ))}
     </div>

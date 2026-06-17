@@ -8,11 +8,11 @@ import { SignInButton, SignUpButton } from "@clerk/tanstack-react-start"
 import { and, eq, sql } from "drizzle-orm"
 import { getDb } from "@/lib/db"
 import { items } from "@/lib/schema"
-import { getRecentActivity } from "@/lib/activity"
 import type { ActivityLog } from "@/lib/activity"
 import { AppHeader } from "@/components/AppHeader"
 import { BottomNav } from "@/components/BottomNav"
-import { ActivityList } from "@/components/ActivityLog"
+import { HomeActivity } from "@/components/HomeActivity"
+import { ItemHistoryModal } from "@/components/ItemHistoryModal"
 import { ScannerModal } from "@/components/ScannerModal"
 import { SearchInput } from "@/components/SearchInput"
 import { Button } from "@/components/ui/button"
@@ -27,7 +27,6 @@ const loadHome = createServerFn({ method: "GET" }).handler(async () => {
   if (!isAuthenticated || !orgId) {
     return {
       signedIn: false as const,
-      recentActivity: [] as ActivityLog[],
       totalCount: 0,
       stats: {
         statusCounts: [] as { status: string; count: number }[],
@@ -36,8 +35,6 @@ const loadHome = createServerFn({ method: "GET" }).handler(async () => {
     }
   }
   const db = getDb()
-
-  const recentActivity = await getRecentActivity({ data: 10 })
 
   const statusCounts = await db
     .select({ status: items.status, count: sql<number>`count(*)::int` })
@@ -60,7 +57,6 @@ const loadHome = createServerFn({ method: "GET" }).handler(async () => {
 
   return {
     signedIn: true as const,
-    recentActivity,
     totalCount,
     stats: { statusCounts, movesToday: movesTodayResult[0]?.count || 0 },
   }
@@ -115,6 +111,11 @@ function SignedInView({ data }: { data: SignedInData }) {
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState("")
   const [scannerOpen, setScannerOpen] = useState(false)
+  const [historyTarget, setHistoryTarget] = useState<{
+    id: string
+    name: string
+    qrCode: string
+  } | null>(null)
 
   const openScanner = () => setScannerOpen(true)
   const handleScanned = (code: string) => {
@@ -122,7 +123,16 @@ function SignedInView({ data }: { data: SignedInData }) {
     navigate({ to: "/scan", search: { code } })
   }
 
-  const { recentActivity, stats } = data
+  const handleActivityItemClick = (log: ActivityLog) => {
+    if (!log.itemId) return
+    setHistoryTarget({
+      id: log.itemId,
+      name: log.itemName || "Item",
+      qrCode: log.itemQrCode || "",
+    })
+  }
+
+  const { stats } = data
   const getCount = (statuses: readonly ItemStatus[]) =>
     stats.statusCounts
       .filter((sc: { status: string; count: number }) =>
@@ -217,17 +227,7 @@ function SignedInView({ data }: { data: SignedInData }) {
             </div>
             <Card>
               <CardContent>
-                {recentActivity.length === 0 ? (
-                  <p className="py-6 text-center text-xs text-muted-foreground">
-                    No activity yet. Add or update an item to see it here.
-                  </p>
-                ) : (
-                  <ActivityList
-                    logs={recentActivity}
-                    interactive
-                    emptyMessage="No activity yet."
-                  />
-                )}
+                <HomeActivity onItemClick={handleActivityItemClick} />
               </CardContent>
             </Card>
           </section>
@@ -238,6 +238,11 @@ function SignedInView({ data }: { data: SignedInData }) {
         open={scannerOpen}
         onClose={() => setScannerOpen(false)}
         onDetected={handleScanned}
+      />
+      <ItemHistoryModal
+        open={historyTarget !== null}
+        onClose={() => setHistoryTarget(null)}
+        target={historyTarget}
       />
     </main>
   )
