@@ -1,9 +1,4 @@
-import {
-  useUser,
-  useOrganization,
-  UserButton,
-  OrganizationSwitcher,
-} from "@clerk/tanstack-react-start"
+import { UserButton, OrganizationSwitcher } from "@clerk/tanstack-react-start"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { BarcodeScanIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"

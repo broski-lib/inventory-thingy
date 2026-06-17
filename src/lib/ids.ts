@@ -46,6 +46,10 @@ function encodeBase32(bytes: Uint8Array, length: number): string {
       out += CROCKFORD[idx]
     }
   }
+  if (bits > 0) {
+    const idx = (buffer << (5 - bits)) & 0x1f
+    out += CROCKFORD[idx]
+  }
   if (out.length !== length) {
     throw new Error(
       `base32 encode: expected ${length} chars, got ${out.length}`
@@ -60,10 +64,10 @@ function encodeBase32(bytes: Uint8Array, length: number): string {
  * Example: `X7R2-M9WP`
  */
 export function generateShortId(): string {
-  // 32 bits of entropy fit nicely in 4 base32 chars; two groups → 8 chars.
+  // 16 bits of entropy encode to 4 base32 chars; two groups → 8 chars.
   const groups: string[] = []
   for (let i = 0; i < SHORT_ID_GROUP_COUNT; i++) {
-    const bytes = randomBytes(4)
+    const bytes = randomBytes(2)
     groups.push(encodeBase32(bytes, SHORT_ID_GROUP_LEN))
   }
   return groups.join("-")
