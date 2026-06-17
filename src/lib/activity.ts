@@ -4,7 +4,7 @@ import { desc, eq, and, sql } from "drizzle-orm"
 import { getDb } from "./db"
 import { activityLogs } from "./schema"
 import type { ActivityAction } from "./schema"
-import { requireOrg } from "./inventory"
+import { authRequiredMiddleware } from "./auth-middleware"
 
 export type ActivityLog = typeof activityLogs.$inferSelect
 
@@ -26,11 +26,10 @@ export type ActivityActor = {
   orgId: string
 }
 
-const FALLBACK_ACTOR: ActivityActor = {
+const FALLBACK_ACTOR: Omit<ActivityActor, "orgId"> = {
   userId: "",
   userName: "Unknown user",
   userEmail: "",
-  orgId: "",
 }
 
 export async function resolveActor(
@@ -76,9 +75,10 @@ export async function logActivity(
 }
 
 export const getItemActivity = createServerFn({ method: "GET" })
+  .middleware([authRequiredMiddleware])
   .validator((itemId: string) => itemId)
-  .handler(async ({ data: itemId }): Promise<ActivityLog[]> => {
-    const { orgId } = await requireOrg()
+  .handler(async ({ data: itemId, context }): Promise<ActivityLog[]> => {
+    const { orgId } = context
     const db = getDb()
     return await db
       .select()
@@ -91,11 +91,12 @@ export const getItemActivity = createServerFn({ method: "GET" })
   })
 
 export const getRecentActivity = createServerFn({ method: "GET" })
+  .middleware([authRequiredMiddleware])
   .validator((limit: number | undefined) =>
     Math.max(1, Math.min(100, Math.floor(limit ?? 10)))
   )
-  .handler(async ({ data: limit }): Promise<ActivityLog[]> => {
-    const { orgId } = await requireOrg()
+  .handler(async ({ data: limit, context }): Promise<ActivityLog[]> => {
+    const { orgId } = context
     const db = getDb()
     return await db
       .select()
@@ -111,9 +112,10 @@ type GetActivityPageArgs = {
 }
 
 export const getActivityPage = createServerFn({ method: "GET" })
+  .middleware([authRequiredMiddleware])
   .validator((args: GetActivityPageArgs) => args)
-  .handler(async ({ data: args }) => {
-    const { orgId } = await requireOrg()
+  .handler(async ({ data: args, context }) => {
+    const { orgId } = context
     const db = getDb()
     const page = Math.max(1, Math.floor(args.page))
     const pageSize = Math.max(1, Math.min(100, Math.floor(args.pageSize)))

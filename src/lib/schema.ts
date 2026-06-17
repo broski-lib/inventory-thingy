@@ -40,6 +40,9 @@ export const items = pgTable(
     status: itemStatus("status").notNull().default("In Storage"),
     takenOutAt: timestamp("taken_out_at", { withTimezone: true }),
     imageUrl: text("image_url").notNull().default(""),
+    // R2 object key for the photo, scoped as `orgs/{orgId}/items/{itemId}/{ulid}.{ext}`.
+    // Used by the server to read/delete the object. Never returned to the client.
+    imageKey: text("image_key"),
     createdBy: text("created_by").notNull().default(""),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

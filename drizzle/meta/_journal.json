@@ -36,6 +36,13 @@
       "when": 1781726035514,
       "tag": "0004_normal_forge",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1781729384709,
+      "tag": "0005_modern_the_anarchist",
+      "breakpoints": true
     }
   ]
 }

@@ -2,14 +2,7 @@ import { useEffect, useState } from "react"
 import QRCode from "qrcode"
 import { Button } from "@/components/ui/button"
 import { QrIcon } from "@/components/icons"
-import {
-  Modal,
-  ModalHeader,
-  ModalTitle,
-  ModalDescription,
-  ModalBody,
-  ModalFooter,
-} from "@/components/ui/modal"
+import { ResponsiveOverlay } from "@/components/ResponsiveOverlay"
 
 type QRTagModalProps = {
   open: boolean
@@ -49,10 +42,6 @@ export function QRTagModal({
     }
   }, [open, qrCode])
 
-  const handleOpenChange = (next: boolean) => {
-    if (!next) onClose()
-  }
-
   const handleDownload = () => {
     if (!dataUrl) return
     const a = document.createElement("a")
@@ -67,10 +56,81 @@ export function QRTagModal({
     if (!dataUrl) return
     const w = window.open("", "_blank", "width=420,height=520")
     if (!w) return
-    w.document.write(`<!doctype html>
+    w.document.write(PRINT_HTML(qrCode, dataUrl, itemName))
+    w.document.close()
+  }
+
+  const body = (
+    <div className="text-center">
+      <p className="truncate text-sm font-semibold text-foreground">
+        {itemName}
+      </p>
+      <p className="font-mono text-xs text-muted-foreground">{qrCode}</p>
+
+      <div className="inline-block rounded-xl border border-border bg-card p-4 shadow-inner">
+        {error ? (
+          <p className="p-8 text-xs text-destructive">{error}</p>
+        ) : dataUrl ? (
+          <img
+            src={dataUrl}
+            alt={`QR code for ${itemName}`}
+            className="size-48"
+          />
+        ) : (
+          <div className="flex size-48 items-center justify-center text-muted-foreground">
+            <QrIcon className="size-8 animate-pulse" />
+          </div>
+        )}
+      </div>
+
+      <p className="text-[11px] text-muted-foreground">
+        Print and attach to furniture for quick scan lookup.
+      </p>
+    </div>
+  )
+
+  const footer = (
+    <div className="flex gap-2">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={handleDownload}
+        disabled={!dataUrl}
+        className="flex-1"
+      >
+        Download
+      </Button>
+      <Button
+        type="button"
+        onClick={handlePrint}
+        disabled={!dataUrl}
+        className="flex-1"
+      >
+        Print
+      </Button>
+    </div>
+  )
+
+  return (
+    <ResponsiveOverlay
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose()
+      }}
+      title="Asset QR Tag"
+      description={itemId}
+      footer={footer}
+    >
+      {body}
+    </ResponsiveOverlay>
+  )
+}
+
+function PRINT_HTML(qrCode: string, dataUrl: string, itemName: string) {
+  return `<!doctype html>
 <html>
 <head>
-  <title>QR Tag - ${qrCode}</title>
+  <title>QR Tag - ${escapeHtml(qrCode)}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { display: flex; flex-direction: column; align-items: center; padding: 16px; font-family: ui-monospace, monospace; font-size: 13px; color: oklch(0.185 0.005 150); }
@@ -81,7 +141,7 @@ export function QRTagModal({
   </style>
 </head>
 <body>
-  <img src="${dataUrl}" alt="QR for ${qrCode}" />
+  <img src="${dataUrl}" alt="QR for ${escapeHtml(qrCode)}" />
   <p class="name">${escapeHtml(itemName)}</p>
   <p class="code">${escapeHtml(qrCode)}</p>
   <script>
@@ -91,67 +151,7 @@ export function QRTagModal({
     }
   </script>
 </body>
-</html>`)
-    w.document.close()
-  }
-
-  return (
-    <Modal open={open} onOpenChange={handleOpenChange}>
-      <ModalHeader onClose={onClose}>
-        <ModalTitle>Asset QR Tag</ModalTitle>
-        <ModalDescription>{itemId}</ModalDescription>
-      </ModalHeader>
-
-      <ModalBody className="text-center">
-        <p className="truncate text-sm font-semibold text-foreground">
-          {itemName}
-        </p>
-        <p className="font-mono text-xs text-muted-foreground">{qrCode}</p>
-
-        <div className="inline-block rounded-xl border border-border bg-card p-4 shadow-inner">
-          {error ? (
-            <p className="p-8 text-xs text-destructive">{error}</p>
-          ) : dataUrl ? (
-            <img
-              src={dataUrl}
-              alt={`QR code for ${itemName}`}
-              className="h-48 w-48"
-            />
-          ) : (
-            <div className="flex h-48 w-48 items-center justify-center text-muted-foreground">
-              <QrIcon className="size-8 animate-pulse" />
-            </div>
-          )}
-        </div>
-
-        <p className="text-[11px] text-muted-foreground">
-          Print and attach to furniture for quick scan lookup.
-        </p>
-      </ModalBody>
-
-      <ModalFooter>
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleDownload}
-            disabled={!dataUrl}
-            className="flex-1"
-          >
-            Download
-          </Button>
-          <Button
-            type="button"
-            onClick={handlePrint}
-            disabled={!dataUrl}
-            className="flex-1"
-          >
-            Print
-          </Button>
-        </div>
-      </ModalFooter>
-    </Modal>
-  )
+</html>`
 }
 
 function escapeHtml(s: string): string {

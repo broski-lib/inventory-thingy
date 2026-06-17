@@ -3,17 +3,17 @@ import { createServerFn } from "@tanstack/react-start"
 import { auth } from "@clerk/tanstack-react-start/server"
 import { OrganizationList } from "@clerk/tanstack-react-start"
 import { Card, CardContent } from "@/components/ui/card"
+import { authOnlyMiddleware } from "@/lib/auth-middleware"
 
-const loadOnboarding = createServerFn({ method: "GET" }).handler(async () => {
-  const { isAuthenticated, orgId, userId } = await auth()
-  if (!isAuthenticated) {
-    throw redirect({ to: "/" })
-  }
-  if (orgId) {
-    throw redirect({ to: "/" })
-  }
-  return { userId }
-})
+const loadOnboarding = createServerFn({ method: "GET" })
+  .middleware([authOnlyMiddleware])
+  .handler(async ({ context }) => {
+    const { orgId } = await auth()
+    if (orgId) {
+      throw redirect({ to: "/" })
+    }
+    return { userId: context.userId }
+  })
 
 export const Route = createFileRoute("/onboarding")({
   beforeLoad: async () => loadOnboarding(),

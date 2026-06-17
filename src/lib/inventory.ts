@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start"
-import { auth } from "@clerk/tanstack-react-start/server"
 import { and, eq, ilike, or, desc, sql } from "drizzle-orm"
 import type { SQL } from "drizzle-orm"
 import { getDb } from "./db"
@@ -7,13 +6,28 @@ import { items } from "./schema"
 import { generateUlid } from "./ids"
 import { logActivity, resolveActor } from "./activity"
 import type { ActivityActor } from "./activity"
+import {
+  buildImageUrl,
+  deleteItemImage,
+  ImageUploadError,
+  putItemImage,
+} from "./storage"
+import { authRequiredMiddleware } from "./auth-middleware"
 
-export async function requireOrg() {
-  const { userId, orgId } = await auth()
-  if (!userId || !orgId) {
-    throw new Error("Unauthorized")
+export type CreateItemInput = Omit<
+  typeof items.$inferInsert,
+  "id" | "createdAt" | "updatedAt" | "orgId" | "imageUrl"
+> & {
+  imageKey?: string | null
+}
+
+export type UpdateItemInput = {
+  id: string
+  item: Partial<
+    Omit<typeof items.$inferInsert, "id" | "orgId" | "imageUrl" | "imageKey">
+  > & {
+    imageKey?: string | null
   }
-  return { userId, orgId }
 }
 
 export const STOCK_STATUS_FILTERS = [
@@ -75,9 +89,10 @@ function buildItemsWhere(
 }
 
 export const getItemsPage = createServerFn({ method: "GET" })
+  .middleware([authRequiredMiddleware])
   .validator((args: GetItemsPageArgs) => args)
-  .handler(async ({ data: args }): Promise<ItemsPage> => {
-    const { orgId } = await requireOrg()
+  .handler(async ({ data: args, context }): Promise<ItemsPage> => {
+    const { orgId } = context
     const db = getDb()
     const page = Math.max(1, Math.floor(args.page))
     const pageSize = Math.max(1, Math.min(100, Math.floor(args.pageSize)))
@@ -108,33 +123,35 @@ export const getItemsPage = createServerFn({ method: "GET" })
     }
   })
 
-export const getStats = createServerFn({ method: "GET" }).handler(async () => {
-  const { orgId } = await requireOrg()
-  const db = getDb()
+export const getStats = createServerFn({ method: "GET" })
+  .middleware([authRequiredMiddleware])
+  .handler(async ({ context }) => {
+    const { orgId } = context
+    const db = getDb()
 
-  const statusCounts = await db
-    .select({
-      status: items.status,
-      count: sql<number>`count(*)::int`,
-    })
-    .from(items)
-    .where(eq(items.orgId, orgId))
-    .groupBy(items.status)
+    const statusCounts = await db
+      .select({
+        status: items.status,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(items)
+      .where(eq(items.orgId, orgId))
+      .groupBy(items.status)
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const movesTodayResult = await db
-    .select({
-      count: sql<number>`count(*)::int`,
-    })
-    .from(items)
-    .where(and(eq(items.orgId, orgId), sql`${items.updatedAt} >= ${today}`))
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const movesTodayResult = await db
+      .select({
+        count: sql<number>`count(*)::int`,
+      })
+      .from(items)
+      .where(and(eq(items.orgId, orgId), sql`${items.updatedAt} >= ${today}`))
 
-  return {
-    statusCounts,
-    movesToday: movesTodayResult[0]?.count || 0,
-  }
-})
+    return {
+      statusCounts,
+      movesToday: movesTodayResult[0]?.count || 0,
+    }
+  })
 
 function statusAction(
   toStatus: typeof items.$inferSelect.status
@@ -215,10 +232,14 @@ async function logItemDiff(
 }
 
 export const getItemByQrCode = createServerFn({ method: "GET" })
+  .middleware([authRequiredMiddleware])
   .validator((qrCode: string) => qrCode)
   .handler(
-    async ({ data: qrCode }): Promise<typeof items.$inferSelect | null> => {
-      const { orgId } = await requireOrg()
+    async ({
+      data: qrCode,
+      context,
+    }): Promise<typeof items.$inferSelect | null> => {
+      const { orgId } = context
       const db = getDb()
       const result = await db
         .select()
@@ -230,24 +251,29 @@ export const getItemByQrCode = createServerFn({ method: "GET" })
   )
 
 export const createItem = createServerFn({ method: "POST" })
-  .validator(
-    (
-      item: Omit<
-        typeof items.$inferInsert,
-        "id" | "createdAt" | "updatedAt" | "orgId"
-      >
-    ) => item
-  )
-  .handler(async ({ data: item }) => {
-    const { userId, orgId } = await requireOrg()
+  .middleware([authRequiredMiddleware])
+  .validator((item: CreateItemInput) => item)
+  .handler(async ({ data: item, context }) => {
+    const { userId, orgId } = context
     const db = getDb()
+    const id = generateUlid()
+
+    const imageKey = item.imageKey ?? null
+    const imageUrl = imageKey ? buildImageUrl(imageKey) : ""
 
     const [inserted] = await db
       .insert(items)
       .values({
-        id: generateUlid(),
+        id,
         orgId,
-        ...item,
+        qrCode: item.qrCode,
+        name: item.name,
+        description: item.description,
+        condition: item.condition,
+        location: item.location,
+        status: item.status,
+        imageUrl,
+        imageKey,
         createdBy: userId,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -268,11 +294,10 @@ export const createItem = createServerFn({ method: "POST" })
   })
 
 export const updateItem = createServerFn({ method: "POST" })
-  .validator(
-    (data: { id: string; item: Partial<typeof items.$inferInsert> }) => data
-  )
-  .handler(async ({ data: { id, item } }) => {
-    const { userId, orgId } = await requireOrg()
+  .middleware([authRequiredMiddleware])
+  .validator((data: UpdateItemInput) => data)
+  .handler(async ({ data: { id, item }, context }) => {
+    const { userId, orgId } = context
     const db = getDb()
 
     const currentRows = await db
@@ -283,11 +308,41 @@ export const updateItem = createServerFn({ method: "POST" })
     if (currentRows.length === 0) throw new Error("Item not found")
     const current = currentRows[0]
 
+    const patch: Partial<typeof items.$inferInsert> = {
+      qrCode: item.qrCode,
+      name: item.name,
+      description: item.description,
+      condition: item.condition,
+      location: item.location,
+      status: item.status,
+    }
+    for (const [k, v] of Object.entries(item)) {
+      if (k === "imageKey") continue
+      if (k === "imageUrl") continue
+      if (k === "orgId" || k === "id" || k === "createdBy") continue
+      ;(patch as Record<string, unknown>)[k] = v
+    }
+    let nextImageKey = current.imageKey
+    let nextImageUrl = current.imageUrl
+    let oldKeyToDelete: string | null = null
+    if (item.imageKey !== undefined) {
+      if (item.imageKey === null) {
+        nextImageKey = null
+        nextImageUrl = ""
+        if (current.imageKey) oldKeyToDelete = current.imageKey
+      } else if (item.imageKey !== current.imageKey) {
+        nextImageKey = item.imageKey
+        nextImageUrl = buildImageUrl(item.imageKey)
+        if (current.imageKey) oldKeyToDelete = current.imageKey
+      }
+    }
+
     const updateData: Partial<typeof items.$inferInsert> = {
-      ...item,
+      ...patch,
+      imageKey: nextImageKey,
+      imageUrl: nextImageUrl,
       updatedAt: new Date(),
     }
-    // Org scoping is fixed at creation.
     delete (updateData as { orgId?: unknown }).orgId
 
     if (item.status) {
@@ -304,6 +359,10 @@ export const updateItem = createServerFn({ method: "POST" })
       .where(and(eq(items.orgId, orgId), eq(items.id, id)))
       .returning()
 
+    if (oldKeyToDelete) {
+      await deleteItemImage(orgId, oldKeyToDelete)
+    }
+
     const actor = { ...(await resolveActor(userId)), orgId }
     await logItemDiff(actor, current, updated, item)
 
@@ -311,9 +370,10 @@ export const updateItem = createServerFn({ method: "POST" })
   })
 
 export const deleteItem = createServerFn({ method: "POST" })
+  .middleware([authRequiredMiddleware])
   .validator((id: string) => id)
-  .handler(async ({ data: id }) => {
-    const { userId, orgId } = await requireOrg()
+  .handler(async ({ data: id, context }) => {
+    const { userId, orgId } = context
     const db = getDb()
     const [deleted] = await db
       .delete(items)
@@ -321,6 +381,10 @@ export const deleteItem = createServerFn({ method: "POST" })
       .returning()
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!deleted) throw new Error("Item not found")
+
+    if (deleted.imageKey) {
+      await deleteItemImage(orgId, deleted.imageKey)
+    }
 
     const actor = { ...(await resolveActor(userId)), orgId }
     await logActivity(actor, {
@@ -333,4 +397,28 @@ export const deleteItem = createServerFn({ method: "POST" })
     })
 
     return deleted
+  })
+
+export const uploadItemImage = createServerFn({ method: "POST" })
+  .middleware([authRequiredMiddleware])
+  .validator((form: FormData) => form)
+  .handler(async ({ data: form, context }) => {
+    const { orgId } = context
+    const file = form.get("file")
+    if (!(file instanceof File)) {
+      throw new ImageUploadError("Missing 'file' part in form data.", 400)
+    }
+    const buf = await file.arrayBuffer()
+    const tempId = `upload-${crypto.randomUUID()}`
+    const uploaded = await putItemImage(
+      orgId,
+      tempId,
+      buf,
+      file.type || "application/octet-stream"
+    )
+    return {
+      imageKey: uploaded.key,
+      contentType: uploaded.contentType,
+      size: uploaded.size,
+    }
   })

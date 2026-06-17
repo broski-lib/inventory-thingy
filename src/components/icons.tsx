@@ -76,23 +76,6 @@ export const ShieldIcon = (props: IconProps) => (
   </svg>
 )
 
-export const CloseIcon = (props: IconProps) => (
-  <svg
-    className="size-5"
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-    {...props}
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M6 18L18 6M6 6l12 12"
-    />
-  </svg>
-)
-
 export const PlusIcon = (props: IconProps) => (
   <svg
     className="mr-1 inline size-4"

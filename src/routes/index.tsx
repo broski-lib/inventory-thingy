@@ -8,7 +8,6 @@ import { SignInButton, SignUpButton } from "@clerk/tanstack-react-start"
 import { and, eq, sql } from "drizzle-orm"
 import { getDb } from "@/lib/db"
 import { items } from "@/lib/schema"
-import { requireOrg } from "@/lib/inventory"
 import { getRecentActivity } from "@/lib/activity"
 import type { ActivityLog } from "@/lib/activity"
 import { AppHeader } from "@/components/AppHeader"
@@ -21,18 +20,21 @@ import { Card, CardContent } from "@/components/ui/card"
 import type { ItemStatus } from "@/lib/item-status"
 
 const loadHome = createServerFn({ method: "GET" }).handler(async () => {
-  const { isAuthenticated } = await auth()
-  if (!isAuthenticated) {
+  // loadHome intentionally does NOT use authRequiredMiddleware — it must
+  // be callable by signed-out users so we can render the sign-in view.
+  // Resolve auth + org once and branch on the result.
+  const { isAuthenticated, orgId } = await auth()
+  if (!isAuthenticated || !orgId) {
     return {
       signedIn: false as const,
       recentActivity: [] as ActivityLog[],
+      totalCount: 0,
       stats: {
         statusCounts: [] as { status: string; count: number }[],
         movesToday: 0,
       },
     }
   }
-  const { orgId } = await requireOrg()
   const db = getDb()
 
   const recentActivity = await getRecentActivity({ data: 10 })

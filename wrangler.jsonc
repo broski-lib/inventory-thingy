@@ -1,17 +1,25 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "inventory-thingy",
-  "compatibility_date": "2026-06-15",
-  "compatibility_flags": ["nodejs_compat"],
-  "main": "@tanstack/react-start/server-entry",
-  "observability": {
-    "enabled": true
-  },
-  "vars": {
-    "VITE_CLERK_SIGN_IN_URL": "/sign-in",
-    "VITE_CLERK_SIGN_UP_URL": "/sign-up",
-    "VITE_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL": "/",
-    "VITE_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL": "/",
-    "VITE_CLERK_PUBLISHABLE_KEY": "pk_test_dGFsZW50ZWQtZWxrLTczLmNsZXJrLmFjY291bnRzLmRldiQ"
-  }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "inventory-thingy",
+	"compatibility_date": "2026-06-15",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"main": "@tanstack/react-start/server-entry",
+	"observability": {
+		"enabled": true
+	},
+	"vars": {
+		"VITE_CLERK_SIGN_IN_URL": "/sign-in",
+		"VITE_CLERK_SIGN_UP_URL": "/sign-up",
+		"VITE_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL": "/",
+		"VITE_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL": "/",
+		"VITE_CLERK_PUBLISHABLE_KEY": "pk_test_dGFsZW50ZWQtZWxrLTczLmNsZXJrLmFjY291bnRzLmRldiQ"
+	},
+	"r2_buckets": [
+		{
+			"binding": "ITEM_IMAGES",
+			"bucket_name": "inventory-thingy-item-images"
+		}
+	]
 }

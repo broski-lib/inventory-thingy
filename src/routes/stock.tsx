@@ -1,5 +1,4 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { requireOrg } from "@/lib/auth-guard"
 import {
   createItem,
   deleteItem,
@@ -20,6 +19,7 @@ import { SearchInput } from "@/components/SearchInput"
 import { Pagination } from "@/components/Pagination"
 import { ItemCardSkeleton } from "@/components/ItemCardSkeleton"
 import { cn } from "@/lib/utils"
+import { parsePage } from "@/lib/pagination"
 import { useEffect, useRef, useState } from "react"
 import type { InventoryItem } from "@/components/ItemEditModal"
 
@@ -30,23 +30,11 @@ type StockSearch = {
   page?: number
 }
 
-function parsePage(value: unknown): number | undefined {
-  if (typeof value === "number" && value > 0) return Math.floor(value)
-  if (typeof value === "string" && value.length > 0) {
-    const n = Number(value)
-    if (Number.isFinite(n) && n > 0) return Math.floor(n)
-  }
-  return undefined
-}
-
 export const Route = createFileRoute("/stock")({
   validateSearch: (search: Record<string, unknown>): StockSearch => ({
     q: typeof search.q === "string" ? search.q : undefined,
     page: parsePage(search.page),
   }),
-  beforeLoad: async () => {
-    await requireOrg()
-  },
   component: StockRoute,
 })
 
@@ -183,7 +171,7 @@ function StockRoute() {
   return (
     <main className="min-h-svh bg-secondary pb-24 text-foreground">
       <section className="mx-auto flex w-full max-w-md flex-col px-4 pt-4">
-        <AppHeader onScanClick={() => navigate({ to: "/scan" })} />
+        <AppHeader />
 
         <div className="mt-5 space-y-4">
           <div className="flex items-center justify-between">

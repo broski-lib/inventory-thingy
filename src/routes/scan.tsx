@@ -4,13 +4,9 @@ import { desc, eq } from "drizzle-orm"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { getDb } from "@/lib/db"
 import { items } from "@/lib/schema"
-import {
-  requireOrg as requireOrgData,
-  getItemByQrCode,
-  updateItem,
-} from "@/lib/inventory"
+import { getItemByQrCode, updateItem } from "@/lib/inventory"
+import { authRequiredMiddleware } from "@/lib/auth-middleware"
 import type { ItemStatus } from "@/lib/item-status"
-import { requireOrg } from "@/lib/auth-guard"
 import { AppHeader } from "@/components/AppHeader"
 import { BottomNav } from "@/components/BottomNav"
 import { ScannerModal } from "@/components/ScannerModal"
@@ -29,23 +25,25 @@ import { Card, CardContent } from "@/components/ui/card"
 import type { InventoryItem } from "@/components/ItemEditModal"
 import { getStatusBadgeVariant } from "@/components/ItemCard"
 
-const loadScan = createServerFn({ method: "GET" }).handler(async () => {
-  const { orgId } = await requireOrgData()
-  const db = getDb()
-  const recent = await db
-    .select({
-      id: items.id,
-      qrCode: items.qrCode,
-      name: items.name,
-      imageUrl: items.imageUrl,
-      status: items.status,
-    })
-    .from(items)
-    .where(eq(items.orgId, orgId))
-    .orderBy(desc(items.updatedAt))
-    .limit(8)
-  return { recent }
-})
+const loadScan = createServerFn({ method: "GET" })
+  .middleware([authRequiredMiddleware])
+  .handler(async ({ context }) => {
+    const { orgId } = context
+    const db = getDb()
+    const recent = await db
+      .select({
+        id: items.id,
+        qrCode: items.qrCode,
+        name: items.name,
+        imageUrl: items.imageUrl,
+        status: items.status,
+      })
+      .from(items)
+      .where(eq(items.orgId, orgId))
+      .orderBy(desc(items.updatedAt))
+      .limit(8)
+    return { recent }
+  })
 
 type ScanSearch = {
   code?: string
@@ -55,9 +53,6 @@ export const Route = createFileRoute("/scan")({
   validateSearch: (search: Record<string, unknown>): ScanSearch => ({
     code: typeof search.code === "string" ? search.code : undefined,
   }),
-  beforeLoad: async () => {
-    await requireOrg()
-  },
   loader: async () => loadScan(),
   component: ScanRoute,
 })
@@ -167,7 +162,7 @@ function ScanRoute() {
   return (
     <main className="min-h-svh bg-secondary pb-24 text-foreground">
       <section className="mx-auto flex w-full max-w-md flex-col px-4 pt-4">
-        <AppHeader onScanClick={() => setScannerOpen(true)} />
+        <AppHeader />
 
         <div className="mt-5 space-y-4">
           <h2 className="text-base font-semibold">Scan Asset Tag</h2>

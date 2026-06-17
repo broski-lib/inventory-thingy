@@ -1,5 +1,4 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { requireOrg } from "@/lib/auth-guard"
 import { getActivityPage } from "@/lib/activity"
 import type { ActivityLog } from "@/lib/activity"
 import { AppHeader } from "@/components/AppHeader"
@@ -8,6 +7,7 @@ import { ActivityList } from "@/components/ActivityLog"
 import { Pagination } from "@/components/Pagination"
 import { Skeleton } from "@/components/ItemCardSkeleton"
 import { Card, CardContent } from "@/components/ui/card"
+import { parsePage } from "@/lib/pagination"
 import { useEffect, useRef, useState } from "react"
 
 const PAGE_SIZE = 25
@@ -16,22 +16,10 @@ type ActivitySearch = {
   page?: number
 }
 
-function parsePage(value: unknown): number | undefined {
-  if (typeof value === "number" && value > 0) return Math.floor(value)
-  if (typeof value === "string" && value.length > 0) {
-    const n = Number(value)
-    if (Number.isFinite(n) && n > 0) return Math.floor(n)
-  }
-  return undefined
-}
-
 export const Route = createFileRoute("/activity")({
   validateSearch: (search: Record<string, unknown>): ActivitySearch => ({
     page: parsePage(search.page),
   }),
-  beforeLoad: async () => {
-    await requireOrg()
-  },
   component: ActivityRoute,
 })
 
