@@ -13,28 +13,10 @@ type AppHeaderProps = {
 }
 
 export function AppHeader({ onScanClick }: AppHeaderProps) {
-  const { user } = useUser()
-  const { organization } = useOrganization()
-
-  const displayName =
-    user?.firstName ||
-    user?.username ||
-    user?.emailAddresses[0]?.emailAddress?.split("@")[0] ||
-    "User"
-  const displayEmail = user?.emailAddresses[0]?.emailAddress || ""
-
   return (
-    <header className="flex items-center justify-between gap-3">
-      <div className="min-w-0">
-        <p className="text-xs font-medium tracking-[0.18em] text-muted-foreground uppercase">
-          {organization?.name ?? displayEmail}
-        </p>
-        <h1 className="truncate text-2xl font-semibold tracking-tight text-foreground">
-          Hi, {displayName}
-        </h1>
-      </div>
-      <div className="flex items-center gap-2">
-        <OrganizationSwitcher hidePersonal />
+    <header className="flex gap-3">
+      <OrganizationSwitcher hidePersonal />
+      <div className="ml-auto flex items-center gap-2">
         <UserButton />
         {onScanClick && (
           <Button size="icon-lg" aria-label="Scan QR" onClick={onScanClick}>
