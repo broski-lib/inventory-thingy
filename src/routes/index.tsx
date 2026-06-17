@@ -5,10 +5,10 @@ import { useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Camera01Icon, DeliveryTruck01Icon } from "@hugeicons/core-free-icons"
 import { SignInButton, SignUpButton } from "@clerk/tanstack-react-start"
-import { sql } from "drizzle-orm"
+import { and, eq, sql } from "drizzle-orm"
 import { getDb } from "@/lib/db"
 import { items } from "@/lib/schema"
-import { requireUser } from "@/lib/inventory"
+import { requireOrg } from "@/lib/inventory"
 import { getRecentActivity } from "@/lib/activity"
 import type { ActivityLog } from "@/lib/activity"
 import { AppHeader } from "@/components/AppHeader"
@@ -32,7 +32,7 @@ const loadHome = createServerFn({ method: "GET" }).handler(async () => {
       },
     }
   }
-  await requireUser()
+  const { orgId } = await requireOrg()
   const db = getDb()
 
   const recentActivity = await getRecentActivity({ data: 10 })
@@ -40,6 +40,7 @@ const loadHome = createServerFn({ method: "GET" }).handler(async () => {
   const statusCounts = await db
     .select({ status: items.status, count: sql<number>`count(*)::int` })
     .from(items)
+    .where(eq(items.orgId, orgId))
     .groupBy(items.status)
 
   const today = new Date()
@@ -47,11 +48,12 @@ const loadHome = createServerFn({ method: "GET" }).handler(async () => {
   const movesTodayResult = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(items)
-    .where(sql`${items.updatedAt} >= ${today}`)
+    .where(and(eq(items.orgId, orgId), sql`${items.updatedAt} >= ${today}`))
 
   const total = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(items)
+    .where(eq(items.orgId, orgId))
   const totalCount = total[0]?.count ?? 0
 
   return {

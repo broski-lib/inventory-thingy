@@ -1,10 +1,10 @@
 import { clerkClient } from "@clerk/tanstack-react-start/server"
 import { createServerFn } from "@tanstack/react-start"
-import { desc, eq } from "drizzle-orm"
+import { desc, eq, and, sql } from "drizzle-orm"
 import { getDb } from "./db"
 import { activityLogs } from "./schema"
 import type { ActivityAction } from "./schema"
-import { requireUser } from "./inventory"
+import { requireOrg } from "./inventory"
 
 export type ActivityLog = typeof activityLogs.$inferSelect
 
@@ -23,15 +23,19 @@ export type ActivityActor = {
   userId: string
   userName: string
   userEmail: string
+  orgId: string
 }
 
 const FALLBACK_ACTOR: ActivityActor = {
   userId: "",
   userName: "Unknown user",
   userEmail: "",
+  orgId: "",
 }
 
-export async function resolveActor(userId: string): Promise<ActivityActor> {
+export async function resolveActor(
+  userId: string
+): Promise<Omit<ActivityActor, "orgId">> {
   if (!userId) return FALLBACK_ACTOR
   try {
     const user = await clerkClient().users.getUser(userId)
@@ -45,7 +49,7 @@ export async function resolveActor(userId: string): Promise<ActivityActor> {
     return { userId, userName: name, userEmail: email }
   } catch (err) {
     console.error("Failed to resolve actor from Clerk:", err)
-    return { ...FALLBACK_ACTOR, userId }
+    return { userId, userName: "Unknown user", userEmail: "" }
   }
 }
 
@@ -53,10 +57,11 @@ export async function logActivity(
   actor: ActivityActor,
   input: ActivityLogInput
 ): Promise<void> {
-  if (!actor.userId) return
+  if (!actor.userId || !actor.orgId) return
   const db = getDb()
   await db.insert(activityLogs).values({
     itemId: input.itemId,
+    orgId: actor.orgId,
     userId: actor.userId,
     userName: actor.userName,
     userEmail: actor.userEmail,
@@ -73,12 +78,14 @@ export async function logActivity(
 export const getItemActivity = createServerFn({ method: "GET" })
   .validator((itemId: string) => itemId)
   .handler(async ({ data: itemId }): Promise<ActivityLog[]> => {
-    await requireUser()
+    const { orgId } = await requireOrg()
     const db = getDb()
     return await db
       .select()
       .from(activityLogs)
-      .where(eq(activityLogs.itemId, itemId))
+      .where(
+        and(eq(activityLogs.orgId, orgId), eq(activityLogs.itemId, itemId))
+      )
       .orderBy(desc(activityLogs.createdAt))
       .limit(50)
   })
@@ -88,11 +95,50 @@ export const getRecentActivity = createServerFn({ method: "GET" })
     Math.max(1, Math.min(100, Math.floor(limit ?? 10)))
   )
   .handler(async ({ data: limit }): Promise<ActivityLog[]> => {
-    await requireUser()
+    const { orgId } = await requireOrg()
     const db = getDb()
     return await db
       .select()
       .from(activityLogs)
+      .where(eq(activityLogs.orgId, orgId))
       .orderBy(desc(activityLogs.createdAt))
       .limit(limit)
+  })
+
+type GetActivityPageArgs = {
+  page: number
+  pageSize: number
+}
+
+export const getActivityPage = createServerFn({ method: "GET" })
+  .validator((args: GetActivityPageArgs) => args)
+  .handler(async ({ data: args }) => {
+    const { orgId } = await requireOrg()
+    const db = getDb()
+    const page = Math.max(1, Math.floor(args.page))
+    const pageSize = Math.max(1, Math.min(100, Math.floor(args.pageSize)))
+    const offset = (page - 1) * pageSize
+
+    const [rows, totalResult] = await Promise.all([
+      db
+        .select()
+        .from(activityLogs)
+        .where(eq(activityLogs.orgId, orgId))
+        .orderBy(desc(activityLogs.createdAt))
+        .limit(pageSize)
+        .offset(offset),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(activityLogs)
+        .where(eq(activityLogs.orgId, orgId)),
+    ])
+
+    const total = totalResult[0]?.count ?? 0
+    return {
+      logs: rows,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    }
   })

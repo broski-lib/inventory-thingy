@@ -1,12 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
-import { desc } from "drizzle-orm"
+import { desc, eq } from "drizzle-orm"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { getDb } from "@/lib/db"
 import { items } from "@/lib/schema"
-import { requireUser, getItemByQrCode, updateItem } from "@/lib/inventory"
+import {
+  requireOrg as requireOrgData,
+  getItemByQrCode,
+  updateItem,
+} from "@/lib/inventory"
 import type { ItemStatus } from "@/lib/item-status"
-import { requireAuth } from "@/lib/auth-guard"
+import { requireOrg } from "@/lib/auth-guard"
 import { AppHeader } from "@/components/AppHeader"
 import { BottomNav } from "@/components/BottomNav"
 import { ScannerModal } from "@/components/ScannerModal"
@@ -26,7 +30,7 @@ import type { InventoryItem } from "@/components/ItemEditModal"
 import { getStatusBadgeVariant } from "@/components/ItemCard"
 
 const loadScan = createServerFn({ method: "GET" }).handler(async () => {
-  await requireUser()
+  const { orgId } = await requireOrgData()
   const db = getDb()
   const recent = await db
     .select({
@@ -37,6 +41,7 @@ const loadScan = createServerFn({ method: "GET" }).handler(async () => {
       status: items.status,
     })
     .from(items)
+    .where(eq(items.orgId, orgId))
     .orderBy(desc(items.updatedAt))
     .limit(8)
   return { recent }
@@ -51,7 +56,7 @@ export const Route = createFileRoute("/scan")({
     code: typeof search.code === "string" ? search.code : undefined,
   }),
   beforeLoad: async () => {
-    await requireAuth()
+    await requireOrg()
   },
   loader: async () => loadScan(),
   component: ScanRoute,

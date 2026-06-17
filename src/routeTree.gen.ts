@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as StockRouteImport } from './routes/stock'
 import { Route as ScanRouteImport } from './routes/scan'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
@@ -23,6 +25,16 @@ const StockRoute = StockRouteImport.update({
 const ScanRoute = ScanRouteImport.update({
   id: '/scan',
   path: '/scan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ActivityRoute = ActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -43,6 +55,8 @@ const SignInSplatRoute = SignInSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/activity': typeof ActivityRoute
+  '/onboarding': typeof OnboardingRoute
   '/scan': typeof ScanRoute
   '/stock': typeof StockRoute
   '/sign-in/$': typeof SignInSplatRoute
@@ -50,6 +64,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/activity': typeof ActivityRoute
+  '/onboarding': typeof OnboardingRoute
   '/scan': typeof ScanRoute
   '/stock': typeof StockRoute
   '/sign-in/$': typeof SignInSplatRoute
@@ -58,6 +74,8 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/activity': typeof ActivityRoute
+  '/onboarding': typeof OnboardingRoute
   '/scan': typeof ScanRoute
   '/stock': typeof StockRoute
   '/sign-in/$': typeof SignInSplatRoute
@@ -65,14 +83,38 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/scan' | '/stock' | '/sign-in/$' | '/sign-up/$'
+  fullPaths:
+    | '/'
+    | '/activity'
+    | '/onboarding'
+    | '/scan'
+    | '/stock'
+    | '/sign-in/$'
+    | '/sign-up/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/scan' | '/stock' | '/sign-in/$' | '/sign-up/$'
-  id: '__root__' | '/' | '/scan' | '/stock' | '/sign-in/$' | '/sign-up/$'
+  to:
+    | '/'
+    | '/activity'
+    | '/onboarding'
+    | '/scan'
+    | '/stock'
+    | '/sign-in/$'
+    | '/sign-up/$'
+  id:
+    | '__root__'
+    | '/'
+    | '/activity'
+    | '/onboarding'
+    | '/scan'
+    | '/stock'
+    | '/sign-in/$'
+    | '/sign-up/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ActivityRoute: typeof ActivityRoute
+  OnboardingRoute: typeof OnboardingRoute
   ScanRoute: typeof ScanRoute
   StockRoute: typeof StockRoute
   SignInSplatRoute: typeof SignInSplatRoute
@@ -93,6 +135,20 @@ declare module '@tanstack/react-router' {
       path: '/scan'
       fullPath: '/scan'
       preLoaderRoute: typeof ScanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/activity': {
+      id: '/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof ActivityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -121,6 +177,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ActivityRoute: ActivityRoute,
+  OnboardingRoute: OnboardingRoute,
   ScanRoute: ScanRoute,
   StockRoute: StockRoute,
   SignInSplatRoute: SignInSplatRoute,

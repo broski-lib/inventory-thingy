@@ -11,3 +11,16 @@ export const requireAuth = createServerFn({ method: "GET" }).handler(
     return { userId }
   }
 )
+
+export const requireOrg = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const { isAuthenticated, userId, orgId } = await auth()
+    if (!isAuthenticated || !userId) {
+      throw redirect({ to: "/" })
+    }
+    if (!orgId) {
+      throw redirect({ to: "/onboarding" })
+    }
+    return { userId, orgId }
+  }
+)

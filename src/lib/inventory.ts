@@ -8,12 +8,12 @@ import { generateUlid } from "./ids"
 import { logActivity, resolveActor } from "./activity"
 import type { ActivityActor } from "./activity"
 
-export async function requireUser() {
-  const { userId } = await auth()
-  if (!userId) {
+export async function requireOrg() {
+  const { userId, orgId } = await auth()
+  if (!userId || !orgId) {
     throw new Error("Unauthorized")
   }
-  return userId
+  return { userId, orgId }
 }
 
 export const STOCK_STATUS_FILTERS = [
@@ -40,10 +40,11 @@ export type GetItemsPageArgs = {
 }
 
 function buildItemsWhere(
+  orgId: string,
   search: string | undefined,
   statusFilter: StockStatusFilter | undefined
 ): SQL | undefined {
-  const conditions: SQL[] = []
+  const conditions: SQL[] = [eq(items.orgId, orgId)]
   if (search && search.trim() !== "") {
     const s = `%${search.trim()}%`
     // Cast enum column to text so ilike works on it.
@@ -76,11 +77,11 @@ function buildItemsWhere(
 export const getItemsPage = createServerFn({ method: "GET" })
   .validator((args: GetItemsPageArgs) => args)
   .handler(async ({ data: args }): Promise<ItemsPage> => {
-    await requireUser()
+    const { orgId } = await requireOrg()
     const db = getDb()
     const page = Math.max(1, Math.floor(args.page))
     const pageSize = Math.max(1, Math.min(100, Math.floor(args.pageSize)))
-    const where = buildItemsWhere(args.search, args.statusFilter)
+    const where = buildItemsWhere(orgId, args.search, args.statusFilter)
     const offset = (page - 1) * pageSize
 
     const [rows, totalResult] = await Promise.all([
@@ -108,7 +109,7 @@ export const getItemsPage = createServerFn({ method: "GET" })
   })
 
 export const getStats = createServerFn({ method: "GET" }).handler(async () => {
-  await requireUser()
+  const { orgId } = await requireOrg()
   const db = getDb()
 
   const statusCounts = await db
@@ -117,6 +118,7 @@ export const getStats = createServerFn({ method: "GET" }).handler(async () => {
       count: sql<number>`count(*)::int`,
     })
     .from(items)
+    .where(eq(items.orgId, orgId))
     .groupBy(items.status)
 
   const today = new Date()
@@ -126,7 +128,7 @@ export const getStats = createServerFn({ method: "GET" }).handler(async () => {
       count: sql<number>`count(*)::int`,
     })
     .from(items)
-    .where(sql`${items.updatedAt} >= ${today}`)
+    .where(and(eq(items.orgId, orgId), sql`${items.updatedAt} >= ${today}`))
 
   return {
     statusCounts,
@@ -216,12 +218,12 @@ export const getItemByQrCode = createServerFn({ method: "GET" })
   .validator((qrCode: string) => qrCode)
   .handler(
     async ({ data: qrCode }): Promise<typeof items.$inferSelect | null> => {
-      await requireUser()
+      const { orgId } = await requireOrg()
       const db = getDb()
       const result = await db
         .select()
         .from(items)
-        .where(eq(items.qrCode, qrCode))
+        .where(and(eq(items.orgId, orgId), eq(items.qrCode, qrCode)))
         .limit(1)
       return result[0] ?? null
     }
@@ -229,17 +231,22 @@ export const getItemByQrCode = createServerFn({ method: "GET" })
 
 export const createItem = createServerFn({ method: "POST" })
   .validator(
-    (item: Omit<typeof items.$inferInsert, "id" | "createdAt" | "updatedAt">) =>
-      item
+    (
+      item: Omit<
+        typeof items.$inferInsert,
+        "id" | "createdAt" | "updatedAt" | "orgId"
+      >
+    ) => item
   )
   .handler(async ({ data: item }) => {
-    const userId = await requireUser()
+    const { userId, orgId } = await requireOrg()
     const db = getDb()
 
     const [inserted] = await db
       .insert(items)
       .values({
         id: generateUlid(),
+        orgId,
         ...item,
         createdBy: userId,
         createdAt: new Date(),
@@ -247,7 +254,7 @@ export const createItem = createServerFn({ method: "POST" })
       })
       .returning()
 
-    const actor = await resolveActor(userId)
+    const actor = { ...(await resolveActor(userId)), orgId }
     await logActivity(actor, {
       itemId: inserted.id,
       itemName: inserted.name,
@@ -265,13 +272,13 @@ export const updateItem = createServerFn({ method: "POST" })
     (data: { id: string; item: Partial<typeof items.$inferInsert> }) => data
   )
   .handler(async ({ data: { id, item } }) => {
-    const userId = await requireUser()
+    const { userId, orgId } = await requireOrg()
     const db = getDb()
 
     const currentRows = await db
       .select()
       .from(items)
-      .where(eq(items.id, id))
+      .where(and(eq(items.orgId, orgId), eq(items.id, id)))
       .limit(1)
     if (currentRows.length === 0) throw new Error("Item not found")
     const current = currentRows[0]
@@ -280,6 +287,8 @@ export const updateItem = createServerFn({ method: "POST" })
       ...item,
       updatedAt: new Date(),
     }
+    // Org scoping is fixed at creation.
+    delete (updateData as { orgId?: unknown }).orgId
 
     if (item.status) {
       if (item.status !== "In Storage" && item.status !== "Available") {
@@ -292,10 +301,10 @@ export const updateItem = createServerFn({ method: "POST" })
     const [updated] = await db
       .update(items)
       .set(updateData)
-      .where(eq(items.id, id))
+      .where(and(eq(items.orgId, orgId), eq(items.id, id)))
       .returning()
 
-    const actor = await resolveActor(userId)
+    const actor = { ...(await resolveActor(userId)), orgId }
     await logItemDiff(actor, current, updated, item)
 
     return updated
@@ -304,11 +313,16 @@ export const updateItem = createServerFn({ method: "POST" })
 export const deleteItem = createServerFn({ method: "POST" })
   .validator((id: string) => id)
   .handler(async ({ data: id }) => {
-    const userId = await requireUser()
+    const { userId, orgId } = await requireOrg()
     const db = getDb()
-    const [deleted] = await db.delete(items).where(eq(items.id, id)).returning()
+    const [deleted] = await db
+      .delete(items)
+      .where(and(eq(items.orgId, orgId), eq(items.id, id)))
+      .returning()
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!deleted) throw new Error("Item not found")
 
-    const actor = await resolveActor(userId)
+    const actor = { ...(await resolveActor(userId)), orgId }
     await logActivity(actor, {
       itemId: deleted.id,
       itemName: deleted.name,

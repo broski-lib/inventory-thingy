@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { requireAuth } from "@/lib/auth-guard"
+import { requireOrg } from "@/lib/auth-guard"
 import {
   createItem,
   deleteItem,
@@ -45,7 +45,7 @@ export const Route = createFileRoute("/stock")({
     page: parsePage(search.page),
   }),
   beforeLoad: async () => {
-    await requireAuth()
+    await requireOrg()
   },
   component: StockRoute,
 })
