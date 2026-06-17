@@ -155,7 +155,7 @@ export function LiveScanner({
     <div className="space-y-2">
       <div
         id={ELEMENT_ID}
-        className="relative mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-xl bg-black [&_div]:!border-none [&_img]:hidden [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
+        className="relative mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-xl bg-black [&_div]:border-none! [&_img]:hidden [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
       />
       {status === "starting" && (
         <p className="text-center text-xs text-muted-foreground">

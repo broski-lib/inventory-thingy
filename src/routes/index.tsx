@@ -120,7 +120,7 @@ function SignedInView({ data }: { data: SignedInData }) {
     navigate({ to: "/scan", search: { code } })
   }
 
-  const { recentActivity, totalCount, stats } = data
+  const { recentActivity, stats } = data
   const getCount = (statuses: readonly ItemStatus[]) =>
     stats.statusCounts
       .filter((sc: { status: string; count: number }) =>
@@ -142,7 +142,7 @@ function SignedInView({ data }: { data: SignedInData }) {
   return (
     <main className="min-h-svh bg-secondary pb-24 text-foreground">
       <section className="mx-auto flex w-full max-w-md flex-col px-4 pt-4">
-        <AppHeader onScanClick={openScanner} />
+        <AppHeader />
 
         <div className="mt-5 space-y-5">
           <Card className="rounded-xl border-primary bg-primary text-primary-foreground [--card-spacing:--spacing(4)]">
