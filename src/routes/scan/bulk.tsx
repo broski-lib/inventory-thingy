@@ -159,14 +159,12 @@ function BulkScanPage() {
           )}
         </div>
 
-        <div className="flex justify-center">
-          <LiveScanner
-            active
-            paused={paused}
-            onDetected={handleDetected}
-            onStatusChange={setScannerStatus}
-          />
-        </div>
+        <LiveScanner
+          active
+          paused={paused}
+          onDetected={handleDetected}
+          onStatusChange={setScannerStatus}
+        />
 
         {lastResult && (
           <div

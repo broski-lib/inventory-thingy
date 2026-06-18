@@ -152,10 +152,10 @@ export function LiveScanner({
   }, [paused, status, updateStatus])
 
   return (
-    <div className="space-y-2">
+    <div className="flex w-full flex-col items-center gap-2">
       <div
         id={ELEMENT_ID}
-        className="relative mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-2xl bg-black [&_div]:border-none! [&_img]:hidden [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
+        className="relative aspect-square w-full max-w-96 overflow-hidden rounded-2xl bg-black [&_div]:border-none! [&_img]:hidden [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
       />
       {status === "starting" && (
         <p className="text-center text-xs text-muted-foreground">

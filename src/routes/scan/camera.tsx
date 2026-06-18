@@ -68,14 +68,12 @@ function ScanCameraPage() {
   return (
     <PageChrome title="Scan Tag" backTo="/scan">
       <div className="flex flex-col gap-4 p-4">
-        <div className="flex justify-center">
-          <LiveScanner
-            active
-            paused={paused}
-            onDetected={handleDetected}
-            onStatusChange={setLiveStatus}
-          />
-        </div>
+        <LiveScanner
+          active
+          paused={paused}
+          onDetected={handleDetected}
+          onStatusChange={setLiveStatus}
+        />
 
         {liveStatus === "denied" && (
           <p className="text-center text-xs text-destructive">

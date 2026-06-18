@@ -42,44 +42,46 @@ export function QRTag({ qrCode, itemName, itemId }: QRTagProps) {
 
   const handlePrint = () => {
     if (!dataUrl) return
-    const w = window.open("", "_blank", "width=420,height=520")
+    const w = window.open("", "_blank", "width=240,height=320")
     if (!w) return
     w.document.write(PRINT_HTML(qrCode, dataUrl, itemName, itemId))
     w.document.close()
   }
 
+  const loading = !dataUrl && !error
+
   return (
-    <div className="flex flex-col gap-6 p-4">
+    <div className="flex flex-col gap-4 p-4">
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      <div className="text-center">
-        <p className="truncate text-base font-semibold text-foreground">
-          {itemName}
-        </p>
-        <p className="font-mono text-xs text-muted-foreground">{qrCode}</p>
-      </div>
-
-      <div className="mx-auto rounded-xl border border-border bg-card p-4 shadow-inner">
-        {dataUrl ? (
-          <img
-            src={dataUrl}
-            alt={`QR code for ${itemName}`}
-            className="size-56"
-          />
-        ) : (
-          <div className="flex size-56 items-center justify-center text-muted-foreground">
-            <HugeiconsIcon
-              icon={QrCodeIcon}
-              size={64}
-              strokeWidth={1.2}
-              className="animate-pulse"
+      <div className="flex justify-center">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-inner">
+          {dataUrl ? (
+            <img
+              src={dataUrl}
+              alt={`QR code for ${itemName}`}
+              className="size-56"
             />
-          </div>
-        )}
+          ) : (
+            <div
+              className="flex size-56 items-center justify-center text-muted-foreground"
+              aria-live="polite"
+              aria-busy={loading}
+              aria-label="Generating QR code"
+            >
+              <HugeiconsIcon
+                icon={QrCodeIcon}
+                size={64}
+                strokeWidth={1.2}
+                className={loading ? "animate-pulse" : ""}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       <p className="text-center text-[11px] text-muted-foreground">
@@ -121,10 +123,10 @@ function PRINT_HTML(
   <title>QR Tag - ${escapeHtml(qrCode)}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { display: flex; flex-direction: column; align-items: center; padding: 16px; font-family: ui-monospace, monospace; font-size: 13px; color: oklch(0.185 0.005 150); }
-    img { width: 220px; height: 220px; display: block; }
-    .name { margin-top: 12px; font-weight: 600; max-width: 240px; text-align: center; }
-    .code { margin-top: 4px; font-size: 12px; color: oklch(0.503 0.014 130); }
+    body { display: flex; flex-direction: column; align-items: center; padding: 12px; font-family: ui-monospace, monospace; font-size: 11px; color: oklch(0.185 0.005 150); }
+    img { width: 75px; height: 75px; display: block; }
+    .name { margin-top: 6px; font-weight: 600; max-width: 200px; text-align: center; }
+    .code { margin-top: 2px; font-size: 10px; color: oklch(0.503 0.014 130); }
     @page { margin: 0; size: auto; }
   </style>
 </head>
