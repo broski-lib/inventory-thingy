@@ -341,7 +341,7 @@ function StockRoute() {
   const pageSizeForPagination = search.ps ?? DEFAULT_PAGE_SIZE
 
   return (
-    <main className="min-h-svh bg-secondary pb-40 text-foreground">
+    <main className="min-h-svh bg-secondary pb-56 text-foreground">
       <section className="mx-auto flex w-full max-w-md flex-col px-4 pt-4">
         <AppHeader />
 
@@ -631,9 +631,9 @@ function BulkActionBar({
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-20 z-30 border-t border-border bg-background/95 shadow-[0_-4px_12px_rgba(0,0,0,0.04)] backdrop-blur">
+    <div className="fixed inset-x-0 bottom-18 z-30 border-t border-border bg-background/95 backdrop-blur">
       {panel === "status" && (
-        <div className="mx-auto flex max-w-md items-center gap-2 border-b border-border px-3 py-2">
+        <div className="mx-auto flex max-w-md items-center gap-2 border-b border-border px-4 py-2">
           <Select
             value={bulkStatus}
             onValueChange={(v) => setBulkStatus(v as ItemStatus)}
@@ -660,7 +660,7 @@ function BulkActionBar({
         </div>
       )}
       {panel === "location" && (
-        <div className="mx-auto flex max-w-md items-center gap-2 border-b border-border px-3 py-2">
+        <div className="mx-auto flex max-w-md items-center gap-2 border-b border-border px-4 py-2">
           <Input
             value={bulkLocation}
             onChange={(e) => setBulkLocation(e.target.value)}
@@ -679,7 +679,7 @@ function BulkActionBar({
         </div>
       )}
       {panel === "delete" && (
-        <div className="mx-auto flex max-w-md items-center gap-2 border-b border-destructive/30 bg-destructive/5 px-3 py-2">
+        <div className="mx-auto flex max-w-md items-center gap-2 border-b border-destructive/30 bg-destructive/5 px-4 py-2">
           <span className="flex-1 text-xs font-semibold text-destructive">
             Delete {selectedCount} item{selectedCount === 1 ? "" : "s"}? This
             can&apos;t be undone.
@@ -705,7 +705,7 @@ function BulkActionBar({
         </div>
       )}
 
-      <div className="mx-auto flex max-w-md items-center px-2 py-2">
+      <div className="mx-auto flex max-w-md items-center px-4 pt-2 pb-4">
         <span className="inline-flex shrink-0 items-center gap-1 px-1 text-xs font-semibold text-foreground">
           <HugeiconsIcon
             icon={CheckmarkCircle02Icon}
@@ -783,7 +783,7 @@ function ActionIcon({
       disabled={disabled}
       aria-label={label}
       className={cn(
-        "flex size-11 shrink-0 items-center justify-center rounded-lg border transition-colors",
+        "flex size-12 shrink-0 items-center justify-center rounded-lg border transition-colors",
         tone === "destructive"
           ? active
             ? "text-destructive-foreground border-destructive bg-destructive"
