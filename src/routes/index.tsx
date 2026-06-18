@@ -109,7 +109,7 @@ function SignedInView({ data }: { data: SignedInData }) {
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState("")
 
-  const openScanner = () => navigate({ to: "/scan/camera" })
+  const openScanner = () => navigate({ to: "/scan" })
 
   const handleActivityItemClick = (log: ActivityLog) => {
     if (!log.itemId) return

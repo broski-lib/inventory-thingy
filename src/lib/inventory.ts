@@ -1,8 +1,9 @@
 import { createServerFn } from "@tanstack/react-start"
-import { and, eq, ilike, or, desc, sql } from "drizzle-orm"
+import { and, eq, ilike, inArray, or, desc, sql } from "drizzle-orm"
 import type { SQL } from "drizzle-orm"
 import { getDb } from "./db"
 import { items, activityLogs } from "./schema"
+import type { ItemStatus } from "./schema"
 import { generateUlid } from "./ids"
 import { logActivity, resolveActor } from "./activity"
 import type { ActivityActor, ActivityLog } from "./activity"
@@ -489,5 +490,171 @@ export const getItemWithHistory = createServerFn({ method: "GET" })
         throw new Error("Item not found")
       }
       return { item, logs }
+    }
+  )
+
+/**
+ * Bulk-delete items by id. Org-scoped: any id that doesn't belong to
+ * the caller's org is silently ignored. Cleans up R2 images and
+ * logs a "deleted" activity per item.
+ */
+export const bulkDeleteItems = createServerFn({ method: "POST" })
+  .middleware([authRequiredMiddleware])
+  .validator((ids: string[]) => ids)
+  .handler(async ({ data: ids, context }): Promise<{ deleted: number }> => {
+    const { userId, orgId } = context
+    if (ids.length === 0) return { deleted: 0 }
+    const db = getDb()
+
+    // Fetch first so we can clean up R2 images + log per item.
+    const toDelete = await db
+      .select()
+      .from(items)
+      .where(and(eq(items.orgId, orgId), inArray(items.id, ids)))
+
+    await db
+      .delete(items)
+      .where(and(eq(items.orgId, orgId), inArray(items.id, ids)))
+
+    await Promise.all(
+      toDelete
+        .filter((row) => row.imageKey)
+        .map((row) => deleteItemImage(orgId, row.imageKey!))
+    )
+
+    const actor = { ...(await resolveActor(userId)), orgId }
+    await Promise.all(
+      toDelete.map((row) =>
+        logActivity(actor, {
+          itemId: row.id,
+          itemName: row.name,
+          itemQrCode: row.qrCode,
+          action: "deleted",
+          fromLocation: row.location,
+          fromCondition: row.condition,
+        })
+      )
+    )
+
+    return { deleted: toDelete.length }
+  })
+
+/**
+ * Bulk-update the status of multiple items. Org-scoped. Logs an
+ * activity per item whose status actually changes.
+ */
+export const bulkUpdateStatus = createServerFn({ method: "POST" })
+  .middleware([authRequiredMiddleware])
+  .validator(
+    (data: {
+      ids: string[]
+      status: ItemStatus
+    }): {
+      ids: string[]
+      status: ItemStatus
+    } => data
+  )
+  .handler(
+    async ({
+      data: { ids, status },
+      context,
+    }): Promise<{ updated: number }> => {
+      const { userId, orgId } = context
+      if (ids.length === 0) return { updated: 0 }
+      const db = getDb()
+
+      const current = await db
+        .select()
+        .from(items)
+        .where(and(eq(items.orgId, orgId), inArray(items.id, ids)))
+
+      const updatedAt = new Date()
+      await db
+        .update(items)
+        .set({
+          status,
+          // Checked-out items get a fresh takenOutAt; returned items clear it.
+          takenOutAt:
+            status === "In Storage" || status === "Available"
+              ? null
+              : new Date(),
+          updatedAt,
+        })
+        .where(and(eq(items.orgId, orgId), inArray(items.id, ids)))
+
+      const actor = { ...(await resolveActor(userId)), orgId }
+      const changed = current.filter((row) => row.status !== status)
+      await Promise.all(
+        changed.map((row) =>
+          logActivity(actor, {
+            itemId: row.id,
+            itemName: row.name,
+            itemQrCode: row.qrCode,
+            action: statusAction(status),
+            fromLocation: row.location,
+            toLocation: row.location,
+            fromCondition: row.condition,
+            toCondition: row.condition,
+          })
+        )
+      )
+
+      return { updated: changed.length }
+    }
+  )
+
+/**
+ * Bulk-update the location of multiple items. Org-scoped. Logs a
+ * "moved" activity per item whose location actually changes.
+ */
+export const bulkUpdateLocation = createServerFn({ method: "POST" })
+  .middleware([authRequiredMiddleware])
+  .validator(
+    (data: {
+      ids: string[]
+      location: string
+    }): {
+      ids: string[]
+      location: string
+    } => data
+  )
+  .handler(
+    async ({
+      data: { ids, location },
+      context,
+    }): Promise<{ updated: number }> => {
+      const { userId, orgId } = context
+      if (ids.length === 0) return { updated: 0 }
+      const db = getDb()
+
+      const trimmed = location.trim()
+      const current = await db
+        .select()
+        .from(items)
+        .where(and(eq(items.orgId, orgId), inArray(items.id, ids)))
+
+      await db
+        .update(items)
+        .set({ location: trimmed, updatedAt: new Date() })
+        .where(and(eq(items.orgId, orgId), inArray(items.id, ids)))
+
+      const actor = { ...(await resolveActor(userId)), orgId }
+      const changed = current.filter((row) => row.location !== trimmed)
+      await Promise.all(
+        changed.map((row) =>
+          logActivity(actor, {
+            itemId: row.id,
+            itemName: row.name,
+            itemQrCode: row.qrCode,
+            action: "moved",
+            fromLocation: row.location,
+            toLocation: trimmed,
+            fromCondition: row.condition,
+            toCondition: row.condition,
+          })
+        )
+      )
+
+      return { updated: changed.length }
     }
   )
