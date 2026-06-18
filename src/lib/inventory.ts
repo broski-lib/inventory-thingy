@@ -2,10 +2,10 @@ import { createServerFn } from "@tanstack/react-start"
 import { and, eq, ilike, or, desc, sql } from "drizzle-orm"
 import type { SQL } from "drizzle-orm"
 import { getDb } from "./db"
-import { items } from "./schema"
+import { items, activityLogs } from "./schema"
 import { generateUlid } from "./ids"
 import { logActivity, resolveActor } from "./activity"
-import type { ActivityActor } from "./activity"
+import type { ActivityActor, ActivityLog } from "./activity"
 import {
   buildImageUrl,
   deleteItemImage,
@@ -13,6 +13,9 @@ import {
   putItemImage,
 } from "./storage"
 import { authRequiredMiddleware } from "./auth-middleware"
+
+/** Shape of a row in the `items` table. */
+export type InventoryItem = typeof items.$inferSelect
 
 export type CreateItemInput = Omit<
   typeof items.$inferInsert,
@@ -422,3 +425,69 @@ export const uploadItemImage = createServerFn({ method: "POST" })
       size: uploaded.size,
     }
   })
+
+/**
+ * Fetch a single item by id (org-scoped). Returns null if not found.
+ * Returns the full row — callers that only need a subset should project on
+ * the client.
+ */
+export const getItemById = createServerFn({ method: "GET" })
+  .middleware([authRequiredMiddleware])
+  .validator((id: string) => id)
+  .handler(
+    async ({
+      data: id,
+      context,
+    }): Promise<typeof items.$inferSelect | undefined> => {
+      const { orgId } = context
+      const db = getDb()
+      const [row] = await db
+        .select()
+        .from(items)
+        .where(and(eq(items.orgId, orgId), eq(items.id, id)))
+        .limit(1)
+      return row
+    }
+  )
+
+/**
+ * Fetch a single item + its full activity log in one round-trip.
+ * Both queries run in parallel inside the handler. Throws if the
+ * item is not found in the org (callers should use getItemById first
+ * to validate the item exists).
+ */
+export const getItemWithHistory = createServerFn({ method: "GET" })
+  .middleware([authRequiredMiddleware])
+  .validator((id: string) => id)
+  .handler(
+    async ({
+      data: id,
+      context,
+    }): Promise<{ item: typeof items.$inferSelect; logs: ActivityLog[] }> => {
+      const { orgId } = context
+      const db = getDb()
+      const [itemRows, logs] = await Promise.all([
+        db
+          .select()
+          .from(items)
+          .where(and(eq(items.orgId, orgId), eq(items.id, id)))
+          .limit(1),
+        db
+          .select()
+          .from(activityLogs)
+          .where(
+            and(eq(activityLogs.orgId, orgId), eq(activityLogs.itemId, id))
+          )
+          .orderBy(desc(activityLogs.createdAt))
+          .limit(50),
+      ])
+      const item = itemRows[0]
+      // Drizzle's types claim itemRows[0] is T, but at runtime it's
+      // undefined when the row doesn't exist. The throw guards against
+      // a silent undefined leak; the type assertion is a Drizzle quirk.
+      if (itemRows.length === 0) {
+        throw new Error("Item not found")
+      }
+      return { item, logs }
+    }
+  )

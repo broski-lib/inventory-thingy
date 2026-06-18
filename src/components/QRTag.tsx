@@ -1,33 +1,21 @@
 import { useEffect, useState } from "react"
 import QRCode from "qrcode"
 import { Button } from "@/components/ui/button"
-import { QrIcon } from "@/components/icons"
-import { ResponsiveOverlay } from "@/components/ResponsiveOverlay"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { QrCodeIcon } from "@hugeicons/core-free-icons"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
-type QRTagModalProps = {
-  open: boolean
-  onClose: () => void
+type QRTagProps = {
   qrCode: string
   itemName: string
   itemId: string
 }
 
-export function QRTagModal({
-  open,
-  onClose,
-  qrCode,
-  itemName,
-  itemId,
-}: QRTagModalProps) {
+export function QRTag({ qrCode, itemName, itemId }: QRTagProps) {
   const [dataUrl, setDataUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!open) {
-      setDataUrl(null)
-      setError(null)
-      return
-    }
     let cancelled = false
     QRCode.toDataURL(qrCode, { width: 384, margin: 2 })
       .then((url) => {
@@ -40,7 +28,7 @@ export function QRTagModal({
     return () => {
       cancelled = true
     }
-  }, [open, qrCode])
+  }, [qrCode])
 
   const handleDownload = () => {
     if (!dataUrl) return
@@ -56,77 +44,77 @@ export function QRTagModal({
     if (!dataUrl) return
     const w = window.open("", "_blank", "width=420,height=520")
     if (!w) return
-    w.document.write(PRINT_HTML(qrCode, dataUrl, itemName))
+    w.document.write(PRINT_HTML(qrCode, dataUrl, itemName, itemId))
     w.document.close()
   }
 
-  const body = (
-    <div className="text-center">
-      <p className="truncate text-sm font-semibold text-foreground">
-        {itemName}
-      </p>
-      <p className="font-mono text-xs text-muted-foreground">{qrCode}</p>
+  return (
+    <div className="flex flex-col gap-6 p-4">
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-      <div className="inline-block rounded-xl border border-border bg-card p-4 shadow-inner">
-        {error ? (
-          <p className="p-8 text-xs text-destructive">{error}</p>
-        ) : dataUrl ? (
+      <div className="text-center">
+        <p className="truncate text-base font-semibold text-foreground">
+          {itemName}
+        </p>
+        <p className="font-mono text-xs text-muted-foreground">{qrCode}</p>
+      </div>
+
+      <div className="mx-auto rounded-xl border border-border bg-card p-4 shadow-inner">
+        {dataUrl ? (
           <img
             src={dataUrl}
             alt={`QR code for ${itemName}`}
-            className="size-48"
+            className="size-56"
           />
         ) : (
-          <div className="flex size-48 items-center justify-center text-muted-foreground">
-            <QrIcon className="size-8 animate-pulse" />
+          <div className="flex size-56 items-center justify-center text-muted-foreground">
+            <HugeiconsIcon
+              icon={QrCodeIcon}
+              size={64}
+              strokeWidth={1.2}
+              className="animate-pulse"
+            />
           </div>
         )}
       </div>
 
-      <p className="text-[11px] text-muted-foreground">
-        Print and attach to furniture for quick scan lookup.
+      <p className="text-center text-[11px] text-muted-foreground">
+        Print and attach to the item for quick scan lookup.
       </p>
-    </div>
-  )
 
-  const footer = (
-    <div className="flex gap-2">
-      <Button
-        type="button"
-        variant="outline"
-        onClick={handleDownload}
-        disabled={!dataUrl}
-        className="flex-1"
-      >
-        Download
-      </Button>
-      <Button
-        type="button"
-        onClick={handlePrint}
-        disabled={!dataUrl}
-        className="flex-1"
-      >
-        Print
-      </Button>
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleDownload}
+          disabled={!dataUrl}
+          className="flex-1"
+        >
+          Download
+        </Button>
+        <Button
+          type="button"
+          onClick={handlePrint}
+          disabled={!dataUrl}
+          className="flex-1"
+        >
+          Print
+        </Button>
+      </div>
     </div>
-  )
-
-  return (
-    <ResponsiveOverlay
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) onClose()
-      }}
-      title="Asset QR Tag"
-      description={itemId}
-      footer={footer}
-    >
-      {body}
-    </ResponsiveOverlay>
   )
 }
 
-function PRINT_HTML(qrCode: string, dataUrl: string, itemName: string) {
+function PRINT_HTML(
+  qrCode: string,
+  dataUrl: string,
+  itemName: string,
+  _itemId: string
+) {
   return `<!doctype html>
 <html>
 <head>

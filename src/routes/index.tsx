@@ -12,8 +12,6 @@ import type { ActivityLog } from "@/lib/activity"
 import { AppHeader } from "@/components/AppHeader"
 import { BottomNav } from "@/components/BottomNav"
 import { HomeActivity } from "@/components/HomeActivity"
-import { ItemHistoryModal } from "@/components/ItemHistoryModal"
-import { ScannerModal } from "@/components/ScannerModal"
 import { SearchInput } from "@/components/SearchInput"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -110,25 +108,14 @@ type SignedInData = Extract<
 function SignedInView({ data }: { data: SignedInData }) {
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState("")
-  const [scannerOpen, setScannerOpen] = useState(false)
-  const [historyTarget, setHistoryTarget] = useState<{
-    id: string
-    name: string
-    qrCode: string
-  } | null>(null)
 
-  const openScanner = () => setScannerOpen(true)
-  const handleScanned = (code: string) => {
-    setScannerOpen(false)
-    navigate({ to: "/scan", search: { code } })
-  }
+  const openScanner = () => navigate({ to: "/scan/camera" })
 
   const handleActivityItemClick = (log: ActivityLog) => {
     if (!log.itemId) return
-    setHistoryTarget({
-      id: log.itemId,
-      name: log.itemName || "Item",
-      qrCode: log.itemQrCode || "",
+    navigate({
+      to: "/stock/$id/history",
+      params: { id: log.itemId },
     })
   }
 
@@ -197,21 +184,20 @@ function SignedInView({ data }: { data: SignedInData }) {
             </CardContent>
           </Card>
 
-          <div className="flex gap-2">
-            <SearchInput
-              value={searchQuery}
-              onChange={handleSearch}
-              placeholder="Search live inventory..."
-            />
-            <Button
-              variant="outline"
-              size="icon-lg"
-              onClick={openScanner}
-              aria-label="Open scanner"
-            >
-              <HugeiconsIcon icon={Camera01Icon} size={20} strokeWidth={1.8} />
-            </Button>
-          </div>
+          <button
+            type="button"
+            onClick={openScanner}
+            className="flex h-14 w-full items-center justify-center gap-2 rounded-xl border border-primary bg-primary text-base font-semibold text-primary-foreground shadow-xs transition active:scale-[0.99]"
+          >
+            <HugeiconsIcon icon={Camera01Icon} size={20} strokeWidth={1.8} />
+            Scan a tag
+          </button>
+
+          <SearchInput
+            value={searchQuery}
+            onChange={handleSearch}
+            placeholder="Search live inventory..."
+          />
 
           <section className="space-y-3">
             <div className="flex items-center justify-between">
@@ -234,16 +220,6 @@ function SignedInView({ data }: { data: SignedInData }) {
         </div>
       </section>
       <BottomNav active="home" />
-      <ScannerModal
-        open={scannerOpen}
-        onClose={() => setScannerOpen(false)}
-        onDetected={handleScanned}
-      />
-      <ItemHistoryModal
-        open={historyTarget !== null}
-        onClose={() => setHistoryTarget(null)}
-        target={historyTarget}
-      />
     </main>
   )
 }

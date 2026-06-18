@@ -176,4 +176,13 @@
   html {
     @apply font-sans;
     }
+  /* iOS Safari auto-zooms the viewport on focus whenever an input,
+     textarea, or select has a computed font-size below 16px, and
+     never zooms back out when focus leaves. Force 16px on any text
+     entry surface so the viewport stays put. */
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
 }

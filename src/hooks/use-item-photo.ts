@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { CompressedImage } from "@/lib/image-upload"
 import {
   compressImage,
@@ -91,15 +91,31 @@ export function useItemPhoto({
     }
   }, [previewUrl])
 
-  return {
-    previewUrl,
-    pendingImage,
-    error,
-    pickFile,
-    handleFileChange,
-    handleRemove,
-    reset,
-    setError,
-    inputRef,
-  }
+  // Memoize the returned object so consumers can safely use it in
+  // dependency arrays or pass it as a stable prop. The set of functions
+  // is stable (useCallback with empty deps); only the state values
+  // change between renders.
+  return useMemo(
+    () => ({
+      previewUrl,
+      pendingImage,
+      error,
+      pickFile,
+      handleFileChange,
+      handleRemove,
+      reset,
+      setError,
+      inputRef,
+    }),
+    [
+      previewUrl,
+      pendingImage,
+      error,
+      pickFile,
+      handleFileChange,
+      handleRemove,
+      reset,
+      setError,
+    ]
+  )
 }

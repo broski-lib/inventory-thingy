@@ -83,10 +83,10 @@ function ActivityRoute() {
   }
 
   const handleItemClick = (log: ActivityLog) => {
-    if (!log.itemQrCode) return
+    if (!log.itemId) return
     navigate({
-      to: "/stock",
-      search: { q: log.itemQrCode, page: 1 },
+      to: "/stock/$id/history",
+      params: { id: log.itemId },
     })
   }
 
