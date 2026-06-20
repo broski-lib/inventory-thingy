@@ -18,7 +18,7 @@ export function BottomNav({ active }: BottomNavProps) {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-md border-t border-border bg-background/95 px-4 pt-2 pb-4 backdrop-blur">
       <div className="grid grid-cols-3 gap-2">
-        <Link to="/">
+        <Link to="/home">
           {({ isActive }) => (
             <Button
               variant="ghost"

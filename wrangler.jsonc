@@ -10,10 +10,10 @@
 		"enabled": true
 	},
 	"vars": {
-		"VITE_CLERK_SIGN_IN_URL": "/sign-in",
+		"VITE_CLERK_SIGN_IN_URL": "/login",
 		"VITE_CLERK_SIGN_UP_URL": "/sign-up",
-		"VITE_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL": "/",
-		"VITE_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL": "/",
+		"VITE_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL": "/home",
+		"VITE_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL": "/home",
 		"VITE_CLERK_PUBLISHABLE_KEY": "pk_test_dGFsZW50ZWQtZWxrLTczLmNsZXJrLmFjY291bnRzLmRldiQ"
 	},
 	"r2_buckets": [

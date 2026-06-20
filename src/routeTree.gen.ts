@@ -12,15 +12,16 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as StockRouteImport } from './routes/stock'
 import { Route as ScanRouteImport } from './routes/scan'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as HomeRouteImport } from './routes/home'
 import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StockIndexRouteImport } from './routes/stock/index'
 import { Route as ScanIndexRouteImport } from './routes/scan/index'
 import { Route as StockNewRouteImport } from './routes/stock/new'
 import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
-import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
 import { Route as ScanCameraRouteImport } from './routes/scan/camera'
 import { Route as ScanBulkRouteImport } from './routes/scan/bulk'
+import { Route as LoginSplatRouteImport } from './routes/login.$'
 import { Route as StockIdQrRouteImport } from './routes/stock/$id.qr'
 import { Route as StockIdHistoryRouteImport } from './routes/stock/$id.history'
 import { Route as StockIdEditRouteImport } from './routes/stock/$id.edit'
@@ -39,6 +40,11 @@ const ScanRoute = ScanRouteImport.update({
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HomeRoute = HomeRouteImport.update({
+  id: '/home',
+  path: '/home',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ActivityRoute = ActivityRouteImport.update({
@@ -71,11 +77,6 @@ const SignUpSplatRoute = SignUpSplatRouteImport.update({
   path: '/sign-up/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SignInSplatRoute = SignInSplatRouteImport.update({
-  id: '/sign-in/$',
-  path: '/sign-in/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ScanCameraRoute = ScanCameraRouteImport.update({
   id: '/camera',
   path: '/camera',
@@ -85,6 +86,11 @@ const ScanBulkRoute = ScanBulkRouteImport.update({
   id: '/bulk',
   path: '/bulk',
   getParentRoute: () => ScanRoute,
+} as any)
+const LoginSplatRoute = LoginSplatRouteImport.update({
+  id: '/login/$',
+  path: '/login/$',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const StockIdQrRoute = StockIdQrRouteImport.update({
   id: '/$id/qr',
@@ -110,12 +116,13 @@ const ApiImagesSplatRoute = ApiImagesSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
+  '/home': typeof HomeRoute
   '/onboarding': typeof OnboardingRoute
   '/scan': typeof ScanRouteWithChildren
   '/stock': typeof StockRouteWithChildren
+  '/login/$': typeof LoginSplatRoute
   '/scan/bulk': typeof ScanBulkRoute
   '/scan/camera': typeof ScanCameraRoute
-  '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/stock/new': typeof StockNewRoute
   '/scan/': typeof ScanIndexRoute
@@ -128,10 +135,11 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
+  '/home': typeof HomeRoute
   '/onboarding': typeof OnboardingRoute
+  '/login/$': typeof LoginSplatRoute
   '/scan/bulk': typeof ScanBulkRoute
   '/scan/camera': typeof ScanCameraRoute
-  '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/stock/new': typeof StockNewRoute
   '/scan': typeof ScanIndexRoute
@@ -145,12 +153,13 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
+  '/home': typeof HomeRoute
   '/onboarding': typeof OnboardingRoute
   '/scan': typeof ScanRouteWithChildren
   '/stock': typeof StockRouteWithChildren
+  '/login/$': typeof LoginSplatRoute
   '/scan/bulk': typeof ScanBulkRoute
   '/scan/camera': typeof ScanCameraRoute
-  '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/stock/new': typeof StockNewRoute
   '/scan/': typeof ScanIndexRoute
@@ -165,12 +174,13 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/activity'
+    | '/home'
     | '/onboarding'
     | '/scan'
     | '/stock'
+    | '/login/$'
     | '/scan/bulk'
     | '/scan/camera'
-    | '/sign-in/$'
     | '/sign-up/$'
     | '/stock/new'
     | '/scan/'
@@ -183,10 +193,11 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/activity'
+    | '/home'
     | '/onboarding'
+    | '/login/$'
     | '/scan/bulk'
     | '/scan/camera'
-    | '/sign-in/$'
     | '/sign-up/$'
     | '/stock/new'
     | '/scan'
@@ -199,12 +210,13 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/activity'
+    | '/home'
     | '/onboarding'
     | '/scan'
     | '/stock'
+    | '/login/$'
     | '/scan/bulk'
     | '/scan/camera'
-    | '/sign-in/$'
     | '/sign-up/$'
     | '/stock/new'
     | '/scan/'
@@ -218,10 +230,11 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ActivityRoute: typeof ActivityRoute
+  HomeRoute: typeof HomeRoute
   OnboardingRoute: typeof OnboardingRoute
   ScanRoute: typeof ScanRouteWithChildren
   StockRoute: typeof StockRouteWithChildren
-  SignInSplatRoute: typeof SignInSplatRoute
+  LoginSplatRoute: typeof LoginSplatRoute
   SignUpSplatRoute: typeof SignUpSplatRoute
   ApiImagesSplatRoute: typeof ApiImagesSplatRoute
 }
@@ -247,6 +260,13 @@ declare module '@tanstack/react-router' {
       path: '/onboarding'
       fullPath: '/onboarding'
       preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/home': {
+      id: '/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof HomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/activity': {
@@ -291,13 +311,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignUpSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/sign-in/$': {
-      id: '/sign-in/$'
-      path: '/sign-in/$'
-      fullPath: '/sign-in/$'
-      preLoaderRoute: typeof SignInSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/scan/camera': {
       id: '/scan/camera'
       path: '/camera'
@@ -311,6 +324,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/scan/bulk'
       preLoaderRoute: typeof ScanBulkRouteImport
       parentRoute: typeof ScanRoute
+    }
+    '/login/$': {
+      id: '/login/$'
+      path: '/login/$'
+      fullPath: '/login/$'
+      preLoaderRoute: typeof LoginSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/stock/$id/qr': {
       id: '/stock/$id/qr'
@@ -378,10 +398,11 @@ const StockRouteWithChildren = StockRoute._addFileChildren(StockRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityRoute: ActivityRoute,
+  HomeRoute: HomeRoute,
   OnboardingRoute: OnboardingRoute,
   ScanRoute: ScanRouteWithChildren,
   StockRoute: StockRouteWithChildren,
-  SignInSplatRoute: SignInSplatRoute,
+  LoginSplatRoute: LoginSplatRoute,
   SignUpSplatRoute: SignUpSplatRoute,
   ApiImagesSplatRoute: ApiImagesSplatRoute,
 }

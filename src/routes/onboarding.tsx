@@ -10,7 +10,7 @@ const loadOnboarding = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { orgId } = await auth()
     if (orgId) {
-      throw redirect({ to: "/" })
+      throw redirect({ to: "/home" })
     }
     return { userId: context.userId }
   })
@@ -37,8 +37,8 @@ function OnboardingRoute() {
           <OrganizationList
             hidePersonal
             skipInvitationScreen
-            afterSelectOrganizationUrl="/"
-            afterCreateOrganizationUrl="/"
+            afterSelectOrganizationUrl="/home"
+            afterCreateOrganizationUrl="/home"
           />
         </CardContent>
       </Card>

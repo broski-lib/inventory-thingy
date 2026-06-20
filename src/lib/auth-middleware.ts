@@ -14,7 +14,7 @@ export type AuthOnlyContext = {
 /**
  * Function middleware for server fns that require an authenticated user
  * with an active organization. Resolves `auth()` once per request,
- * redirects unauthenticated callers to `/` and org-less users to
+ * redirects unauthenticated callers to `/login` and org-less users to
  * `/onboarding`, and exposes `{ userId, orgId }` on the handler context.
  */
 export const authRequiredMiddleware = createMiddleware({
@@ -22,7 +22,7 @@ export const authRequiredMiddleware = createMiddleware({
 }).server(async ({ next }) => {
   const { isAuthenticated, userId, orgId } = await auth()
   if (!isAuthenticated || !userId) {
-    throw redirect({ to: "/" })
+    throw redirect({ to: "/login/$" })
   }
   if (!orgId) {
     throw redirect({ to: "/onboarding" })
@@ -41,7 +41,7 @@ export const authOnlyMiddleware = createMiddleware({ type: "function" }).server(
   async ({ next }) => {
     const { isAuthenticated, userId } = await auth()
     if (!isAuthenticated || !userId) {
-      throw redirect({ to: "/" })
+      throw redirect({ to: "/login/$" })
     }
     return next({
       context: { userId } satisfies AuthOnlyContext,
