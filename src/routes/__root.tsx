@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import { ClerkProvider } from "@clerk/tanstack-react-start"
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
 
@@ -33,7 +34,7 @@ export const Route = createRootRoute({
   shellComponent: RootDocument,
 })
 
-function RootDocument({ children }: { children: React.ReactNode }) {
+function RootDocument({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>

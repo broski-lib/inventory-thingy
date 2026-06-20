@@ -1,4 +1,9 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router"
+import {
+  createFileRoute,
+  useNavigate,
+  useRouter,
+  Link,
+} from "@tanstack/react-router"
 import { useEffect, useMemo, useRef, useState } from "react"
 import QRCode from "qrcode"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -37,6 +42,8 @@ import { Pagination } from "@/components/Pagination"
 import { usePageSize } from "@/hooks/use-page-size"
 import { cn } from "@/lib/utils"
 import { parsePage } from "@/lib/pagination"
+import { bulkPrintSheet, openPrintWindow } from "@/lib/print-sheet"
+import { pluralize } from "@/lib/format"
 
 const PAGE_SIZE_STORAGE_KEY = "stock:pageSize"
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const
@@ -81,14 +88,16 @@ type BulkPanel = "status" | "location" | "print" | "delete" | null
 
 function StockRoute() {
   const navigate = useNavigate()
+  const router = useRouter()
   const data = Route.useLoaderData()
   const search = Route.useSearch()
   const page = search.page ?? 1
   const q = search.q ?? ""
 
-  const [pageSize, setPageSize, syncPageSizeFromUrl] = usePageSize(
+  const [pageSize, setPageSize] = usePageSize(
     PAGE_SIZE_STORAGE_KEY,
-    DEFAULT_PAGE_SIZE
+    DEFAULT_PAGE_SIZE,
+    search.ps
   )
   const [searchInput, setSearchInput] = useState(q)
   const [statusFilter, setStatusFilter] = useState<StockStatusFilter>("All")
@@ -102,18 +111,6 @@ function StockRoute() {
   const [bulkStatus, setBulkStatus] = useState<ItemStatus>("Available")
   const [bulkLocation, setBulkLocation] = useState("")
   const [bulkMessage, setBulkMessage] = useState<string | null>(null)
-
-  useEffect(() => {
-    syncPageSizeFromUrl(search.ps)
-  }, [search.ps, syncPageSizeFromUrl])
-
-  useEffect(() => {
-    return () => {
-      setSelectionMode(false)
-      setSelectedIds(new Set())
-      setBulkPanel(null)
-    }
-  }, [])
 
   useEffect(() => {
     setSearchInput(q)
@@ -221,13 +218,7 @@ function StockRoute() {
     setBulkPanel(null)
   }
 
-  const refreshData = () => {
-    navigate({
-      to: "/stock",
-      search: { q: q || undefined, page, ps: search.ps },
-      replace: true,
-    })
-  }
+  const refreshData = () => router.invalidate()
 
   /**
    * Close the active panel and show a transient confirmation.
@@ -248,7 +239,7 @@ function StockRoute() {
       setSelectedIds(new Set())
       setBulkPanel(null)
       finishAction(
-        `Deleted ${selectedArray.length} item${selectedArray.length === 1 ? "" : "s"}`
+        `Deleted ${selectedArray.length} ${pluralize(selectedArray.length, "item")}`
       )
     } catch (err) {
       setBulkMessage(err instanceof Error ? err.message : "Bulk delete failed")
@@ -265,7 +256,7 @@ function StockRoute() {
         data: { ids: selectedArray, status: bulkStatus },
       })
       finishAction(
-        `Updated ${result.updated} item${result.updated === 1 ? "" : "s"} to ${bulkStatus}`
+        `Updated ${result.updated} ${pluralize(result.updated, "item")} to ${bulkStatus}`
       )
     } catch (err) {
       setBulkMessage(err instanceof Error ? err.message : "Bulk update failed")
@@ -284,7 +275,7 @@ function StockRoute() {
       })
       setBulkLocation("")
       finishAction(
-        `Moved ${result.updated} item${result.updated === 1 ? "" : "s"} to ${location}`
+        `Moved ${result.updated} ${pluralize(result.updated, "item")} to ${location}`
       )
     } catch (err) {
       setBulkMessage(err instanceof Error ? err.message : "Bulk update failed")
@@ -309,15 +300,16 @@ function StockRoute() {
           }),
         }))
       )
-      const w = window.open("", "_blank", "width=820,height=1000")
+      const w = openPrintWindow(
+        bulkPrintSheet(encoded),
+        "width=820,height=1000"
+      )
       if (!w) {
         setBulkMessage("Pop-up blocked. Allow pop-ups to print QR codes.")
         return
       }
-      w.document.write(PRINT_HTML(encoded))
-      w.document.close()
       finishAction(
-        `Print sheet opened for ${targets.length} item${targets.length === 1 ? "" : "s"}`
+        `Print sheet opened for ${targets.length} ${pluralize(targets.length, "item")}`
       )
     } catch (err) {
       setBulkMessage(err instanceof Error ? err.message : "Print failed")
@@ -326,16 +318,19 @@ function StockRoute() {
     }
   }
 
-  const filteredItems =
-    statusFilter === "All"
-      ? data.items
-      : data.items.filter((it) => {
-          if (statusFilter === "Available")
-            return it.status === "Available" || it.status === "In Storage"
-          if (statusFilter === "Staged")
-            return it.status === "Staged" || it.status === "Reserved"
-          return it.status === statusFilter
-        })
+  const filteredItems = useMemo(
+    () =>
+      statusFilter === "All"
+        ? data.items
+        : data.items.filter((it) => {
+            if (statusFilter === "Available")
+              return it.status === "Available" || it.status === "In Storage"
+            if (statusFilter === "Staged")
+              return it.status === "Staged" || it.status === "Reserved"
+            return it.status === statusFilter
+          }),
+    [data.items, statusFilter]
+  )
 
   const selectedCount = selectedIds.size
   const pageSizeForPagination = search.ps ?? DEFAULT_PAGE_SIZE
@@ -450,7 +445,7 @@ function StockRoute() {
               <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                 {data.total === 0
                   ? "Showing 0 items"
-                  : `Showing ${data.total} ${data.total === 1 ? "item" : "items"}`}
+                  : `Showing ${data.total} ${pluralize(data.total, "item")}`}
               </p>
               <label className="flex items-center gap-2 text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                 <span>Per page</span>
@@ -523,7 +518,7 @@ function StockRoute() {
           )}
         </div>
       </section>
-      <BottomNav active="stock" />
+      <BottomNav />
 
       {selectionMode && (
         <BulkActionBar
@@ -801,62 +796,4 @@ function ActionIcon({
       )}
     </button>
   )
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;")
-}
-
-type PrintableQR = { name: string; qrCode: string; dataUrl: string }
-
-function PRINT_HTML(items: PrintableQR[]) {
-  return `<!doctype html>
-<html>
-<head>
-  <title>QR Tag Sheet (${items.length})</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #000; background: #fff; padding: 12px; }
-    h1 { font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 10px; text-align: center; }
-    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    .cell { border: 1px dashed #000; padding: 8px; text-align: center; break-inside: avoid; page-break-inside: avoid; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-    .cell img { width: 100%; max-width: 140px; height: auto; aspect-ratio: 1 / 1; }
-    .name { font-size: 9px; font-weight: 700; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .code { font-size: 8px; letter-spacing: 0.04em; color: #444; font-family: ui-monospace, monospace; }
-    .meta { font-size: 8px; color: #666; margin-top: 2px; }
-    @page { size: letter; margin: 0.4in; }
-    @media print {
-      body { padding: 0; }
-      .no-print { display: none; }
-    }
-  </style>
-</head>
-<body>
-  <h1>QR Tag Sheet — ${items.length} item${items.length === 1 ? "" : "s"}</h1>
-  <div class="grid">
-    ${items
-      .map(
-        (item) => `
-      <div class="cell">
-        <img src="${item.dataUrl}" alt="QR for ${escapeHtml(item.qrCode)}" />
-        <div class="name">${escapeHtml(item.name)}</div>
-        <div class="code">${escapeHtml(item.qrCode)}</div>
-      </div>
-    `
-      )
-      .join("")}
-  </div>
-  <script>
-    window.onload = function () {
-      setTimeout(function () { window.print(); }, 200);
-      window.onafterprint = function () { window.close(); };
-    };
-  </script>
-</body>
-</html>`
 }

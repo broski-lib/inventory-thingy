@@ -1,4 +1,5 @@
-import * as React from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import type { FormEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -60,13 +61,13 @@ export function ItemForm({
   submitLabel,
   hideQrCode = false,
 }: ItemFormProps) {
-  const [values, setValues] = React.useState<ItemFormValues>(initial)
-  const [imageKeyRemoved, setImageKeyRemoved] = React.useState(false)
-  const [error, setError] = React.useState<string | null>(null)
-  const initialRef = React.useRef(initial)
+  const [values, setValues] = useState<ItemFormValues>(initial)
+  const [imageKeyRemoved, setImageKeyRemoved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const initialRef = useRef(initial)
   const photo = useItemPhoto({ onError: setError })
 
-  const isDirty = React.useMemo(() => {
+  const isDirty = useMemo(() => {
     if (imageKeyRemoved) return true
     if (photo.pendingImage) return true
     const init = initialRef.current
@@ -80,7 +81,7 @@ export function ItemForm({
     )
   }, [values, imageKeyRemoved, photo.pendingImage])
 
-  React.useEffect(() => {
+  useEffect(() => {
     onDirtyChange?.(isDirty)
   }, [isDirty, onDirtyChange])
 
@@ -104,7 +105,7 @@ export function ItemForm({
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!values.name.trim() || !values.location.trim()) {
       setError("Name and Location are required.")

@@ -46,8 +46,10 @@ export async function resolveActor(
       email.split("@")[0] ||
       "Unknown user"
     return { userId, userName: name, userEmail: email }
-  } catch (err) {
-    console.error("Failed to resolve actor from Clerk:", err)
+  } catch {
+    // Clerk lookup can fail (deleted user, downstream outage). The
+    // activity log is best-effort — we still want to record the
+    // event under the original userId rather than swallow it.
     return { userId, userName: "Unknown user", userEmail: "" }
   }
 }

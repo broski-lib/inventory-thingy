@@ -21,7 +21,8 @@ function ItemQRPage() {
   return (
     <PageChrome
       title={item.name}
-      backTo="/stock"
+      backTo="/stock/$id/edit"
+      backToParams={{ id: item.id }}
       subtitle={<span className="font-mono tracking-wider">{item.qrCode}</span>}
       aside={
         <Link
@@ -37,7 +38,7 @@ function ItemQRPage() {
         </Link>
       }
     >
-      <QRTag qrCode={item.qrCode} itemName={item.name} itemId={item.id} />
+      <QRTag qrCode={item.qrCode} itemName={item.name} />
     </PageChrome>
   )
 }

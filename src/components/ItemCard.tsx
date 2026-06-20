@@ -26,7 +26,7 @@ export function getStatusBadgeVariant(status: ItemStatus): BadgeVariant {
 
 type ItemCardProps = {
   item: InventoryItem
-  onEdit: (item: InventoryItem) => void
+  onEdit: () => void
   size?: "sm" | "md"
 }
 
@@ -38,7 +38,7 @@ export function ItemCard({ item, onEdit, size = "md" }: ItemCardProps) {
   const dim = size === "sm" ? "size-12" : "size-14"
   return (
     <article
-      onClick={() => onEdit(item)}
+      onClick={onEdit}
       className="relative flex cursor-pointer gap-3 rounded-xl border border-border bg-card p-3 shadow-xs transition-all hover:border-primary"
     >
       <div

@@ -1,11 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
-import { and, eq, sql } from "drizzle-orm"
 import { useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Camera01Icon, DeliveryTruck01Icon } from "@hugeicons/core-free-icons"
-import { getDb } from "@/lib/db"
-import { items } from "@/lib/schema"
+import { getRecentActivity } from "@/lib/activity"
+import { getStats } from "@/lib/inventory"
 import { authRequiredMiddleware } from "@/lib/auth-middleware"
 import type { ActivityLog } from "@/lib/activity"
 import { AppHeader } from "@/components/AppHeader"
@@ -15,35 +14,16 @@ import { SearchInput } from "@/components/SearchInput"
 import { Card, CardContent } from "@/components/ui/card"
 import type { ItemStatus } from "@/lib/item-status"
 
+const HOME_ACTIVITY_LIMIT = 3
+
 const loadHome = createServerFn({ method: "GET" })
   .middleware([authRequiredMiddleware])
-  .handler(async ({ context }) => {
-    const { orgId } = context
-    const db = getDb()
-
-    const statusCounts = await db
-      .select({ status: items.status, count: sql<number>`count(*)::int` })
-      .from(items)
-      .where(eq(items.orgId, orgId))
-      .groupBy(items.status)
-
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const movesTodayResult = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(items)
-      .where(and(eq(items.orgId, orgId), sql`${items.updatedAt} >= ${today}`))
-
-    const total = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(items)
-      .where(eq(items.orgId, orgId))
-    const totalCount = total[0]?.count ?? 0
-
-    return {
-      totalCount,
-      stats: { statusCounts, movesToday: movesTodayResult[0]?.count || 0 },
-    }
+  .handler(async () => {
+    const [stats, recent] = await Promise.all([
+      getStats(),
+      getRecentActivity({ data: HOME_ACTIVITY_LIMIT }),
+    ])
+    return { stats, recent }
   })
 
 export const Route = createFileRoute("/home")({
@@ -52,7 +32,7 @@ export const Route = createFileRoute("/home")({
 })
 
 function HomeRoute() {
-  const data = Route.useLoaderData()
+  const { stats, recent } = Route.useLoaderData()
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState("")
 
@@ -66,7 +46,6 @@ function HomeRoute() {
     })
   }
 
-  const { stats } = data
   const getCount = (statuses: readonly ItemStatus[]) =>
     stats.statusCounts
       .filter((sc: { status: string; count: number }) =>
@@ -160,13 +139,16 @@ function HomeRoute() {
             </div>
             <Card>
               <CardContent>
-                <HomeActivity onItemClick={handleActivityItemClick} />
+                <HomeActivity
+                  onItemClick={handleActivityItemClick}
+                  logs={recent}
+                />
               </CardContent>
             </Card>
           </section>
         </div>
       </section>
-      <BottomNav active="home" />
+      <BottomNav />
     </main>
   )
 }

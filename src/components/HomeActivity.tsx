@@ -1,53 +1,22 @@
-import { useEffect, useState } from "react"
 import { ActivityList } from "@/components/ActivityLog"
-import { Skeleton } from "@/components/ItemCardSkeleton"
-import { getRecentActivity } from "@/lib/activity"
+import { Skeleton } from "@/components/ui/skeleton"
 import type { ActivityLog } from "@/lib/activity"
 
 const HOME_ACTIVITY_LIMIT = 3
 
 type HomeActivityProps = {
   onItemClick: (log: ActivityLog) => void
+  logs: ActivityLog[] | null
 }
 
-export function HomeActivity({ onItemClick }: HomeActivityProps) {
-  const [state, setState] = useState<{
-    logs: ActivityLog[]
-    error: string | null
-  } | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    getRecentActivity({ data: HOME_ACTIVITY_LIMIT })
-      .then((logs) => {
-        if (cancelled) return
-        setState({ logs, error: null })
-      })
-      .catch((err) => {
-        if (cancelled) return
-        setState({
-          logs: [],
-          error: err instanceof Error ? err.message : "Failed to load activity",
-        })
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  if (!state) {
+export function HomeActivity({ onItemClick, logs }: HomeActivityProps) {
+  if (logs === null) {
     return <HomeActivitySkeleton />
-  }
-
-  if (state.error) {
-    return (
-      <p className="py-2 text-center text-xs text-destructive">{state.error}</p>
-    )
   }
 
   return (
     <ActivityList
-      logs={state.logs}
+      logs={logs}
       onItemClick={onItemClick}
       emptyMessage="No activity yet. Add or update an item to see it here."
     />

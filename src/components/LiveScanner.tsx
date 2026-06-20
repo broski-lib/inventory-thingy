@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Html5Qrcode } from "html5-qrcode"
+import { Html5Qrcode, Html5QrcodeScannerState } from "html5-qrcode"
 import type { QrcodeErrorCallback, QrcodeSuccessCallback } from "html5-qrcode"
 
 type LiveScannerProps = {
@@ -20,6 +20,7 @@ export type LiveScannerStatus =
   | "stopped"
 
 const ELEMENT_ID = "live-qr-reader"
+const DEBOUNCE_MS = 1200
 
 export function LiveScanner({
   active,
@@ -47,6 +48,10 @@ export function LiveScanner({
     [onStatusChange]
   )
 
+  // The start effect owns the Html5Qrcode instance for its entire
+  // lifetime. The pause/resume effect reads from the ref once the
+  // instance is ready, so toggling paused before the camera is
+  // initialized is a safe no-op.
   useEffect(() => {
     if (!active) return
 
@@ -64,16 +69,16 @@ export function LiveScanner({
         try {
           await onDetectedRef.current(decodedText)
         } finally {
-          // Small debounce so the same code isn't re-decoded instantly
+          // Small debounce so the same code isn't re-decoded instantly.
           setTimeout(() => {
             busyRef.current = false
-          }, 1200)
+          }, DEBOUNCE_MS)
         }
       })()
     }
 
     const onFailure: QrcodeErrorCallback = () => {
-      // No-op: html5-qrcode fires this for every frame without a code
+      // No-op: html5-qrcode fires this for every frame without a code.
     }
 
     scanner
@@ -109,22 +114,22 @@ export function LiveScanner({
     return () => {
       cancelled = true
       busyRef.current = false
-      const ref = scannerRef.current
       scannerRef.current = null
-      if (ref) {
+      try {
+        const state = scanner.getState()
+        if (
+          state === Html5QrcodeScannerState.SCANNING ||
+          state === Html5QrcodeScannerState.PAUSED
+        ) {
+          void scanner.stop().catch(() => {})
+        } else {
+          scanner.clear()
+        }
+      } catch {
         try {
-          const state = ref.getState()
-          if (state === 2 /* SCANNING */ || state === 3 /* PAUSED */) {
-            void ref.stop().catch(() => {})
-          } else {
-            ref.clear()
-          }
+          scanner.clear()
         } catch {
-          try {
-            ref.clear()
-          } catch {
-            /* noop */
-          }
+          /* noop */
         }
       }
       updateStatus("stopped")

@@ -1,16 +1,4 @@
-import { cn } from "@/lib/utils"
-
-type SkeletonProps = React.ComponentProps<"div">
-
-export function Skeleton({ className, ...props }: SkeletonProps) {
-  return (
-    <div
-      data-slot="skeleton"
-      className={cn("animate-pulse rounded-md bg-muted", className)}
-      {...props}
-    />
-  )
-}
+import { Skeleton } from "@/components/ui/skeleton"
 
 export function ItemCardSkeleton() {
   return (

@@ -1,4 +1,5 @@
-import * as React from "react"
+import { useCallback, useEffect } from "react"
+import type { MutableRefObject, ReactNode } from "react"
 import { useNavigate, useBlocker } from "@tanstack/react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons"
@@ -7,6 +8,9 @@ import { useEdgeSwipe } from "@/hooks/use-edge-swipe"
 type PageChromeProps = {
   title: string
   backTo: string
+  /** Path params for `backTo` when the target is a dynamic route
+   *  (e.g. `/stock/$id/edit` needs `{ id }`). */
+  backToParams?: Record<string, string>
   /** When true, navigation away from this page triggers a confirm dialog
    *  and the browser beforeunload prompt. */
   dirty?: boolean
@@ -17,15 +21,15 @@ type PageChromeProps = {
    * instead of state so the value is updated synchronously before
    * the parent calls `navigate(...)`.
    */
-  submittingRef?: React.MutableRefObject<boolean>
+  submittingRef?: MutableRefObject<boolean>
   /** Optional content rendered below the title (e.g. QR code + status).
    *  Use for context that disambiguates which entity this page is for. */
-  subtitle?: React.ReactNode
+  subtitle?: ReactNode
   /** Optional content rendered on the right side of the header
    *  (e.g. an Edit link, status badge). Kept distinct from subtitle so
    *  the title row stays semantically clear. */
-  aside?: React.ReactNode
-  children: React.ReactNode
+  aside?: ReactNode
+  children: ReactNode
 }
 
 /**
@@ -40,6 +44,7 @@ type PageChromeProps = {
 export function PageChrome({
   title,
   backTo,
+  backToParams,
   dirty = false,
   submittingRef,
   subtitle,
@@ -64,7 +69,7 @@ export function PageChrome({
   // Browser tab close / refresh guard. The beforeunload prompt is
   // browser-native and can't be styled, but it prevents accidental
   // data loss.
-  React.useEffect(() => {
+  useEffect(() => {
     if (!dirty) return
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault()
@@ -74,9 +79,14 @@ export function PageChrome({
     return () => window.removeEventListener("beforeunload", handler)
   }, [dirty])
 
-  const handleBack = React.useCallback(() => {
-    navigate({ to: backTo })
-  }, [navigate, backTo])
+  const handleBack = useCallback(() => {
+    // `backTo` is a runtime string supplied by the caller, so the
+    // strongly-typed `to` literal from `useNavigate` doesn't narrow
+    // to a single route. The cast is the documented escape hatch for
+    // dynamic-routing components that don't know their target at
+    // definition time.
+    navigate({ to: backTo, params: backToParams } as never)
+  }, [navigate, backTo, backToParams])
 
   // Edge-swipe back: swipe right from the left edge, or swipe left
   // from the right edge, to go back. Reachable by either thumb.

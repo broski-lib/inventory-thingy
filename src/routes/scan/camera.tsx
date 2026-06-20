@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { Html5Qrcode } from "html5-qrcode"
-import { useRef, useState } from "react"
+import { useId, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Image01Icon, KeyboardIcon } from "@hugeicons/core-free-icons"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -24,6 +24,7 @@ function ScanCameraPage() {
   const [fileBusy, setFileBusy] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const lastDetectedRef = useRef<{ code: string; at: number } | null>(null)
+  const fileRegionId = useId()
 
   const submitCode = (code: string) => {
     const trimmed = code.trim()
@@ -31,7 +32,7 @@ function ScanCameraPage() {
     navigate({
       to: "/scan",
       search: { code: trimmed },
-      replace: true,
+      replace: false,
     })
   }
 
@@ -50,10 +51,14 @@ function ScanCameraPage() {
   }
 
   const handleFile = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setFileError("Please choose an image file.")
+      return
+    }
     setFileBusy(true)
     setFileError(null)
+    const scanner = new Html5Qrcode(fileRegionId, /* verbose */ false)
     try {
-      const scanner = new Html5Qrcode("scan-camera-file-region")
       const decoded = await scanner.scanFile(file, true)
       submitCode(decoded)
     } catch {
@@ -62,6 +67,11 @@ function ScanCameraPage() {
       )
     } finally {
       setFileBusy(false)
+      try {
+        await scanner.clear()
+      } catch {
+        /* already cleared */
+      }
     }
   }
 
@@ -153,7 +163,6 @@ function ScanCameraPage() {
 
         <input
           ref={fileInputRef}
-          id="scan-camera-file-input"
           type="file"
           accept="image/*"
           capture="environment"
@@ -165,7 +174,7 @@ function ScanCameraPage() {
           }}
         />
 
-        <div id="scan-camera-file-region" className="hidden" />
+        <div id={fileRegionId} className="hidden" />
 
         {fileError && (
           <p className="text-center text-xs text-destructive">{fileError}</p>

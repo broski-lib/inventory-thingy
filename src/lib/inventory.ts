@@ -311,6 +311,8 @@ export const updateItem = createServerFn({ method: "POST" })
       .limit(1)
     if (currentRows.length === 0) throw new Error("Item not found")
     const current = currentRows[0]
+    // Drizzle types `limit(1)` as `T[]` not `[T]`, so we need a single
+    // narrowing above. `current` is always defined here.
 
     const patch: Partial<typeof items.$inferInsert> = {
       qrCode: item.qrCode,
@@ -347,7 +349,6 @@ export const updateItem = createServerFn({ method: "POST" })
       imageUrl: nextImageUrl,
       updatedAt: new Date(),
     }
-    delete (updateData as { orgId?: unknown }).orgId
 
     if (item.status) {
       if (item.status !== "In Storage" && item.status !== "Available") {
@@ -453,9 +454,9 @@ export const getItemById = createServerFn({ method: "GET" })
 
 /**
  * Fetch a single item + its full activity log in one round-trip.
- * Both queries run in parallel inside the handler. Throws if the
- * item is not found in the org (callers should use getItemById first
- * to validate the item exists).
+ * Both queries run in parallel inside the handler. Returns null if
+ * the item is not found in the org (callers should use `notFound()`
+ * to surface a 404).
  */
 export const getItemWithHistory = createServerFn({ method: "GET" })
   .middleware([authRequiredMiddleware])
@@ -464,7 +465,10 @@ export const getItemWithHistory = createServerFn({ method: "GET" })
     async ({
       data: id,
       context,
-    }): Promise<{ item: typeof items.$inferSelect; logs: ActivityLog[] }> => {
+    }): Promise<{
+      item: typeof items.$inferSelect
+      logs: ActivityLog[]
+    } | null> => {
       const { orgId } = context
       const db = getDb()
       const [itemRows, logs] = await Promise.all([
@@ -482,14 +486,8 @@ export const getItemWithHistory = createServerFn({ method: "GET" })
           .orderBy(desc(activityLogs.createdAt))
           .limit(50),
       ])
-      const item = itemRows[0]
-      // Drizzle's types claim itemRows[0] is T, but at runtime it's
-      // undefined when the row doesn't exist. The throw guards against
-      // a silent undefined leak; the type assertion is a Drizzle quirk.
-      if (itemRows.length === 0) {
-        throw new Error("Item not found")
-      }
-      return { item, logs }
+      if (itemRows.length === 0) return null
+      return { item: itemRows[0], logs }
     }
   )
 
@@ -518,8 +516,10 @@ export const bulkDeleteItems = createServerFn({ method: "POST" })
 
     await Promise.all(
       toDelete
-        .filter((row) => row.imageKey)
-        .map((row) => deleteItemImage(orgId, row.imageKey!))
+        .map((row) =>
+          row.imageKey ? deleteItemImage(orgId, row.imageKey) : null
+        )
+        .filter((p): p is Promise<void> => p !== null)
     )
 
     const actor = { ...(await resolveActor(userId)), orgId }

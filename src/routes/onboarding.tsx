@@ -1,22 +1,12 @@
-import { createFileRoute, redirect } from "@tanstack/react-router"
-import { createServerFn } from "@tanstack/react-start"
-import { auth } from "@clerk/tanstack-react-start/server"
+import { createFileRoute } from "@tanstack/react-router"
 import { OrganizationList } from "@clerk/tanstack-react-start"
 import { Card, CardContent } from "@/components/ui/card"
-import { authOnlyMiddleware } from "@/lib/auth-middleware"
-
-const loadOnboarding = createServerFn({ method: "GET" })
-  .middleware([authOnlyMiddleware])
-  .handler(async ({ context }) => {
-    const { orgId } = await auth()
-    if (orgId) {
-      throw redirect({ to: "/home" })
-    }
-    return { userId: context.userId }
-  })
+import { requireAuthedNoOrg } from "@/lib/auth-middleware"
 
 export const Route = createFileRoute("/onboarding")({
-  beforeLoad: async () => loadOnboarding(),
+  server: {
+    middleware: [requireAuthedNoOrg],
+  },
   component: OnboardingRoute,
 })
 

@@ -2,6 +2,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft01Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { pluralize } from "@/lib/format"
 
 type PaginationProps = {
   page: number
@@ -28,7 +29,7 @@ export function Pagination({
           className
         )}
       >
-        {total} {total === 1 ? "item" : "items"}
+        {total} {pluralize(total, "item")}
       </div>
     )
   }

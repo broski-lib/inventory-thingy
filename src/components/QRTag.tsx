@@ -4,14 +4,14 @@ import { Button } from "@/components/ui/button"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { QrCodeIcon } from "@hugeicons/core-free-icons"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { openPrintWindow, singleTagSheet } from "@/lib/print-sheet"
 
 type QRTagProps = {
   qrCode: string
   itemName: string
-  itemId: string
 }
 
-export function QRTag({ qrCode, itemName, itemId }: QRTagProps) {
+export function QRTag({ qrCode, itemName }: QRTagProps) {
   const [dataUrl, setDataUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -21,9 +21,11 @@ export function QRTag({ qrCode, itemName, itemId }: QRTagProps) {
       .then((url) => {
         if (!cancelled) setDataUrl(url)
       })
-      .catch((err) => {
-        console.error("QR generation failed:", err)
-        if (!cancelled) setError("Failed to generate QR code")
+      .catch((err: unknown) => {
+        if (cancelled) return
+        setError(
+          err instanceof Error ? err.message : "Failed to generate QR code"
+        )
       })
     return () => {
       cancelled = true
@@ -42,10 +44,10 @@ export function QRTag({ qrCode, itemName, itemId }: QRTagProps) {
 
   const handlePrint = () => {
     if (!dataUrl) return
-    const w = window.open("", "_blank", "width=240,height=320")
-    if (!w) return
-    w.document.write(PRINT_HTML(qrCode, dataUrl, itemName, itemId))
-    w.document.close()
+    openPrintWindow(
+      singleTagSheet({ qrCode, dataUrl, itemName }),
+      "width=240,height=320"
+    )
   }
 
   const loading = !dataUrl && !error
@@ -109,46 +111,4 @@ export function QRTag({ qrCode, itemName, itemId }: QRTagProps) {
       </div>
     </div>
   )
-}
-
-function PRINT_HTML(
-  qrCode: string,
-  dataUrl: string,
-  itemName: string,
-  _itemId: string
-) {
-  return `<!doctype html>
-<html>
-<head>
-  <title>QR Tag - ${escapeHtml(qrCode)}</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { display: flex; flex-direction: column; align-items: center; padding: 12px; font-family: ui-monospace, monospace; font-size: 11px; color: oklch(0.185 0.005 150); }
-    img { width: 75px; height: 75px; display: block; }
-    .name { margin-top: 6px; font-weight: 600; max-width: 200px; text-align: center; }
-    .code { margin-top: 2px; font-size: 10px; color: oklch(0.503 0.014 130); }
-    @page { margin: 0; size: auto; }
-  </style>
-</head>
-<body>
-  <img src="${dataUrl}" alt="QR for ${escapeHtml(qrCode)}" />
-  <p class="name">${escapeHtml(itemName)}</p>
-  <p class="code">${escapeHtml(qrCode)}</p>
-  <script>
-    window.onload = function () {
-      window.print()
-      window.onafterprint = function () { window.close() }
-    }
-  </script>
-</body>
-</html>`
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;")
 }

@@ -1,7 +1,7 @@
 import { createFileRoute, notFound, Link } from "@tanstack/react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { EditIcon, QrCodeIcon } from "@hugeicons/core-free-icons"
-import { getItemById } from "@/lib/inventory"
+import { getItemWithHistory } from "@/lib/inventory"
 import { ItemHistory } from "@/components/ItemHistory"
 import { PageChrome } from "@/components/PageChrome"
 import { buttonVariants } from "@/components/ui/button"
@@ -9,15 +9,15 @@ import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/stock/$id/history")({
   loader: async ({ params }) => {
-    const item = await getItemById({ data: params.id })
-    if (!item) throw notFound()
-    return { item }
+    const result = await getItemWithHistory({ data: params.id })
+    if (!result) throw notFound()
+    return result
   },
   component: ItemHistoryPage,
 })
 
 function ItemHistoryPage() {
-  const { item } = Route.useLoaderData()
+  const { item, logs } = Route.useLoaderData()
   return (
     <PageChrome
       title={item.name}
@@ -50,7 +50,7 @@ function ItemHistoryPage() {
         </div>
       }
     >
-      <ItemHistory itemId={item.id} />
+      <ItemHistory itemId={item.id} initialLogs={logs} />
     </PageChrome>
   )
 }

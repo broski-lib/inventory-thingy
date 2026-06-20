@@ -32,11 +32,19 @@ export function useEdgeSwipe({
   threshold = 80,
   ignoreInteractive = true,
 }: EdgeSwipeOptions) {
+  // Stash all config in refs so the touch listeners can be added
+  // once and never re-bound for prop changes.
   const onSwipeRef = useRef(onSwipe)
+  const edgeWidthRef = useRef(edgeWidth)
+  const thresholdRef = useRef(threshold)
+  const ignoreInteractiveRef = useRef(ignoreInteractive)
 
   useEffect(() => {
     onSwipeRef.current = onSwipe
-  }, [onSwipe])
+    edgeWidthRef.current = edgeWidth
+    thresholdRef.current = threshold
+    ignoreInteractiveRef.current = ignoreInteractive
+  }, [onSwipe, edgeWidth, threshold, ignoreInteractive])
 
   useEffect(() => {
     let startX = 0
@@ -56,9 +64,9 @@ export function useEdgeSwipe({
       if (e.touches.length !== 1) return
       const touch = e.touches[0]
       const w = window.innerWidth
-      if (ignoreInteractive && isInteractive(e.target)) return
-      if (touch.clientX <= edgeWidth) startEdge = "left"
-      else if (touch.clientX >= w - edgeWidth) startEdge = "right"
+      if (ignoreInteractiveRef.current && isInteractive(e.target)) return
+      if (touch.clientX <= edgeWidthRef.current) startEdge = "left"
+      else if (touch.clientX >= w - edgeWidthRef.current) startEdge = "right"
       else return
       startX = touch.clientX
       startY = touch.clientY
@@ -87,7 +95,8 @@ export function useEdgeSwipe({
       const edge = startEdge
       startEdge = null
       // Direction must be inward and large enough.
-      const inward = edge === "left" ? dx > threshold : -dx > threshold
+      const inward =
+        edge === "left" ? dx > thresholdRef.current : -dx > thresholdRef.current
       if (!inward || dy > 60) return
       onSwipeRef.current()
     }
@@ -102,5 +111,5 @@ export function useEdgeSwipe({
       window.removeEventListener("touchend", onTouchEnd)
       window.removeEventListener("touchcancel", onTouchEnd)
     }
-  }, [edgeWidth, threshold, ignoreInteractive])
+  }, [])
 }

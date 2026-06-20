@@ -1,4 +1,5 @@
-import * as React from "react"
+import { useEffect, useRef } from "react"
+import type { ComponentProps, TouchEvent } from "react"
 import { Dialog as DrawerPrimitive } from "@base-ui/react/dialog"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Cancel01Icon } from "@hugeicons/core-free-icons"
@@ -58,22 +59,22 @@ function DrawerContent({
   dismissThreshold = 100,
   ...props
 }: DrawerContentProps) {
-  const contentRef = React.useRef<HTMLDivElement | null>(null)
-  const dragStartY = React.useRef<number | null>(null)
-  const lastDelta = React.useRef(0)
+  const contentRef = useRef<HTMLDivElement | null>(null)
+  const dragStartY = useRef<number | null>(null)
+  const lastDelta = useRef(0)
 
   // Refs that mirror props so the touch handlers always see the latest
   // values without re-binding (which would break an in-flight drag).
-  const onCloseRef = React.useRef(onClose)
-  const thresholdRef = React.useRef(dismissThreshold)
-  React.useEffect(() => {
+  const onCloseRef = useRef(onClose)
+  const thresholdRef = useRef(dismissThreshold)
+  useEffect(() => {
     onCloseRef.current = onClose
   }, [onClose])
-  React.useEffect(() => {
+  useEffect(() => {
     thresholdRef.current = dismissThreshold
   }, [dismissThreshold])
 
-  const handleDragHandleTouchStart = (e: React.TouchEvent) => {
+  const handleDragHandleTouchStart = (e: TouchEvent) => {
     if (!contentRef.current) return
     // Allow the user to start a drag from the handle OR any descendant of
     // the drawer header. We only block when the touch originates on a
@@ -94,7 +95,7 @@ function DrawerContent({
     contentRef.current.style.touchAction = "none"
   }
 
-  const handleTouchMove = (e: React.TouchEvent) => {
+  const handleTouchMove = (e: TouchEvent) => {
     const startY = dragStartY.current
     if (startY === null || !contentRef.current) return
     const delta = e.touches[0].clientY - startY
@@ -178,7 +179,7 @@ function DrawerContent({
   )
 }
 
-function DrawerHeader({ className, ...props }: React.ComponentProps<"div">) {
+function DrawerHeader({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
       data-slot="drawer-header"
@@ -192,7 +193,7 @@ function DrawerHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function DrawerBody({ className, ...props }: React.ComponentProps<"div">) {
+function DrawerBody({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
       data-slot="drawer-body"
@@ -205,7 +206,7 @@ function DrawerBody({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function DrawerFooter({ className, ...props }: React.ComponentProps<"div">) {
+function DrawerFooter({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
       data-slot="drawer-footer"

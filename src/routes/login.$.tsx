@@ -1,19 +1,11 @@
 import { SignIn } from "@clerk/tanstack-react-start"
-import { createFileRoute, redirect } from "@tanstack/react-router"
-import { createServerFn } from "@tanstack/react-start"
-import { auth } from "@clerk/tanstack-react-start/server"
-
-const loadLogin = createServerFn({ method: "GET" }).handler(async () => {
-  // If the user is already signed in, don't show the sign-in form.
-  // Users with an org go to /home; users without one still need to
-  // pick a workspace, so we send them to /onboarding.
-  const { isAuthenticated, orgId } = await auth()
-  if (!isAuthenticated) return { ok: true as const }
-  throw redirect({ to: orgId ? "/home" : "/onboarding" })
-})
+import { createFileRoute } from "@tanstack/react-router"
+import { redirectIfAuthed } from "@/lib/auth-middleware"
 
 export const Route = createFileRoute("/login/$")({
-  loader: async () => loadLogin(),
+  server: {
+    middleware: [redirectIfAuthed],
+  },
   component: Page,
 })
 

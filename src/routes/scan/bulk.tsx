@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router"
-import { useState } from "react"
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import { useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { BoxIcon } from "@hugeicons/core-free-icons"
 import { Button } from "@/components/ui/button"
@@ -34,6 +34,7 @@ type BulkResult = {
 const DEFAULT_LOCATION = "Warehouse A, Bay 1"
 
 function BulkScanPage() {
+  const navigate = useNavigate()
   const [status, setStatus] = useState<ItemStatus>("Available")
   const [location, setLocation] = useState(DEFAULT_LOCATION)
   const [scannerStatus, setScannerStatus] = useState<LiveScannerStatus>("idle")
@@ -41,6 +42,7 @@ function BulkScanPage() {
   const [results, setResults] = useState<BulkResult[]>([])
   const [lastResult, setLastResult] = useState<BulkResult | null>(null)
   const [editingSettings, setEditingSettings] = useState(false)
+  const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const cameraReady = scannerStatus === "scanning" || scannerStatus === "paused"
   const successCount = results.filter((r) => r.ok).length
@@ -92,11 +94,18 @@ function BulkScanPage() {
     const result = await lookupAndUpdate(trimmed, status, location)
     setResults((prev) => [result, ...prev].slice(0, 50))
     setLastResult(result)
-    setTimeout(() => {
+    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current)
+    resumeTimerRef.current = setTimeout(() => {
       setPaused(false)
       setLastResult(null)
     }, 1400)
   }
+
+  useEffect(() => {
+    return () => {
+      if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current)
+    }
+  }, [])
 
   return (
     <PageChrome title="Bulk Scan" backTo="/scan">
@@ -220,6 +229,7 @@ function BulkScanPage() {
           <Button
             type="button"
             variant="outline"
+            onClick={() => navigate({ to: "/scan" })}
             disabled={successCount === 0}
             className="w-full"
           >

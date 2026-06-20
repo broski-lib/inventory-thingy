@@ -48,3 +48,35 @@ export const authOnlyMiddleware = createMiddleware({ type: "function" }).server(
     })
   }
 )
+
+/**
+ * Request middleware for routes that should bounce already-authenticated
+ * users past the sign-in form. Authed users with an org go to `/home`;
+ * authed users without one are sent to `/onboarding` to pick a workspace.
+ * Signed-out users pass through normally.
+ */
+export const redirectIfAuthed = createMiddleware({
+  type: "request",
+}).server(async ({ next }) => {
+  const { isAuthenticated, orgId } = await auth()
+  if (!isAuthenticated) return next()
+  throw redirect({ to: orgId ? "/home" : "/onboarding" })
+})
+
+/**
+ * Request middleware for `/onboarding`. Requires an authed user; if
+ * they already have an org, send them straight to `/home`. Used at
+ * the request level so the whole route stays a plain UI component.
+ */
+export const requireAuthedNoOrg = createMiddleware({
+  type: "request",
+}).server(async ({ next }) => {
+  const { isAuthenticated, userId, orgId } = await auth()
+  if (!isAuthenticated || !userId) {
+    throw redirect({ to: "/login/$" })
+  }
+  if (orgId) {
+    throw redirect({ to: "/home" })
+  }
+  return next()
+})

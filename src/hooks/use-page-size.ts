@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 /**
  * usePageSize
@@ -8,10 +8,15 @@ import { useCallback, useEffect, useState } from "react"
  * Use the returned `pageSize` as the source of truth, and pair it
  * with a `navigate({ search: { ...other, ps: pageSize } })` call.
  *
- * On mount, if the URL already has `ps`, that value wins (deep link
- * to a specific page size) and the localStorage entry is updated.
+ * Pass `urlValue` whenever the URL holds a page-size search param; the
+ * hook adopts that value (and persists it) without the caller needing
+ * to wire a separate effect.
  */
-export function usePageSize(key: string, defaultSize: number) {
+export function usePageSize(
+  key: string,
+  defaultSize: number,
+  urlValue?: number
+) {
   const [pageSize, setPageSizeState] = useState<number>(() => {
     if (typeof window === "undefined") return defaultSize
     const stored = window.localStorage.getItem(key)
@@ -21,9 +26,11 @@ export function usePageSize(key: string, defaultSize: number) {
     }
     return defaultSize
   })
+  const pageSizeRef = useRef(pageSize)
 
   const setPageSize = useCallback(
     (size: number) => {
+      pageSizeRef.current = size
       setPageSizeState(size)
       if (typeof window !== "undefined") {
         window.localStorage.setItem(key, String(size))
@@ -32,37 +39,38 @@ export function usePageSize(key: string, defaultSize: number) {
     [key]
   )
 
-  /**
-   * Sync hook state from an external source (e.g. a URL search param).
-   * If `urlValue` is defined and differs from the current page size,
-   * adopt it and persist it. Use this on mount and whenever the URL
-   * changes from outside the hook.
-   */
-  const syncFromUrl = useCallback(
-    (urlValue: number | undefined) => {
-      if (urlValue === undefined) return
-      if (urlValue === pageSize) return
-      setPageSizeState(urlValue)
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(key, String(urlValue))
-      }
-    },
-    [key, pageSize]
-  )
+  // Adopt URL-supplied values, but only when they actually change.
+  // Uses a ref so the storage listener below can read the latest value
+  // without re-binding on every state change.
+  useEffect(() => {
+    if (urlValue === undefined) return
+    if (urlValue === pageSizeRef.current) return
+    pageSizeRef.current = urlValue
+    setPageSizeState(urlValue)
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(key, String(urlValue))
+    }
+  }, [key, urlValue])
 
-  // Sync across tabs.
+  // Sync across tabs. Reads pageSize from a ref so the listener
+  // identity stays stable and we don't rebind on every change.
   useEffect(() => {
     if (typeof window === "undefined") return
     const onStorage = (e: StorageEvent) => {
       if (e.key !== key || e.newValue === null) return
       const parsed = Number.parseInt(e.newValue, 10)
-      if (!Number.isNaN(parsed) && parsed > 0 && parsed !== pageSize) {
+      if (
+        !Number.isNaN(parsed) &&
+        parsed > 0 &&
+        parsed !== pageSizeRef.current
+      ) {
+        pageSizeRef.current = parsed
         setPageSizeState(parsed)
       }
     }
     window.addEventListener("storage", onStorage)
     return () => window.removeEventListener("storage", onStorage)
-  }, [key, pageSize])
+  }, [key])
 
-  return [pageSize, setPageSize, syncFromUrl] as const
+  return [pageSize, setPageSize] as const
 }

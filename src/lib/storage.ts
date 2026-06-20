@@ -98,7 +98,9 @@ export async function deleteItemImage(
   const b = bucket()
   try {
     await b.delete(key)
-  } catch (err) {
-    console.error("R2 delete failed:", err)
+  } catch {
+    // Best-effort cleanup: leaving an orphan in R2 is non-fatal
+    // for the user's request. The next garbage-collection run
+    // (or an explicit operator sweep) can clean it up later.
   }
 }

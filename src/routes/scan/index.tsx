@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { desc, eq } from "drizzle-orm"
-import { useEffect, useRef, useState } from "react"
+import { useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { BoxIcon, Camera01Icon } from "@hugeicons/core-free-icons"
 import { getDb } from "@/lib/db"
@@ -40,6 +40,14 @@ const loadScan = createServerFn({ method: "GET" })
     return { recent }
   })
 
+const lookupItem = createServerFn({ method: "GET" })
+  .middleware([authRequiredMiddleware])
+  .validator((code: string) => code)
+  .handler(async ({ data: code }) => {
+    const found = await getItemByQrCode({ data: code })
+    return { code, item: found }
+  })
+
 type ScanSearch = {
   code?: string
 }
@@ -48,45 +56,25 @@ export const Route = createFileRoute("/scan/")({
   validateSearch: (search: Record<string, unknown>): ScanSearch => ({
     code: typeof search.code === "string" ? search.code : undefined,
   }),
-  loader: async () => loadScan(),
+  loaderDeps: ({ search }) => ({ code: search.code }),
+  loader: async ({ deps }) => {
+    const [{ recent }, lookup] = await Promise.all([
+      loadScan(),
+      deps.code ? lookupItem({ data: deps.code }) : Promise.resolve(null),
+    ])
+    return { recent, lookup }
+  },
   component: ScanRoute,
 })
 
 function ScanRoute() {
-  const { recent } = Route.useLoaderData()
+  const { recent, lookup } = Route.useLoaderData()
   const navigate = useNavigate()
-  const search = Route.useSearch()
-  const initialCodeRef = useRef<string | undefined>(search.code)
-
-  const [scannedItem, setScannedItem] = useState<InventoryItem | null>(null)
-  const [scanError, setScanError] = useState("")
   const [scanMessage, setScanMessage] = useState("")
 
-  const handleDetected = async (code: string) => {
-    setScanError("")
-    setScanMessage("")
-    try {
-      const found = await getItemByQrCode({ data: code })
-      if (found) {
-        setScannedItem(found)
-        setScanMessage("Tag scanned successfully!")
-      } else {
-        setScannedItem(null)
-        setScanError(
-          `Tag "${code}" not found. You can register it to your inventory.`
-        )
-      }
-    } catch {
-      setScanError("Error looking up item code.")
-    }
-  }
-
-  useEffect(() => {
-    const initial = initialCodeRef.current
-    if (!initial) return
-    initialCodeRef.current = undefined
-    void handleDetected(initial)
-  }, [])
+  const scannedItem = lookup?.item ?? null
+  const failedCode = lookup && !lookup.item ? lookup.code : null
+  const showResult = scannedItem || failedCode
 
   const handleQuickStatus = async (
     item: InventoryItem,
@@ -100,14 +88,24 @@ function ScanRoute() {
     if (newStatus === "Repair") updates.condition = "Repair"
     try {
       const updated = await updateItem({ data: { id: item.id, item: updates } })
-      setScannedItem(updated)
       setScanMessage(`Status set to ${newStatus}`)
+      // Reload the page data so subsequent reads see the update.
+      navigate({
+        to: "/scan",
+        search: { code: updated.qrCode },
+        replace: true,
+      })
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to update status")
+      setScanMessage(
+        err instanceof Error ? err.message : "Failed to update status"
+      )
     }
   }
 
-  const showResult = scannedItem || scanError
+  const scanAnother = () => {
+    setScanMessage("")
+    navigate({ to: "/scan", search: {}, replace: true })
+  }
 
   return (
     <main className="min-h-svh bg-secondary pb-24 text-foreground">
@@ -154,11 +152,11 @@ function ScanRoute() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {recent.map((item) => (
-                    <button
+                    <Link
                       key={item.id}
-                      type="button"
-                      onClick={() => handleDetected(item.qrCode)}
-                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-medium text-foreground transition-all hover:border-primary hover:bg-accent"
+                      to="/scan"
+                      search={{ code: item.qrCode }}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-medium text-foreground transition-all hover:border-primary hover:bg-accent"
                     >
                       <HugeiconsIcon
                         icon={BoxIcon}
@@ -166,16 +164,19 @@ function ScanRoute() {
                         strokeWidth={1.5}
                       />
                       {item.name}
-                    </button>
+                    </Link>
                   ))}
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {scanError && (
+          {failedCode && (
             <Alert variant="destructive">
-              <AlertDescription>{scanError}</AlertDescription>
+              <AlertDescription>
+                Tag &ldquo;{failedCode}&rdquo; not found. You can register it to
+                your inventory.
+              </AlertDescription>
             </Alert>
           )}
           {scanMessage && (
@@ -290,11 +291,7 @@ function ScanRoute() {
                     <Button
                       variant="ghost"
                       className="h-11 text-muted-foreground"
-                      onClick={() => {
-                        setScannedItem(null)
-                        setScanError("")
-                        setScanMessage("")
-                      }}
+                      onClick={scanAnother}
                     >
                       Scan another
                     </Button>
@@ -335,18 +332,15 @@ function ScanRoute() {
                 )}
               </div>
             </Card>
-          ) : scanError ? (
+          ) : failedCode ? (
             <div className="rounded-xl border border-dashed border-border bg-card p-6 text-center">
-              <p className="mb-4 text-xs text-muted-foreground">{scanError}</p>
               <Button
-                onClick={() => {
-                  const match = scanError.match(/"([^"]+)"/)
-                  const qrCode = match?.[1]
+                onClick={() =>
                   navigate({
                     to: "/stock/new",
-                    search: qrCode ? { qr: qrCode } : undefined,
+                    search: { qr: failedCode },
                   })
-                }}
+                }
                 className="w-full"
               >
                 <EditIcon />
@@ -354,10 +348,7 @@ function ScanRoute() {
               </Button>
               <button
                 type="button"
-                onClick={() => {
-                  setScanError("")
-                  setScanMessage("")
-                }}
+                onClick={scanAnother}
                 className="mt-3 text-xs font-medium text-muted-foreground hover:text-foreground"
               >
                 Scan another
@@ -378,7 +369,7 @@ function ScanRoute() {
           )}
         </div>
       </section>
-      <BottomNav active="scan" />
+      <BottomNav />
     </main>
   )
 }

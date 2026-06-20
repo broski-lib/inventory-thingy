@@ -2,9 +2,10 @@ import { useEffect, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { BoxIcon } from "@hugeicons/core-free-icons"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Skeleton } from "@/components/ItemCardSkeleton"
+import { Skeleton } from "@/components/ui/skeleton"
 import { getItemActivity } from "@/lib/activity"
 import type { ActivityLog } from "@/lib/activity"
+import { formatRelative } from "@/lib/format"
 
 type ItemHistoryProps = {
   itemId: string
@@ -77,42 +78,31 @@ export function ItemHistory({ itemId, initialLogs }: ItemHistoryProps) {
   )
 }
 
-const ACTION_META: Record<string, { label: string; tone: string }> = {
-  created: { label: "Registered", tone: "bg-primary/10 text-primary" },
-  updated: { label: "Updated details", tone: "bg-muted text-muted-foreground" },
-  deleted: { label: "Removed", tone: "bg-destructive/10 text-destructive" },
-  checked_out: { label: "Checked out", tone: "bg-primary/10 text-primary" },
-  checked_in: { label: "Checked in", tone: "bg-success/10 text-success" },
-  reported_damaged: {
-    label: "Reported damaged",
-    tone: "bg-destructive/10 text-destructive",
-  },
-  moved: { label: "Relocated", tone: "bg-primary/10 text-primary" },
-  condition_changed: {
-    label: "Condition updated",
-    tone: "bg-warning/10 text-warning-foreground",
-  },
+const TONE_CLASSES: Record<string, string> = {
+  created: "bg-primary/10 text-primary",
+  updated: "bg-muted text-muted-foreground",
+  deleted: "bg-destructive/10 text-destructive",
+  checked_out: "bg-primary/10 text-primary",
+  checked_in: "bg-success/10 text-success",
+  reported_damaged: "bg-destructive/10 text-destructive",
+  moved: "bg-primary/10 text-primary",
+  condition_changed: "bg-warning/10 text-warning-foreground",
 }
 
-function relativeTime(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date
-  const diffMs = Date.now() - d.getTime()
-  const sec = Math.round(diffMs / 1000)
-  if (sec < 60) return "just now"
-  const min = Math.round(sec / 60)
-  if (min < 60) return `${min}m ago`
-  const hr = Math.round(min / 60)
-  if (hr < 24) return `${hr}h ago`
-  const day = Math.round(hr / 24)
-  if (day < 7) return `${day}d ago`
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+const ACTION_LABELS: Record<string, string> = {
+  created: "Registered",
+  updated: "Updated details",
+  deleted: "Removed",
+  checked_out: "Checked out",
+  checked_in: "Checked in",
+  reported_damaged: "Reported damaged",
+  moved: "Relocated",
+  condition_changed: "Condition updated",
 }
 
 function ActivityEntry({ log }: { log: ActivityLog }) {
-  const meta = ACTION_META[log.action] ?? {
-    label: log.action,
-    tone: "bg-muted text-muted-foreground",
-  }
+  const tone = TONE_CLASSES[log.action] ?? "bg-muted text-muted-foreground"
+  const label = ACTION_LABELS[log.action] ?? log.action
   const hasLocationChange =
     log.fromLocation !== null &&
     log.toLocation !== null &&
@@ -125,17 +115,17 @@ function ActivityEntry({ log }: { log: ActivityLog }) {
   return (
     <div className="flex items-start gap-3 p-4">
       <div
-        className={`flex size-8 shrink-0 items-center justify-center rounded-full ${meta.tone}`}
+        className={`flex size-8 shrink-0 items-center justify-center rounded-full ${tone}`}
       >
         <HugeiconsIcon icon={BoxIcon} size={16} strokeWidth={1.8} />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
           <p className="truncate text-sm font-medium text-foreground">
-            {meta.label}
+            {label}
           </p>
           <span className="shrink-0 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-            {relativeTime(log.createdAt)}
+            {formatRelative(log.createdAt)}
           </span>
         </div>
         <p className="mt-0.5 text-xs text-muted-foreground">
