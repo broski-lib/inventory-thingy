@@ -37,14 +37,13 @@ export function bulkPrintSheet(items: PrintableQR[]): string {
   <title>QR Tag Sheet (${items.length})</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #000; background: #fff; padding: 12px; }
-    h1 { font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 10px; text-align: center; }
-    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    .cell { border: 1px dashed #000; padding: 8px; text-align: center; break-inside: avoid; page-break-inside: avoid; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-    .cell img { width: 100%; max-width: 140px; height: auto; aspect-ratio: 1 / 1; }
-    .name { font-size: 9px; font-weight: 700; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .code { font-size: 8px; letter-spacing: 0.04em; color: #444; font-family: ui-monospace, monospace; }
-    @page { size: letter; margin: 0.4in; }
+    body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #000; background: #fff; padding: 4px; }
+    h1 { font-size: 10px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 6px; text-align: center; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; }
+    .cell { border: 1px dashed #000; padding: 3px 2px; text-align: center; break-inside: avoid; page-break-inside: avoid; display: flex; flex-direction: column; align-items: center; gap: 1px; }
+    .cell img { width: 100%; max-width: 160px; height: auto; aspect-ratio: 1 / 1; display: block; }
+    .id { font-size: 8px; font-weight: 700; letter-spacing: 0.02em; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    @page { size: letter; margin: 0.3in; }
     @media print {
       body { padding: 0; }
     }
@@ -58,8 +57,7 @@ export function bulkPrintSheet(items: PrintableQR[]): string {
         (item) => `
       <div class="cell">
         <img src="${item.dataUrl}" alt="QR for ${escapeHtml(item.qrCode)}" />
-        <div class="name">${escapeHtml(item.name)}</div>
-        <div class="code">${escapeHtml(item.qrCode)}</div>
+        <div class="id">${escapeHtml(item.qrCode)}</div>
       </div>
     `
       )
