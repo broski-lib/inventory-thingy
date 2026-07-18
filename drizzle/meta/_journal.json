@@ -43,6 +43,13 @@
       "when": 1781729384709,
       "tag": "0005_modern_the_anarchist",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784405788534,
+      "tag": "0006_previous_electro",
+      "breakpoints": true
     }
   ]
 }

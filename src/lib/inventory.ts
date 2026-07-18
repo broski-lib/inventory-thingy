@@ -1,9 +1,9 @@
 import { createServerFn } from "@tanstack/react-start"
-import { and, eq, ilike, inArray, or, desc, sql } from "drizzle-orm"
+import { and, asc, eq, ilike, inArray, or, desc, sql } from "drizzle-orm"
 import type { SQL } from "drizzle-orm"
 import { getDb } from "./db"
-import { items, activityLogs } from "./schema"
-import type { ItemStatus } from "./schema"
+import { items, activityLogs, itemTags, tags } from "./schema"
+import type { ItemCondition, ItemStatus } from "./schema"
 import { generateUlid } from "./ids"
 import { logActivity, resolveActor } from "./activity"
 import type { ActivityActor, ActivityLog } from "./activity"
@@ -13,10 +13,21 @@ import {
   ImageUploadError,
   putItemImage,
 } from "./storage"
-import { authRequiredMiddleware } from "./auth-middleware"
+import {
+  assertCanEditItem,
+  authRequiredMiddleware,
+  canEditItem,
+  RESTRICTABLE_ROLES,
+} from "./auth-middleware"
+import type { HasFn } from "./auth-middleware"
+import { getTagsForItems } from "./tags"
+import type { Tag } from "./tags"
 
 /** Shape of a row in the `items` table. */
 export type InventoryItem = typeof items.$inferSelect
+
+/** Item row plus its resolved tags, as returned by getItemsPage. */
+export type InventoryItemWithTags = InventoryItem & { tags: Tag[] }
 
 export type CreateItemInput = Omit<
   typeof items.$inferInsert,
@@ -42,8 +53,21 @@ export const STOCK_STATUS_FILTERS = [
 ] as const
 export type StockStatusFilter = (typeof STOCK_STATUS_FILTERS)[number]
 
+export const STOCK_SORTS = [
+  { id: "updated_desc", label: "Recently updated" },
+  { id: "updated_asc", label: "Least recently updated" },
+  { id: "created_desc", label: "Newest first" },
+  { id: "created_asc", label: "Oldest first" },
+  { id: "name_asc", label: "Name A–Z" },
+  { id: "name_desc", label: "Name Z–A" },
+  { id: "location_asc", label: "Location A–Z" },
+  { id: "location_desc", label: "Location Z–A" },
+] as const
+export type StockSort = (typeof STOCK_SORTS)[number]["id"]
+export const DEFAULT_STOCK_SORT: StockSort = "updated_desc"
+
 export type ItemsPage = {
-  items: (typeof items.$inferSelect)[]
+  items: InventoryItemWithTags[]
   total: number
   page: number
   pageSize: number
@@ -55,16 +79,43 @@ export type GetItemsPageArgs = {
   pageSize: number
   search?: string
   statusFilter?: StockStatusFilter
+  statuses?: ItemStatus[]
+  conditions?: ItemCondition[]
+  locations?: string[]
+  tagIds?: string[]
+  sort?: StockSort
+}
+
+function statusGroupCondition(filter: StockStatusFilter): SQL | undefined {
+  if (filter === "Available") {
+    return or(eq(items.status, "Available"), eq(items.status, "In Storage"))
+  }
+  if (filter === "Staged") {
+    return or(eq(items.status, "Staged"), eq(items.status, "Reserved"))
+  }
+  if (filter === "All") return undefined
+  return eq(items.status, filter)
 }
 
 function buildItemsWhere(
   orgId: string,
-  search: string | undefined,
-  statusFilter: StockStatusFilter | undefined
-): SQL | undefined {
+  args: GetItemsPageArgs,
+  db: ReturnType<typeof getDb>
+): SQL {
   const conditions: SQL[] = [eq(items.orgId, orgId)]
-  if (search && search.trim() !== "") {
-    const s = `%${search.trim()}%`
+
+  const search = args.search?.trim()
+  if (search) {
+    const s = `%${search}%`
+    // Items carrying a tag whose name matches the search text.
+    const tagMatch = db
+      .select({ itemId: itemTags.itemId })
+      .from(itemTags)
+      .innerJoin(
+        tags,
+        and(eq(itemTags.tagId, tags.id), eq(tags.orgId, orgId))
+      )
+      .where(and(eq(itemTags.orgId, orgId), ilike(tags.name, s)))
     // Cast enum column to text so ilike works on it.
     conditions.push(
       or(
@@ -72,24 +123,58 @@ function buildItemsWhere(
         ilike(items.qrCode, s),
         ilike(items.location, s),
         sql`${items.status}::text ILIKE ${s}`,
-        ilike(items.description, s)
+        ilike(items.description, s),
+        inArray(items.id, tagMatch)
       )!
     )
   }
-  if (statusFilter && statusFilter !== "All") {
-    if (statusFilter === "Available") {
-      conditions.push(
-        or(eq(items.status, "Available"), eq(items.status, "In Storage"))!
-      )
-    } else if (statusFilter === "Staged") {
-      conditions.push(
-        or(eq(items.status, "Staged"), eq(items.status, "Reserved"))!
-      )
-    } else {
-      conditions.push(eq(items.status, statusFilter))
-    }
+
+  if (args.statusFilter && args.statusFilter !== "All") {
+    const c = statusGroupCondition(args.statusFilter)
+    if (c) conditions.push(c)
   }
-  return conditions.length > 0 ? and(...conditions) : undefined
+  if (args.statuses && args.statuses.length > 0) {
+    conditions.push(inArray(items.status, args.statuses))
+  }
+  if (args.conditions && args.conditions.length > 0) {
+    conditions.push(inArray(items.condition, args.conditions))
+  }
+  if (args.locations && args.locations.length > 0) {
+    conditions.push(inArray(items.location, args.locations))
+  }
+  if (args.tagIds && args.tagIds.length > 0) {
+    // Match items carrying ANY of the selected tags.
+    const tagFilter = db
+      .select({ itemId: itemTags.itemId })
+      .from(itemTags)
+      .where(
+        and(eq(itemTags.orgId, orgId), inArray(itemTags.tagId, args.tagIds))
+      )
+    conditions.push(inArray(items.id, tagFilter))
+  }
+  return and(...conditions)!
+}
+
+function buildItemsOrderBy(sort: StockSort | undefined) {
+  switch (sort) {
+    case "updated_asc":
+      return [asc(items.updatedAt)]
+    case "created_desc":
+      return [desc(items.createdAt)]
+    case "created_asc":
+      return [asc(items.createdAt)]
+    case "name_asc":
+      return [asc(items.name)]
+    case "name_desc":
+      return [desc(items.name)]
+    case "location_asc":
+      return [asc(items.location), asc(items.name)]
+    case "location_desc":
+      return [desc(items.location), asc(items.name)]
+    case "updated_desc":
+    default:
+      return [desc(items.updatedAt)]
+  }
 }
 
 export const getItemsPage = createServerFn({ method: "GET" })
@@ -100,7 +185,7 @@ export const getItemsPage = createServerFn({ method: "GET" })
     const db = getDb()
     const page = Math.max(1, Math.floor(args.page))
     const pageSize = Math.max(1, Math.min(100, Math.floor(args.pageSize)))
-    const where = buildItemsWhere(orgId, args.search, args.statusFilter)
+    const where = buildItemsWhere(orgId, args, db)
     const offset = (page - 1) * pageSize
 
     const [rows, totalResult] = await Promise.all([
@@ -108,7 +193,7 @@ export const getItemsPage = createServerFn({ method: "GET" })
         .select()
         .from(items)
         .where(where)
-        .orderBy(desc(items.updatedAt))
+        .orderBy(...buildItemsOrderBy(args.sort))
         .limit(pageSize)
         .offset(offset),
       db
@@ -117,14 +202,32 @@ export const getItemsPage = createServerFn({ method: "GET" })
         .where(where),
     ])
 
+    const tagsByItem = await getTagsForItems(
+      orgId,
+      rows.map((r) => r.id)
+    )
     const total = totalResult[0]?.count ?? 0
     return {
-      items: rows,
+      items: rows.map((row) => ({ ...row, tags: tagsByItem.get(row.id) ?? [] })),
       total,
       page,
       pageSize,
       totalPages: Math.max(1, Math.ceil(total / pageSize)),
     }
+  })
+
+/** Distinct location values for the org, for the stock filter UI. */
+export const getLocations = createServerFn({ method: "GET" })
+  .middleware([authRequiredMiddleware])
+  .handler(async ({ context }): Promise<string[]> => {
+    const { orgId } = context
+    const db = getDb()
+    const rows = await db
+      .selectDistinct({ location: items.location })
+      .from(items)
+      .where(eq(items.orgId, orgId))
+      .orderBy(asc(items.location))
+    return rows.map((r) => r.location)
   })
 
 export const getStats = createServerFn({ method: "GET" })
@@ -254,13 +357,29 @@ export const getItemByQrCode = createServerFn({ method: "GET" })
     }
   )
 
+/** Validate a requiredRole change. Only org admins may restrict items. */
+function assertValidRequiredRole(
+  has: HasFn,
+  requiredRole: string | null | undefined
+): void {
+  if (requiredRole === undefined || requiredRole === null) return
+  if (!has({ role: "org:admin" })) {
+    throw new Error("Only org admins can restrict items")
+  }
+  if (!(RESTRICTABLE_ROLES as readonly string[]).includes(requiredRole)) {
+    throw new Error(`Unknown role: ${requiredRole}`)
+  }
+}
+
 export const createItem = createServerFn({ method: "POST" })
   .middleware([authRequiredMiddleware])
   .validator((item: CreateItemInput) => item)
   .handler(async ({ data: item, context }) => {
-    const { userId, orgId } = context
+    const { userId, orgId, has } = context
     const db = getDb()
     const id = generateUlid()
+
+    assertValidRequiredRole(has, item.requiredRole)
 
     const imageKey = item.imageKey ?? null
     const imageUrl = imageKey ? buildImageUrl(imageKey) : ""
@@ -278,6 +397,7 @@ export const createItem = createServerFn({ method: "POST" })
         status: item.status,
         imageUrl,
         imageKey,
+        requiredRole: item.requiredRole ?? null,
         createdBy: userId,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -301,7 +421,7 @@ export const updateItem = createServerFn({ method: "POST" })
   .middleware([authRequiredMiddleware])
   .validator((data: UpdateItemInput) => data)
   .handler(async ({ data: { id, item }, context }) => {
-    const { userId, orgId } = context
+    const { userId, orgId, has } = context
     const db = getDb()
 
     const currentRows = await db
@@ -314,6 +434,9 @@ export const updateItem = createServerFn({ method: "POST" })
     // Drizzle types `limit(1)` as `T[]` not `[T]`, so we need a single
     // narrowing above. `current` is always defined here.
 
+    assertCanEditItem(has, current.requiredRole)
+    assertValidRequiredRole(has, item.requiredRole)
+
     const patch: Partial<typeof items.$inferInsert> = {
       qrCode: item.qrCode,
       name: item.name,
@@ -322,9 +445,13 @@ export const updateItem = createServerFn({ method: "POST" })
       location: item.location,
       status: item.status,
     }
+    if (item.requiredRole !== undefined) {
+      patch.requiredRole = item.requiredRole
+    }
     for (const [k, v] of Object.entries(item)) {
       if (k === "imageKey") continue
       if (k === "imageUrl") continue
+      if (k === "requiredRole") continue
       if (k === "orgId" || k === "id" || k === "createdBy") continue
       ;(patch as Record<string, unknown>)[k] = v
     }
@@ -378,8 +505,17 @@ export const deleteItem = createServerFn({ method: "POST" })
   .middleware([authRequiredMiddleware])
   .validator((id: string) => id)
   .handler(async ({ data: id, context }) => {
-    const { userId, orgId } = context
+    const { userId, orgId, has } = context
     const db = getDb()
+
+    const currentRows = await db
+      .select({ requiredRole: items.requiredRole })
+      .from(items)
+      .where(and(eq(items.orgId, orgId), eq(items.id, id)))
+      .limit(1)
+    if (currentRows.length === 0) throw new Error("Item not found")
+    assertCanEditItem(has, currentRows[0].requiredRole)
+
     const [deleted] = await db
       .delete(items)
       .where(and(eq(items.orgId, orgId), eq(items.id, id)))
@@ -440,7 +576,7 @@ export const getItemById = createServerFn({ method: "GET" })
     async ({
       data: id,
       context,
-    }): Promise<typeof items.$inferSelect | undefined> => {
+    }): Promise<InventoryItemWithTags | undefined> => {
       const { orgId } = context
       const db = getDb()
       const [row] = await db
@@ -448,7 +584,10 @@ export const getItemById = createServerFn({ method: "GET" })
         .from(items)
         .where(and(eq(items.orgId, orgId), eq(items.id, id)))
         .limit(1)
-      return row
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (!row) return undefined
+      const tagsByItem = await getTagsForItems(orgId, [id])
+      return { ...row, tags: tagsByItem.get(id) ?? [] }
     }
   )
 
@@ -499,45 +638,58 @@ export const getItemWithHistory = createServerFn({ method: "GET" })
 export const bulkDeleteItems = createServerFn({ method: "POST" })
   .middleware([authRequiredMiddleware])
   .validator((ids: string[]) => ids)
-  .handler(async ({ data: ids, context }): Promise<{ deleted: number }> => {
-    const { userId, orgId } = context
-    if (ids.length === 0) return { deleted: 0 }
-    const db = getDb()
+  .handler(
+    async ({
+      data: ids,
+      context,
+    }): Promise<{ deleted: number; skipped: number }> => {
+      const { userId, orgId, has } = context
+      if (ids.length === 0) return { deleted: 0, skipped: 0 }
+      const db = getDb()
 
-    // Fetch first so we can clean up R2 images + log per item.
-    const toDelete = await db
-      .select()
-      .from(items)
-      .where(and(eq(items.orgId, orgId), inArray(items.id, ids)))
+      // Fetch first so we can clean up R2 images + log per item.
+      const found = await db
+        .select()
+        .from(items)
+        .where(and(eq(items.orgId, orgId), inArray(items.id, ids)))
 
-    await db
-      .delete(items)
-      .where(and(eq(items.orgId, orgId), inArray(items.id, ids)))
-
-    await Promise.all(
-      toDelete
-        .map((row) =>
-          row.imageKey ? deleteItemImage(orgId, row.imageKey) : null
-        )
-        .filter((p): p is Promise<void> => p !== null)
-    )
-
-    const actor = { ...(await resolveActor(userId)), orgId }
-    await Promise.all(
-      toDelete.map((row) =>
-        logActivity(actor, {
-          itemId: row.id,
-          itemName: row.name,
-          itemQrCode: row.qrCode,
-          action: "deleted",
-          fromLocation: row.location,
-          fromCondition: row.condition,
-        })
+      // Items the caller's role can't touch are skipped, not deleted.
+      const toDelete = found.filter((row) =>
+        canEditItem(has, row.requiredRole)
       )
-    )
+      const skipped = found.length - toDelete.length
+      if (toDelete.length === 0) return { deleted: 0, skipped }
+      const allowedIds = toDelete.map((row) => row.id)
 
-    return { deleted: toDelete.length }
-  })
+      await db
+        .delete(items)
+        .where(and(eq(items.orgId, orgId), inArray(items.id, allowedIds)))
+
+      await Promise.all(
+        toDelete
+          .map((row) =>
+            row.imageKey ? deleteItemImage(orgId, row.imageKey) : null
+          )
+          .filter((p): p is Promise<void> => p !== null)
+      )
+
+      const actor = { ...(await resolveActor(userId)), orgId }
+      await Promise.all(
+        toDelete.map((row) =>
+          logActivity(actor, {
+            itemId: row.id,
+            itemName: row.name,
+            itemQrCode: row.qrCode,
+            action: "deleted",
+            fromLocation: row.location,
+            fromCondition: row.condition,
+          })
+        )
+      )
+
+      return { deleted: toDelete.length, skipped }
+    }
+  )
 
 /**
  * Bulk-update the status of multiple items. Org-scoped. Logs an
@@ -558,15 +710,21 @@ export const bulkUpdateStatus = createServerFn({ method: "POST" })
     async ({
       data: { ids, status },
       context,
-    }): Promise<{ updated: number }> => {
-      const { userId, orgId } = context
-      if (ids.length === 0) return { updated: 0 }
+    }): Promise<{ updated: number; skipped: number }> => {
+      const { userId, orgId, has } = context
+      if (ids.length === 0) return { updated: 0, skipped: 0 }
       const db = getDb()
 
-      const current = await db
+      const found = await db
         .select()
         .from(items)
         .where(and(eq(items.orgId, orgId), inArray(items.id, ids)))
+
+      // Items the caller's role can't touch are skipped, not updated.
+      const current = found.filter((row) => canEditItem(has, row.requiredRole))
+      const skipped = found.length - current.length
+      if (current.length === 0) return { updated: 0, skipped }
+      const allowedIds = current.map((row) => row.id)
 
       const updatedAt = new Date()
       await db
@@ -580,7 +738,7 @@ export const bulkUpdateStatus = createServerFn({ method: "POST" })
               : new Date(),
           updatedAt,
         })
-        .where(and(eq(items.orgId, orgId), inArray(items.id, ids)))
+        .where(and(eq(items.orgId, orgId), inArray(items.id, allowedIds)))
 
       const actor = { ...(await resolveActor(userId)), orgId }
       const changed = current.filter((row) => row.status !== status)
@@ -599,7 +757,7 @@ export const bulkUpdateStatus = createServerFn({ method: "POST" })
         )
       )
 
-      return { updated: changed.length }
+      return { updated: changed.length, skipped }
     }
   )
 
@@ -622,21 +780,27 @@ export const bulkUpdateLocation = createServerFn({ method: "POST" })
     async ({
       data: { ids, location },
       context,
-    }): Promise<{ updated: number }> => {
-      const { userId, orgId } = context
-      if (ids.length === 0) return { updated: 0 }
+    }): Promise<{ updated: number; skipped: number }> => {
+      const { userId, orgId, has } = context
+      if (ids.length === 0) return { updated: 0, skipped: 0 }
       const db = getDb()
 
       const trimmed = location.trim()
-      const current = await db
+      const found = await db
         .select()
         .from(items)
         .where(and(eq(items.orgId, orgId), inArray(items.id, ids)))
 
+      // Items the caller's role can't touch are skipped, not updated.
+      const current = found.filter((row) => canEditItem(has, row.requiredRole))
+      const skipped = found.length - current.length
+      if (current.length === 0) return { updated: 0, skipped }
+      const allowedIds = current.map((row) => row.id)
+
       await db
         .update(items)
         .set({ location: trimmed, updatedAt: new Date() })
-        .where(and(eq(items.orgId, orgId), inArray(items.id, ids)))
+        .where(and(eq(items.orgId, orgId), inArray(items.id, allowedIds)))
 
       const actor = { ...(await resolveActor(userId)), orgId }
       const changed = current.filter((row) => row.location !== trimmed)
@@ -655,6 +819,6 @@ export const bulkUpdateLocation = createServerFn({ method: "POST" })
         )
       )
 
-      return { updated: changed.length }
+      return { updated: changed.length, skipped }
     }
   )

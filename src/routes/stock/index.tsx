@@ -10,6 +10,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import type { IconSvgElement } from "@hugeicons/react"
 import {
   CheckmarkCircle02Icon,
+  FilterIcon,
   Location01Icon,
   PrinterIcon,
   Tick02Icon,
@@ -19,14 +20,25 @@ import {
   bulkUpdateLocation,
   bulkUpdateStatus,
   getItemsPage,
+  getLocations,
+  STOCK_SORTS,
   STOCK_STATUS_FILTERS,
+  DEFAULT_STOCK_SORT,
 } from "@/lib/inventory"
-import type { InventoryItem, StockStatusFilter } from "@/lib/inventory"
-import type { ItemStatus } from "@/lib/item-status"
-import { ITEM_STATUSES } from "@/lib/item-status"
+import type {
+  InventoryItemWithTags,
+  StockSort,
+  StockStatusFilter,
+} from "@/lib/inventory"
+import { ITEM_CONDITIONS, ITEM_STATUSES } from "@/lib/item-status"
+import type { ItemCondition, ItemStatus } from "@/lib/item-status"
+import { deleteTag, listTags, updateTag } from "@/lib/tags"
+import type { Tag } from "@/lib/tags"
+import { TAG_COLORS } from "@/lib/schema"
 import { AppHeader } from "@/components/AppHeader"
 import { BottomNav } from "@/components/BottomNav"
 import { ItemCard } from "@/components/ItemCard"
+import { TagPicker } from "@/components/TagPicker"
 import { PlusIcon, TrashIcon } from "@/components/icons"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -37,6 +49,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerBody,
+  DrawerFooter,
+} from "@/components/ui/drawer"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { SearchInput } from "@/components/SearchInput"
 import { Pagination } from "@/components/Pagination"
 import { usePageSize } from "@/hooks/use-page-size"
@@ -53,6 +79,12 @@ type StockSearch = {
   q?: string
   page?: number
   ps?: number
+  sf?: StockStatusFilter
+  st?: ItemStatus[]
+  cond?: ItemCondition[]
+  loc?: string[]
+  tags?: string[]
+  sort?: StockSort
 }
 
 function parsePageSize(value: unknown): number | undefined {
@@ -61,38 +93,140 @@ function parsePageSize(value: unknown): number | undefined {
   return (PAGE_SIZE_OPTIONS as readonly number[]).includes(n) ? n : undefined
 }
 
+function parseCsv(value: unknown): string[] | undefined {
+  // Router may hand us a real array (typed navigate), a JSON array
+  // string (serialized URL state), or a plain csv string.
+  if (Array.isArray(value)) {
+    const list = value.filter((v): v is string => typeof v === "string")
+    return list.length > 0 ? list : undefined
+  }
+  if (typeof value !== "string" || value.trim() === "") return undefined
+  if (value.startsWith("[")) {
+    try {
+      const parsed: unknown = JSON.parse(value)
+      if (Array.isArray(parsed)) {
+        const list = parsed.filter((v): v is string => typeof v === "string")
+        return list.length > 0 ? list : undefined
+      }
+    } catch {
+      // fall through to csv parsing
+    }
+  }
+  const list = value.split(",").filter(Boolean)
+  return list.length > 0 ? list : undefined
+}
+
+function parseEnumCsv<T extends string>(
+  value: unknown,
+  allowed: readonly T[]
+): T[] | undefined {
+  const list = parseCsv(value)
+  if (!list) return undefined
+  const valid = list.filter((v): v is T => allowed.includes(v as T))
+  return valid.length > 0 ? valid : undefined
+}
+
+function parseSort(value: unknown): StockSort | undefined {
+  if (typeof value !== "string") return undefined
+  return STOCK_SORTS.some((s) => s.id === value)
+    ? (value as StockSort)
+    : undefined
+}
+
+function parseStatusFilter(value: unknown): StockStatusFilter | undefined {
+  if (typeof value !== "string") return undefined
+  return (STOCK_STATUS_FILTERS as readonly string[]).includes(value)
+    ? (value as StockStatusFilter)
+    : undefined
+}
+
+/** Shape the filter/sort search params, dropping empty values. */
+function filterSearch(search: {
+  sf?: StockStatusFilter
+  st?: ItemStatus[]
+  cond?: ItemCondition[]
+  loc?: string[]
+  tags?: string[]
+  sort?: StockSort
+}) {
+  return {
+    sf: search.sf && search.sf !== "All" ? search.sf : undefined,
+    st: search.st && search.st.length > 0 ? search.st : undefined,
+    cond: search.cond && search.cond.length > 0 ? search.cond : undefined,
+    loc: search.loc && search.loc.length > 0 ? search.loc : undefined,
+    tags: search.tags && search.tags.length > 0 ? search.tags : undefined,
+    sort:
+      search.sort && search.sort !== DEFAULT_STOCK_SORT
+        ? search.sort
+        : undefined,
+  }
+}
+
 export const Route = createFileRoute("/stock/")({
   validateSearch: (search: Record<string, unknown>): StockSearch => ({
     q: typeof search.q === "string" ? search.q : undefined,
     page: parsePage(search.page),
     ps: parsePageSize(search.ps),
+    sf: parseStatusFilter(search.sf),
+    st: parseEnumCsv(search.st, ITEM_STATUSES),
+    cond: parseEnumCsv(search.cond, ITEM_CONDITIONS),
+    loc: parseCsv(search.loc),
+    tags: parseCsv(search.tags),
+    sort: parseSort(search.sort),
   }),
   loaderDeps: ({ search }) => ({
     q: search.q,
     page: search.page,
     ps: search.ps,
+    sf: search.sf,
+    st: search.st,
+    cond: search.cond,
+    loc: search.loc,
+    tags: search.tags,
+    sort: search.sort,
   }),
   loader: async ({ deps }) => {
-    return getItemsPage({
-      data: {
-        page: deps.page ?? 1,
-        pageSize: deps.ps ?? DEFAULT_PAGE_SIZE,
-        search: deps.q,
-      },
-    })
+    const [page, allTags, locations] = await Promise.all([
+      getItemsPage({
+        data: {
+          page: deps.page ?? 1,
+          pageSize: deps.ps ?? DEFAULT_PAGE_SIZE,
+          search: deps.q,
+          statusFilter: deps.sf,
+          statuses: deps.st,
+          conditions: deps.cond,
+          locations: deps.loc,
+          tagIds: deps.tags,
+          sort: deps.sort,
+        },
+      }),
+      listTags(),
+      getLocations(),
+    ])
+    return { page, allTags, locations }
   },
   component: StockRoute,
 })
 
 type BulkPanel = "status" | "location" | "print" | "delete" | null
 
+type DraftFilters = {
+  st: ItemStatus[]
+  cond: ItemCondition[]
+  loc: string[]
+  tags: string[]
+  sort: StockSort
+}
+
 function StockRoute() {
   const navigate = useNavigate()
   const router = useRouter()
-  const data = Route.useLoaderData()
+  const { page: data, allTags, locations } = Route.useLoaderData()
   const search = Route.useSearch()
   const page = search.page ?? 1
   const q = search.q ?? ""
+  const statusFilter: StockStatusFilter = search.sf ?? "All"
+  const sort: StockSort = search.sort ?? DEFAULT_STOCK_SORT
 
   const [pageSize, setPageSize] = usePageSize(
     PAGE_SIZE_STORAGE_KEY,
@@ -100,8 +234,18 @@ function StockRoute() {
     search.ps
   )
   const [searchInput, setSearchInput] = useState(q)
-  const [statusFilter, setStatusFilter] = useState<StockStatusFilter>("All")
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Filter sheet state — drafts are applied on "Apply".
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [manageTagsOpen, setManageTagsOpen] = useState(false)
+  const [draft, setDraft] = useState<DraftFilters>({
+    st: [],
+    cond: [],
+    loc: [],
+    tags: [],
+    sort: DEFAULT_STOCK_SORT,
+  })
 
   // Selection state
   const [selectionMode, setSelectionMode] = useState(false)
@@ -122,21 +266,24 @@ function StockRoute() {
     debounceRef.current = setTimeout(() => {
       navigate({
         to: "/stock",
-        search: { q: searchInput || undefined, page: 1, ps: search.ps },
+        search: (prev) => ({ ...prev, q: searchInput || undefined, page: 1 }),
         replace: true,
       })
     }, 300)
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [searchInput, q, navigate, search.ps])
+  }, [searchInput, q, navigate])
 
   const handleStatusFilterChange = (filter: StockStatusFilter) => {
     if (filter === statusFilter) return
-    setStatusFilter(filter)
     navigate({
       to: "/stock",
-      search: { q: q || undefined, page: 1, ps: search.ps },
+      search: (prev) => ({
+        ...prev,
+        sf: filter === "All" ? undefined : filter,
+        page: 1,
+      }),
       replace: true,
     })
   }
@@ -145,17 +292,16 @@ function StockRoute() {
     setPageSize(newSize)
     navigate({
       to: "/stock",
-      search: { q: q || undefined, page: 1, ps: newSize },
+      search: (prev) => ({ ...prev, page: 1, ps: newSize }),
       replace: true,
     })
   }
 
   const handleClearFilters = () => {
     setSearchInput("")
-    setStatusFilter("All")
     navigate({
       to: "/stock",
-      search: { q: undefined, page: 1, ps: search.ps },
+      search: { ps: search.ps },
       replace: true,
     })
   }
@@ -163,13 +309,55 @@ function StockRoute() {
   const setPage = (newPage: number) => {
     navigate({
       to: "/stock",
-      search: { q: q || undefined, page: newPage, ps: search.ps },
+      search: (prev) => ({ ...prev, page: newPage }),
       replace: true,
     })
     if (typeof window !== "undefined") {
       window.scrollTo({ top: 0, behavior: "smooth" })
     }
   }
+
+  const openFilterSheet = () => {
+    setDraft({
+      st: search.st ?? [],
+      cond: search.cond ?? [],
+      loc: search.loc ?? [],
+      tags: search.tags ?? [],
+      sort,
+    })
+    setFilterOpen(true)
+  }
+
+  const applyDraft = () => {
+    navigate({
+      to: "/stock",
+      search: (prev) => ({ ...prev, ...filterSearch(draft), page: 1 }),
+      replace: true,
+    })
+    setFilterOpen(false)
+  }
+
+  const toggleDraftValue = (
+    key: "st" | "cond" | "loc" | "tags",
+    value: string
+  ) => {
+    setDraft((prev) => {
+      const list: string[] = prev[key]
+      return {
+        ...prev,
+        [key]: list.includes(value)
+          ? list.filter((v) => v !== value)
+          : [...list, value],
+      }
+    })
+  }
+
+  const activeFilterCount =
+    (search.st?.length ?? 0) +
+    (search.cond?.length ?? 0) +
+    (search.loc?.length ?? 0) +
+    (search.tags?.length ?? 0) +
+    (sort !== DEFAULT_STOCK_SORT ? 1 : 0)
 
   // ---- Selection logic ----
 
@@ -230,16 +418,20 @@ function StockRoute() {
     refreshData()
   }
 
+  /** Append a skip note when RBAC blocked part of a bulk action. */
+  const skipNote = (skipped: number) =>
+    skipped > 0 ? ` (${skipped} skipped — admin only)` : ""
+
   const handleBulkDelete = async () => {
     if (selectedArray.length === 0) return
     setBulkBusy(true)
     try {
-      await bulkDeleteItems({ data: selectedArray })
+      const result = await bulkDeleteItems({ data: selectedArray })
       // Drop the deleted ids from the selection and clear the panel.
       setSelectedIds(new Set())
       setBulkPanel(null)
       finishAction(
-        `Deleted ${selectedArray.length} ${pluralize(selectedArray.length, "item")}`
+        `Deleted ${result.deleted} ${pluralize(result.deleted, "item")}${skipNote(result.skipped)}`
       )
     } catch (err) {
       setBulkMessage(err instanceof Error ? err.message : "Bulk delete failed")
@@ -256,7 +448,7 @@ function StockRoute() {
         data: { ids: selectedArray, status: bulkStatus },
       })
       finishAction(
-        `Updated ${result.updated} ${pluralize(result.updated, "item")} to ${bulkStatus}`
+        `Updated ${result.updated} ${pluralize(result.updated, "item")} to ${bulkStatus}${skipNote(result.skipped)}`
       )
     } catch (err) {
       setBulkMessage(err instanceof Error ? err.message : "Bulk update failed")
@@ -275,7 +467,7 @@ function StockRoute() {
       })
       setBulkLocation("")
       finishAction(
-        `Moved ${result.updated} ${pluralize(result.updated, "item")} to ${location}`
+        `Moved ${result.updated} ${pluralize(result.updated, "item")} to ${location}${skipNote(result.skipped)}`
       )
     } catch (err) {
       setBulkMessage(err instanceof Error ? err.message : "Bulk update failed")
@@ -317,20 +509,6 @@ function StockRoute() {
       setBulkBusy(false)
     }
   }
-
-  const filteredItems = useMemo(
-    () =>
-      statusFilter === "All"
-        ? data.items
-        : data.items.filter((it) => {
-            if (statusFilter === "Available")
-              return it.status === "Available" || it.status === "In Storage"
-            if (statusFilter === "Staged")
-              return it.status === "Staged" || it.status === "Reserved"
-            return it.status === statusFilter
-          }),
-    [data.items, statusFilter]
-  )
 
   const selectedCount = selectedIds.size
   const pageSizeForPagination = search.ps ?? DEFAULT_PAGE_SIZE
@@ -388,22 +566,46 @@ function StockRoute() {
 
           {!selectionMode && (
             <>
-              <div className="-mx-4 flex scrollbar-none gap-1.5 overflow-x-auto px-4 pb-1">
-                {STOCK_STATUS_FILTERS.map((filter) => (
-                  <button
-                    key={filter}
-                    type="button"
-                    onClick={() => handleStatusFilterChange(filter)}
-                    className={cn(
-                      "cursor-pointer rounded-full border px-3.5 py-1.5 text-[11px] font-bold tracking-wider whitespace-nowrap uppercase transition-all",
-                      statusFilter === filter
-                        ? "border-primary bg-primary text-primary-foreground shadow-xs"
-                        : "border-border bg-card text-muted-foreground hover:bg-accent"
-                    )}
-                  >
-                    {filter}
-                  </button>
-                ))}
+              <div className="flex items-center gap-2">
+                <Select
+                  value={statusFilter}
+                  onValueChange={(v) =>
+                    handleStatusFilterChange(v as StockStatusFilter)
+                  }
+                >
+                  <SelectTrigger className="h-9 flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STOCK_STATUS_FILTERS.map((filter) => (
+                      <SelectItem key={filter} value={filter}>
+                        {filter === "All" ? "All statuses" : filter}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant={activeFilterCount > 0 ? "default" : "outline"}
+                  size="sm"
+                  onClick={openFilterSheet}
+                  className="h-9 shrink-0"
+                >
+                  <HugeiconsIcon icon={FilterIcon} size={14} strokeWidth={2} />
+                  Filters
+                  {activeFilterCount > 0 && (
+                    <span
+                      className={cn(
+                        "flex size-4 items-center justify-center rounded-full text-[9px] font-bold",
+                        activeFilterCount > 0
+                          ? "bg-background text-foreground"
+                          : "bg-primary text-primary-foreground"
+                      )}
+                    >
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </Button>
               </div>
 
               <SearchInput
@@ -488,7 +690,7 @@ function StockRoute() {
               </div>
             ) : (
               <>
-                {filteredItems.map((item) => (
+                {data.items.map((item) => (
                   <SelectionAwareCard
                     key={item.id}
                     item={item}
@@ -520,6 +722,131 @@ function StockRoute() {
       </section>
       <BottomNav />
 
+      <Drawer open={filterOpen} onOpenChange={setFilterOpen}>
+        <DrawerContent onClose={() => setFilterOpen(false)}>
+          <DrawerHeader>
+            <DrawerTitle>Filters & Sort</DrawerTitle>
+          </DrawerHeader>
+          <DrawerBody className="space-y-5 px-4">
+            <FilterSection label="Sort by">
+              <Select
+                value={draft.sort}
+                onValueChange={(v) =>
+                  setDraft((prev) => ({ ...prev, sort: v as StockSort }))
+                }
+              >
+                <SelectTrigger size="sm" className="w-full">
+                  <SelectValue>
+                    {(value: StockSort) =>
+                      STOCK_SORTS.find((s) => s.id === value)?.label ?? value
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {STOCK_SORTS.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FilterSection>
+
+            <FilterSection label="Status">
+              <div className="flex flex-wrap gap-1.5">
+                {ITEM_STATUSES.map((s) => (
+                  <FilterPill
+                    key={s}
+                    label={s}
+                    selected={draft.st.includes(s)}
+                    onClick={() => toggleDraftValue("st", s)}
+                  />
+                ))}
+              </div>
+            </FilterSection>
+
+            <FilterSection label="Condition">
+              <div className="flex flex-wrap gap-1.5">
+                {ITEM_CONDITIONS.map((c) => (
+                  <FilterPill
+                    key={c}
+                    label={c}
+                    selected={draft.cond.includes(c)}
+                    onClick={() => toggleDraftValue("cond", c)}
+                  />
+                ))}
+              </div>
+            </FilterSection>
+
+            <FilterSection label="Location">
+              {locations.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No locations yet.
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {locations.map((loc) => (
+                    <FilterPill
+                      key={loc}
+                      label={loc}
+                      selected={draft.loc.includes(loc)}
+                      onClick={() => toggleDraftValue("loc", loc)}
+                    />
+                  ))}
+                </div>
+              )}
+            </FilterSection>
+
+            <FilterSection
+              label="Tags"
+              action={
+                <button
+                  type="button"
+                  onClick={() => setManageTagsOpen(true)}
+                  className="cursor-pointer text-[11px] font-semibold text-primary hover:underline"
+                >
+                  Manage tags
+                </button>
+              }
+            >
+              <TagPicker
+                tags={allTags}
+                selectedIds={draft.tags}
+                onToggle={(id) => toggleDraftValue("tags", id)}
+              />
+            </FilterSection>
+          </DrawerBody>
+          <DrawerFooter className="flex-row gap-2 p-4 pb-[max(1.75rem,calc(env(safe-area-inset-bottom)+1rem))]">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                setDraft({
+                  st: [],
+                  cond: [],
+                  loc: [],
+                  tags: [],
+                  sort: DEFAULT_STOCK_SORT,
+                })
+              }}
+            >
+              Clear
+            </Button>
+            <Button type="button" className="flex-1" onClick={applyDraft}>
+              Apply filters
+            </Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+
+      <ManageTagsDialog
+        tags={allTags}
+        open={manageTagsOpen}
+        onOpenChange={setManageTagsOpen}
+        onChanged={() => router.invalidate()}
+      />
+
       {selectionMode && (
         <BulkActionBar
           selectedCount={selectedCount}
@@ -541,6 +868,192 @@ function StockRoute() {
   )
 }
 
+function FilterSection({
+  label,
+  action,
+  children,
+}: {
+  label: string
+  action?: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <section className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <h3 className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+          {label}
+        </h3>
+        {action}
+      </div>
+      {children}
+    </section>
+  )
+}
+
+function FilterPill({
+  label,
+  selected,
+  onClick,
+}: {
+  label: string
+  selected: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={cn(
+        "cursor-pointer rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-all",
+        selected
+          ? "border-primary bg-primary text-primary-foreground shadow-xs"
+          : "border-border bg-card text-foreground hover:bg-accent"
+      )}
+    >
+      {label}
+    </button>
+  )
+}
+
+function ManageTagsDialog({
+  tags,
+  open,
+  onOpenChange,
+  onChanged,
+}: {
+  tags: Tag[]
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onChanged: () => void
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Manage tags</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col gap-3">
+          {tags.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              No tags yet. Create them from the item form or the tag picker.
+            </p>
+          )}
+          {tags.map((tag) => (
+            <ManageTagRow key={tag.id} tag={tag} onChanged={onChanged} />
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function ManageTagRow({
+  tag,
+  onChanged,
+}: {
+  tag: Tag
+  onChanged: () => void
+}) {
+  const [name, setName] = useState(tag.name)
+  const [color, setColor] = useState(tag.color)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const dirty = name.trim() !== tag.name || color !== tag.color
+
+  const handleSave = async () => {
+    if (!dirty || busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      await updateTag({
+        data: {
+          id: tag.id,
+          name: name.trim() !== tag.name ? name.trim() : undefined,
+          color: color !== tag.color ? color : undefined,
+        },
+      })
+      onChanged()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Save failed")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (busy) return
+    if (!confirm(`Delete tag "${tag.name}"? Items keep no other change.`))
+      return
+    setBusy(true)
+    setError(null)
+    try {
+      await deleteTag({ data: tag.id })
+      onChanged()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Delete failed")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-border p-2.5">
+      <div className="flex items-center gap-2">
+        <span
+          className="size-3 shrink-0 rounded-full"
+          style={{ backgroundColor: color }}
+        />
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={50}
+          className="h-9 flex-1 text-base sm:text-sm"
+        />
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => void handleSave()}
+          disabled={!dirty || busy || !name.trim()}
+          className="h-9"
+        >
+          Save
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="destructive"
+          onClick={() => void handleDelete()}
+          disabled={busy}
+          aria-label={`Delete tag ${tag.name}`}
+          className="h-9"
+        >
+          <TrashIcon className="size-3.5" />
+          Delete
+        </Button>
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {TAG_COLORS.map((c) => (
+          <button
+            key={c.value}
+            type="button"
+            aria-label={c.name}
+            onClick={() => setColor(c.value)}
+            className={cn(
+              "size-5 cursor-pointer rounded-full transition-transform",
+              color === c.value && "ring-2 ring-foreground ring-offset-2"
+            )}
+            style={{ backgroundColor: c.value }}
+          />
+        ))}
+      </div>
+      {error && <p className="text-[11px] text-destructive">{error}</p>}
+    </div>
+  )
+}
+
 function SelectionAwareCard({
   item,
   selectionMode,
@@ -548,7 +1061,7 @@ function SelectionAwareCard({
   onEdit,
   onToggle,
 }: {
-  item: InventoryItem
+  item: InventoryItemWithTags
   selectionMode: boolean
   selected: boolean
   onEdit: () => void
@@ -568,11 +1081,11 @@ function SelectionAwareCard({
         )}
       >
         <SelectionCheckbox selected={selected} />
-        <ItemCard item={item} size="md" onEdit={onEdit} />
+        <ItemCard item={item} tags={item.tags} size="md" onEdit={onEdit} />
       </button>
     )
   }
-  return <ItemCard item={item} size="md" onEdit={onEdit} />
+  return <ItemCard item={item} tags={item.tags} size="md" onEdit={onEdit} />
 }
 
 function SelectionCheckbox({ selected }: { selected: boolean }) {

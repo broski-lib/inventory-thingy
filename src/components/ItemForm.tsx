@@ -13,10 +13,13 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { PhotoUpload } from "@/components/PhotoUpload"
+import { TagPicker } from "@/components/TagPicker"
 import { useItemPhoto } from "@/hooks/use-item-photo"
 import { ITEM_CONDITIONS, ITEM_STATUSES } from "@/lib/item-status"
 import type { ItemCondition, ItemStatus } from "@/lib/item-status"
 import { uploadItemImage } from "@/lib/inventory"
+import { createTag } from "@/lib/tags"
+import type { Tag } from "@/lib/tags"
 import { generateQrCode } from "@/lib/ids"
 
 export type ItemFormValues = {
@@ -26,13 +29,19 @@ export type ItemFormValues = {
   condition: ItemCondition
   location: string
   status: ItemStatus
+  /** Clerk org role required to update/delete. Null = any member. */
+  requiredRole: string | null
 }
 
 type ItemFormProps = {
   initial: ItemFormValues
   initialImageKey?: string | null
+  availableTags?: Tag[]
+  initialTagIds?: string[]
+  /** Show the "admin only" toggle. Only true for org admins. */
+  canSetRequiredRole?: boolean
   onSubmit: (
-    data: ItemFormValues & { imageKey: string | null }
+    data: ItemFormValues & { imageKey: string | null; tagIds: string[] }
   ) => Promise<void>
   onDirtyChange?: (dirty: boolean) => void
   busy?: boolean
@@ -48,6 +57,7 @@ const EMPTY: ItemFormValues = {
   condition: "Good",
   location: "",
   status: "In Storage",
+  requiredRole: null,
 }
 
 export const EMPTY_ITEM_FORM: ItemFormValues = EMPTY
@@ -55,6 +65,9 @@ export const EMPTY_ITEM_FORM: ItemFormValues = EMPTY
 export function ItemForm({
   initial,
   initialImageKey = null,
+  availableTags = [],
+  initialTagIds = [],
+  canSetRequiredRole = false,
   onSubmit,
   onDirtyChange,
   busy = false,
@@ -62,24 +75,35 @@ export function ItemForm({
   hideQrCode = false,
 }: ItemFormProps) {
   const [values, setValues] = useState<ItemFormValues>(initial)
+  const [tags, setTags] = useState<Tag[]>(availableTags)
+  const [tagIds, setTagIds] = useState<string[]>(initialTagIds)
   const [imageKeyRemoved, setImageKeyRemoved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const initialRef = useRef(initial)
+  const initialTagIdsRef = useRef(initialTagIds)
   const photo = useItemPhoto({ onError: setError })
 
   const isDirty = useMemo(() => {
     if (imageKeyRemoved) return true
     if (photo.pendingImage) return true
     const init = initialRef.current
-    return (
+    if (
       values.qrCode !== init.qrCode ||
       values.name !== init.name ||
       values.description !== init.description ||
       values.condition !== init.condition ||
       values.location !== init.location ||
-      values.status !== init.status
+      values.status !== init.status ||
+      values.requiredRole !== init.requiredRole
+    ) {
+      return true
+    }
+    const initialIds = initialTagIdsRef.current
+    return (
+      tagIds.length !== initialIds.length ||
+      tagIds.some((id) => !initialIds.includes(id))
     )
-  }, [values, imageKeyRemoved, photo.pendingImage])
+  }, [values, tagIds, imageKeyRemoved, photo.pendingImage])
 
   useEffect(() => {
     onDirtyChange?.(isDirty)
@@ -90,6 +114,21 @@ export function ItemForm({
     value: ItemFormValues[TKey]
   ) => {
     setValues((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const toggleTag = (id: string) => {
+    setTagIds((prev) =>
+      prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]
+    )
+  }
+
+  const handleCreateTag = async (input: { name: string; color: string }) => {
+    const created = await createTag({ data: input })
+    setTags((prev) =>
+      [...prev, created].sort((a, b) => a.name.localeCompare(b.name))
+    )
+    setTagIds((prev) => [...prev, created.id])
+    return created
   }
 
   const remoteUrl =
@@ -129,7 +168,7 @@ export function ItemForm({
     }
 
     try {
-      await onSubmit({ ...values, imageKey })
+      await onSubmit({ ...values, imageKey, tagIds })
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save item.")
     }
@@ -233,6 +272,35 @@ export function ItemForm({
           onChange={(e) => update("location", e.target.value)}
         />
       </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label>Tags</Label>
+        <TagPicker
+          tags={tags}
+          selectedIds={tagIds}
+          onToggle={toggleTag}
+          onCreate={handleCreateTag}
+        />
+      </div>
+
+      {canSetRequiredRole && (
+        <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-card p-3">
+          <input
+            type="checkbox"
+            checked={values.requiredRole === "org:admin"}
+            onChange={(e) =>
+              update("requiredRole", e.target.checked ? "org:admin" : null)
+            }
+            className="mt-0.5 size-4 accent-primary"
+          />
+          <span className="flex flex-col gap-0.5">
+            <span className="text-xs font-semibold">Admin only</span>
+            <span className="text-[11px] text-muted-foreground">
+              Only org admins can update or delete this item.
+            </span>
+          </span>
+        </label>
+      )}
 
       <div className="flex flex-col gap-1.5">
         <Label>Photo</Label>

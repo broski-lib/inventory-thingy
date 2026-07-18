@@ -5,10 +5,12 @@ import {
   Link,
 } from "@tanstack/react-router"
 import { useRef, useState } from "react"
+import { useAuth } from "@clerk/tanstack-react-start"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { QrCodeIcon } from "@hugeicons/core-free-icons"
 import { TrashIcon } from "@/components/icons"
 import { getItemById, updateItem, deleteItem } from "@/lib/inventory"
+import { listTags, setItemTags } from "@/lib/tags"
 import { ItemForm } from "@/components/ItemForm"
 import { PageChrome } from "@/components/PageChrome"
 import { buttonVariants } from "@/components/ui/button"
@@ -16,31 +18,40 @@ import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/stock/$id/edit")({
   loader: async ({ params }) => {
-    const item = await getItemById({ data: params.id })
+    const [item, allTags] = await Promise.all([
+      getItemById({ data: params.id }),
+      listTags(),
+    ])
     if (!item) throw notFound()
-    return { item }
+    return { item, allTags }
   },
   component: EditItemPage,
 })
 
 function EditItemPage() {
-  const { item } = Route.useLoaderData()
+  const { item, allTags } = Route.useLoaderData()
   const navigate = useNavigate()
+  const { has } = useAuth()
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
   const submittingRef = useRef(false)
 
   const handleSubmit = async (
-    data: Parameters<typeof updateItem>[0]["data"]["item"]
+    data: Parameters<typeof updateItem>[0]["data"]["item"] & {
+      tagIds: string[]
+    }
   ) => {
     submittingRef.current = true
     setBusy(true)
     try {
-      await updateItem({ data: { id: item.id, item: data } })
+      const { tagIds, ...patch } = data
+      await updateItem({ data: { id: item.id, item: patch } })
+      await setItemTags({ data: { itemId: item.id, tagIds } })
       navigate({ to: "/stock" })
-    } catch {
+    } catch (err) {
       submittingRef.current = false
       setBusy(false)
+      throw err
     }
   }
 
@@ -51,9 +62,10 @@ function EditItemPage() {
     try {
       await deleteItem({ data: item.id })
       navigate({ to: "/stock" })
-    } catch {
+    } catch (err) {
       submittingRef.current = false
       setBusy(false)
+      alert(err instanceof Error ? err.message : "Could not delete item.")
     }
   }
 
@@ -97,8 +109,12 @@ function EditItemPage() {
           condition: item.condition,
           location: item.location,
           status: item.status,
+          requiredRole: item.requiredRole,
         }}
         initialImageKey={item.imageKey}
+        availableTags={allTags}
+        initialTagIds={item.tags.map((t) => t.id)}
+        canSetRequiredRole={has({ role: "org:admin" })}
         onSubmit={handleSubmit}
         onDirtyChange={setDirty}
         busy={busy}

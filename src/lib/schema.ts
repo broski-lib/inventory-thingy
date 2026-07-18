@@ -2,6 +2,7 @@ import {
   index,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -44,6 +45,9 @@ export const items = pgTable(
     // Used by the server to read/delete the object. Never returned to the client.
     imageKey: text("image_key"),
     createdBy: text("created_by").notNull().default(""),
+    // Clerk org role required to update/delete this item. Null = any org
+    // member can edit. Currently only "org:admin" is selectable in the UI.
+    requiredRole: text("required_role"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -57,6 +61,58 @@ export const items = pgTable(
     index("idx_items_qr_code").on(table.qrCode),
     index("idx_items_status").on(table.status),
     index("idx_items_name").on(table.name),
+  ]
+)
+
+/**
+ * Preset tag colors. Stored as lowercase hex on the tag row; the UI offers
+ * this palette only, so colors stay consistent across the app.
+ */
+export const TAG_COLORS = [
+  { name: "Red", value: "#ef4444" },
+  { name: "Orange", value: "#f97316" },
+  { name: "Amber", value: "#f59e0b" },
+  { name: "Green", value: "#22c55e" },
+  { name: "Teal", value: "#14b8a6" },
+  { name: "Blue", value: "#3b82f6" },
+  { name: "Purple", value: "#a855f7" },
+  { name: "Pink", value: "#ec4899" },
+  { name: "Gray", value: "#6b7280" },
+] as const
+
+export type TagColor = (typeof TAG_COLORS)[number]["value"]
+
+export const tags = pgTable(
+  "tags",
+  {
+    id: text("id").primaryKey(),
+    orgId: text("org_id").notNull(),
+    name: text("name").notNull(),
+    // Lowercase hex from TAG_COLORS.
+    color: text("color").notNull().default("#6b7280"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("tags_org_name_unique").on(table.orgId, table.name),
+    index("idx_tags_org_id").on(table.orgId),
+  ]
+)
+
+export const itemTags = pgTable(
+  "item_tags",
+  {
+    // orgId denormalized onto the join row so every query stays org-scoped
+    // without an extra join back through items.
+    orgId: text("org_id").notNull(),
+    itemId: text("item_id").notNull(),
+    tagId: text("tag_id").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.itemId, table.tagId] }),
+    index("idx_item_tags_org_id").on(table.orgId),
+    index("idx_item_tags_tag_id").on(table.tagId),
   ]
 )
 
