@@ -1,5 +1,6 @@
 import {
   index,
+  integer,
   pgEnum,
   pgTable,
   primaryKey,
@@ -26,6 +27,10 @@ export type ItemCondition = (typeof ITEM_CONDITIONS)[number]
 export const itemStatus = pgEnum("item_status", ITEM_STATUSES)
 export const condition = pgEnum("condition", ITEM_CONDITIONS)
 
+export const ITEM_KINDS = ["unit", "bulk"] as const
+export type ItemKind = (typeof ITEM_KINDS)[number]
+export const itemKind = pgEnum("item_kind", ITEM_KINDS)
+
 export const items = pgTable(
   "items",
   {
@@ -33,6 +38,10 @@ export const items = pgTable(
     // 01H8XGJWBWBAQ4ZEXAMPLE00 — easier to read & skim than a UUID v4.
     id: text("id").primaryKey(),
     orgId: text("org_id").notNull(),
+    // unit = one physical item per row (current behavior).
+    // bulk = fungible stock (pillows etc.); quantities live in item_batches
+    // and this row's location/status/condition mirror the first batch.
+    kind: itemKind("kind").notNull().default("unit"),
     qrCode: text("qr_code").notNull(),
     name: text("name").notNull(),
     description: text("description").notNull().default(""),
@@ -116,6 +125,36 @@ export const itemTags = pgTable(
   ]
 )
 
+/**
+ * One batch of fungible (bulk) stock: `qty` units of an item in a single
+ * location/status/condition. An item's total quantity is the sum of its
+ * batches. Batches auto-delete when they reach qty 0.
+ */
+export const itemBatches = pgTable(
+  "item_batches",
+  {
+    id: text("id").primaryKey(),
+    orgId: text("org_id").notNull(),
+    itemId: text("item_id").notNull(),
+    qty: integer("qty").notNull(),
+    location: text("location").notNull(),
+    status: itemStatus("status").notNull().default("In Storage"),
+    condition: condition("condition").notNull().default("Good"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_item_batches_org_id").on(table.orgId),
+    index("idx_item_batches_item_id").on(table.itemId),
+    index("idx_item_batches_location").on(table.location),
+    index("idx_item_batches_status").on(table.status),
+  ]
+)
+
 export const ACTIVITY_ACTIONS = [
   "created",
   "updated",
@@ -151,6 +190,8 @@ export const activityLogs = pgTable(
     toLocation: text("to_location"),
     fromCondition: condition("from_condition"),
     toCondition: condition("to_condition"),
+    // Units affected — set for bulk (batch) actions, null for unit items.
+    quantity: integer("quantity"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

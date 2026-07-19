@@ -9,6 +9,8 @@ import { items } from "@/lib/schema"
 import { authRequiredMiddleware } from "@/lib/auth-middleware"
 import { getItemByQrCode, updateItem } from "@/lib/inventory"
 import type { InventoryItem } from "@/lib/inventory"
+import { getBatchesForItems } from "@/lib/batches"
+import { BatchManager } from "@/components/BatchManager"
 import { AppHeader } from "@/components/AppHeader"
 import { BottomNav } from "@/components/BottomNav"
 import { BoltIcon, WrenchIcon, EditIcon } from "@/components/icons"
@@ -43,9 +45,11 @@ const loadScan = createServerFn({ method: "GET" })
 const lookupItem = createServerFn({ method: "GET" })
   .middleware([authRequiredMiddleware])
   .validator((code: string) => code)
-  .handler(async ({ data: code }) => {
+  .handler(async ({ data: code, context }) => {
     const found = await getItemByQrCode({ data: code })
-    return { code, item: found }
+    if (!found || found.kind !== "bulk") return { code, item: found, batches: [] }
+    const batchesByItem = await getBatchesForItems(context.orgId, [found.id])
+    return { code, item: found, batches: batchesByItem.get(found.id) ?? [] }
   })
 
 type ScanSearch = {
@@ -73,6 +77,8 @@ function ScanRoute() {
   const [scanMessage, setScanMessage] = useState("")
 
   const scannedItem = lookup?.item ?? null
+  const scannedBatches = lookup?.batches ?? []
+  const isBulk = scannedItem?.kind === "bulk"
   const failedCode = lookup && !lookup.item ? lookup.code : null
   const showResult = scannedItem || failedCode
 
@@ -214,11 +220,18 @@ function ScanRoute() {
                       <h3 className="truncate text-sm font-semibold text-foreground">
                         {scannedItem.name}
                       </h3>
-                      <Badge
-                        variant={getStatusBadgeVariant(scannedItem.status)}
-                      >
-                        {scannedItem.status}
-                      </Badge>
+                      {isBulk ? (
+                        <Badge variant="neutral">
+                          ×
+                          {scannedBatches.reduce((sum, b) => sum + b.qty, 0)}
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant={getStatusBadgeVariant(scannedItem.status)}
+                        >
+                          {scannedItem.status}
+                        </Badge>
+                      )}
                     </div>
                     <p className="font-mono text-xs text-muted-foreground">
                       {scannedItem.qrCode}
@@ -229,20 +242,22 @@ function ScanRoute() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 border-y border-dashed border-border py-2 text-xs">
-                  <div>
-                    <span className="block text-[10px] font-bold text-muted-foreground uppercase">
-                      Location
-                    </span>
-                    <span className="font-medium">{scannedItem.location}</span>
+                {!isBulk && (
+                  <div className="grid grid-cols-2 gap-2 border-y border-dashed border-border py-2 text-xs">
+                    <div>
+                      <span className="block text-[10px] font-bold text-muted-foreground uppercase">
+                        Location
+                      </span>
+                      <span className="font-medium">{scannedItem.location}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-bold text-muted-foreground uppercase">
+                        Condition
+                      </span>
+                      <span className="font-medium">{scannedItem.condition}</span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="block text-[10px] font-bold text-muted-foreground uppercase">
-                      Condition
-                    </span>
-                    <span className="font-medium">{scannedItem.condition}</span>
-                  </div>
-                </div>
+                )}
 
                 <div className="space-y-2">
                   <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
@@ -250,16 +265,22 @@ function ScanRoute() {
                   </p>
 
                   <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      variant="outline"
-                      className="h-11"
-                      onClick={() =>
-                        handleQuickStatus(scannedItem, "Repair", "Intake bench")
-                      }
-                    >
-                      <WrenchIcon />
-                      Report Damaged
-                    </Button>
+                    {!isBulk && (
+                      <Button
+                        variant="outline"
+                        className="h-11"
+                        onClick={() =>
+                          handleQuickStatus(
+                            scannedItem,
+                            "Repair",
+                            "Intake bench"
+                          )
+                        }
+                      >
+                        <WrenchIcon />
+                        Report Damaged
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       className="h-11"
@@ -299,6 +320,11 @@ function ScanRoute() {
                 </div>
               </CardContent>
 
+              {isBulk && (
+                <BatchManager itemId={scannedItem.id} batches={scannedBatches} />
+              )}
+
+              {!isBulk && (
               <div className="sticky bottom-0 -mx-4 mt-2 border-t border-border bg-card/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
                 {scannedItem.status !== "Reserved" &&
                 scannedItem.status !== "Staged" ? (
@@ -331,6 +357,7 @@ function ScanRoute() {
                   </Button>
                 )}
               </div>
+              )}
             </Card>
           ) : failedCode ? (
             <div className="rounded-xl border border-dashed border-border bg-card p-6 text-center">

@@ -1081,11 +1081,25 @@ function SelectionAwareCard({
         )}
       >
         <SelectionCheckbox selected={selected} />
-        <ItemCard item={item} tags={item.tags} size="md" onEdit={onEdit} />
+        <ItemCard
+          item={item}
+          tags={item.tags}
+          batches={item.batches}
+          size="md"
+          onEdit={onEdit}
+        />
       </button>
     )
   }
-  return <ItemCard item={item} tags={item.tags} size="md" onEdit={onEdit} />
+  return (
+    <ItemCard
+      item={item}
+      tags={item.tags}
+      batches={item.batches}
+      size="md"
+      onEdit={onEdit}
+    />
+  )
 }
 
 function SelectionCheckbox({ selected }: { selected: boolean }) {

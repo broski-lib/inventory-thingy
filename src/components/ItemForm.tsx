@@ -14,9 +14,10 @@ import {
 } from "@/components/ui/select"
 import { PhotoUpload } from "@/components/PhotoUpload"
 import { TagPicker } from "@/components/TagPicker"
+import { LocationChips } from "@/components/LocationChips"
 import { useItemPhoto } from "@/hooks/use-item-photo"
 import { ITEM_CONDITIONS, ITEM_STATUSES } from "@/lib/item-status"
-import type { ItemCondition, ItemStatus } from "@/lib/item-status"
+import type { ItemCondition, ItemKind, ItemStatus } from "@/lib/item-status"
 import { uploadItemImage } from "@/lib/inventory"
 import { createTag } from "@/lib/tags"
 import type { Tag } from "@/lib/tags"
@@ -29,6 +30,10 @@ export type ItemFormValues = {
   condition: ItemCondition
   location: string
   status: ItemStatus
+  /** unit = one physical item; bulk = fungible stock tracked via batches. */
+  kind: ItemKind
+  /** Bulk only: starting quantity for the initial batch (create only). */
+  quantity: number
   /** Clerk org role required to update/delete. Null = any member. */
   requiredRole: string | null
 }
@@ -38,6 +43,8 @@ type ItemFormProps = {
   initialImageKey?: string | null
   availableTags?: Tag[]
   initialTagIds?: string[]
+  /** Existing org locations, shown as one-tap chips under the location input. */
+  locationSuggestions?: string[]
   /** Show the "admin only" toggle. Only true for org admins. */
   canSetRequiredRole?: boolean
   onSubmit: (
@@ -57,6 +64,8 @@ const EMPTY: ItemFormValues = {
   condition: "Good",
   location: "",
   status: "In Storage",
+  kind: "unit",
+  quantity: 1,
   requiredRole: null,
 }
 
@@ -67,6 +76,7 @@ export function ItemForm({
   initialImageKey = null,
   availableTags = [],
   initialTagIds = [],
+  locationSuggestions = [],
   canSetRequiredRole = false,
   onSubmit,
   onDirtyChange,
@@ -79,6 +89,11 @@ export function ItemForm({
   const [tagIds, setTagIds] = useState<string[]>(initialTagIds)
   const [imageKeyRemoved, setImageKeyRemoved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Raw text for the quantity field so the user can clear/retype freely.
+  // Parsed into values.quantity on change when valid; resynced on blur.
+  const [qtyText, setQtyText] = useState(String(initial.quantity))
+  // Per-field required errors, revealed on the first submit attempt.
+  const [showErrors, setShowErrors] = useState(false)
   const initialRef = useRef(initial)
   const initialTagIdsRef = useRef(initialTagIds)
   const photo = useItemPhoto({ onError: setError })
@@ -94,6 +109,8 @@ export function ItemForm({
       values.condition !== init.condition ||
       values.location !== init.location ||
       values.status !== init.status ||
+      values.kind !== init.kind ||
+      values.quantity !== init.quantity ||
       values.requiredRole !== init.requiredRole
     ) {
       return true
@@ -144,10 +161,17 @@ export function ItemForm({
     }
   }
 
+  const nameError = showErrors && !values.name.trim()
+  // Location is only editable (and required) when the field is rendered —
+  // bulk edit moves it to the batches section.
+  const locationFieldVisible = !(values.kind === "bulk" && hideQrCode)
+  const locationError = showErrors && locationFieldVisible && !values.location.trim()
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!values.name.trim() || !values.location.trim()) {
-      setError("Name and Location are required.")
+    if (!values.name.trim() || (locationFieldVisible && !values.location.trim())) {
+      setShowErrors(true)
+      setError("Fill in the required fields highlighted below.")
       return
     }
     setError(null)
@@ -204,14 +228,55 @@ export function ItemForm({
         </div>
       )}
 
+      {!hideQrCode && (
+        <div className="flex flex-col gap-1.5">
+          <Label>Item type</Label>
+          <div className="grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1">
+            {(
+              [
+                { id: "unit", label: "Single item", hint: "One QR per item" },
+                { id: "bulk", label: "Bulk stock", hint: "Qty per batch" },
+              ] as const
+            ).map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => update("kind", opt.id)}
+                aria-pressed={values.kind === opt.id}
+                className={
+                  values.kind === opt.id
+                    ? "cursor-pointer rounded-md bg-card px-2 py-1.5 text-xs font-semibold text-foreground shadow-xs"
+                    : "cursor-pointer rounded-md px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+                }
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {values.kind === "bulk"
+              ? "Fungible stock (e.g. pillows). One QR on the rack; quantities tracked per batch."
+              : "A single physical item with its own QR code."}
+          </p>
+        </div>
+      )}
+
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="item-name">Name</Label>
+        <Label htmlFor="item-name">
+          Name <span className="text-destructive">*</span>
+        </Label>
         <Input
           id="item-name"
           required
           value={values.name}
+          aria-invalid={nameError || undefined}
           onChange={(e) => update("name", e.target.value)}
         />
+        {nameError && (
+          <p className="text-[11px] font-medium text-destructive">
+            Name is required.
+          </p>
+        )}
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -224,54 +289,105 @@ export function ItemForm({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      {values.kind === "bulk" && !hideQrCode && (
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="item-status">Status</Label>
-          <Select
-            value={values.status}
-            onValueChange={(v) => update("status", v as ItemStatus)}
-          >
-            <SelectTrigger id="item-status">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ITEM_STATUSES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label htmlFor="item-quantity">Starting quantity</Label>
+          <Input
+            id="item-quantity"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            required
+            value={qtyText}
+            onChange={(e) => {
+              const raw = e.target.value
+              setQtyText(raw)
+              const n = Math.floor(Number(raw))
+              if (raw !== "" && Number.isFinite(n) && n >= 1) {
+                update("quantity", n)
+              }
+            }}
+            onBlur={() => setQtyText(String(values.quantity))}
+          />
         </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="item-condition">Condition</Label>
-          <Select
-            value={values.condition}
-            onValueChange={(v) => update("condition", v as ItemCondition)}
-          >
-            <SelectTrigger id="item-condition">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ITEM_CONDITIONS.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {c}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      )}
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="item-location">Location</Label>
-        <Input
-          id="item-location"
-          required
-          value={values.location}
-          onChange={(e) => update("location", e.target.value)}
-        />
-      </div>
+      {values.kind === "bulk" && hideQrCode ? (
+        <p className="rounded-lg border border-border bg-muted px-3 py-2 text-[11px] text-muted-foreground">
+          Location, status and condition are tracked per batch — manage them
+          in the batches section below.
+        </p>
+      ) : (
+        <>
+          {values.kind === "bulk" && (
+            <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+              Initial batch
+            </p>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="item-status">Status</Label>
+              <Select
+                value={values.status}
+                onValueChange={(v) => update("status", v as ItemStatus)}
+              >
+                <SelectTrigger id="item-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ITEM_STATUSES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="item-condition">Condition</Label>
+              <Select
+                value={values.condition}
+                onValueChange={(v) => update("condition", v as ItemCondition)}
+              >
+                <SelectTrigger id="item-condition">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ITEM_CONDITIONS.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="item-location">
+              Location <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="item-location"
+              required
+              value={values.location}
+              aria-invalid={locationError || undefined}
+              onChange={(e) => update("location", e.target.value)}
+            />
+            {locationError ? (
+              <p className="text-[11px] font-medium text-destructive">
+                Location is required.
+              </p>
+            ) : (
+              <LocationChips
+                locations={locationSuggestions}
+                value={values.location}
+                onSelect={(loc) => update("location", loc)}
+              />
+            )}
+          </div>
+        </>
+      )}
 
       <div className="flex flex-col gap-1.5">
         <Label>Tags</Label>

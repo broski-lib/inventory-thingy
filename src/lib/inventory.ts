@@ -1,8 +1,8 @@
 import { createServerFn } from "@tanstack/react-start"
-import { and, asc, eq, ilike, inArray, or, desc, sql } from "drizzle-orm"
+import { and, asc, eq, ilike, inArray, ne, or, desc, sql } from "drizzle-orm"
 import type { SQL } from "drizzle-orm"
 import { getDb } from "./db"
-import { items, activityLogs, itemTags, tags } from "./schema"
+import { items, activityLogs, itemBatches, itemTags, tags } from "./schema"
 import type { ItemCondition, ItemStatus } from "./schema"
 import { generateUlid } from "./ids"
 import { logActivity, resolveActor } from "./activity"
@@ -22,18 +22,25 @@ import {
 import type { HasFn } from "./auth-middleware"
 import { getTagsForItems } from "./tags"
 import type { Tag } from "./tags"
+import { getBatchesForItems } from "./batches"
+import type { ItemBatch } from "./batches"
 
 /** Shape of a row in the `items` table. */
 export type InventoryItem = typeof items.$inferSelect
 
-/** Item row plus its resolved tags, as returned by getItemsPage. */
-export type InventoryItemWithTags = InventoryItem & { tags: Tag[] }
+/** Item row plus its resolved tags + batches (bulk items). */
+export type InventoryItemWithTags = InventoryItem & {
+  tags: Tag[]
+  batches: ItemBatch[]
+}
 
 export type CreateItemInput = Omit<
   typeof items.$inferInsert,
   "id" | "createdAt" | "updatedAt" | "orgId" | "imageUrl"
 > & {
   imageKey?: string | null
+  /** Bulk items only: starting quantity for the initial batch. */
+  quantity?: number
 }
 
 export type UpdateItemInput = {
@@ -86,15 +93,38 @@ export type GetItemsPageArgs = {
   sort?: StockSort
 }
 
-function statusGroupCondition(filter: StockStatusFilter): SQL | undefined {
-  if (filter === "Available") {
-    return or(eq(items.status, "Available"), eq(items.status, "In Storage"))
-  }
-  if (filter === "Staged") {
-    return or(eq(items.status, "Staged"), eq(items.status, "Reserved"))
-  }
-  if (filter === "All") return undefined
-  return eq(items.status, filter)
+function statusGroupList(filter: StockStatusFilter): ItemStatus[] {
+  if (filter === "Available") return ["Available", "In Storage"]
+  if (filter === "Staged") return ["Staged", "Reserved"]
+  if (filter === "All") return []
+  return [filter]
+}
+
+/**
+ * Kind-aware state filter: unit items match on their own columns, bulk
+ * items match when ANY of their batches matches. `col` picks the batch
+ * column to compare against `values`.
+ */
+function stateFilter(
+  orgId: string,
+  db: ReturnType<typeof getDb>,
+  col: "status" | "condition" | "location",
+  unitCondition: SQL,
+  values: string[]
+): SQL {
+  const batchMatch = db
+    .select({ itemId: itemBatches.itemId })
+    .from(itemBatches)
+    .where(
+      and(
+        eq(itemBatches.orgId, orgId),
+        inArray(itemBatches[col], values)
+      )
+    )
+  return or(
+    and(ne(items.kind, "bulk"), unitCondition),
+    inArray(items.id, batchMatch)
+  )!
 }
 
 function buildItemsWhere(
@@ -116,6 +146,11 @@ function buildItemsWhere(
         and(eq(itemTags.tagId, tags.id), eq(tags.orgId, orgId))
       )
       .where(and(eq(itemTags.orgId, orgId), ilike(tags.name, s)))
+    // Bulk items with a batch in a matching location.
+    const batchLocationMatch = db
+      .select({ itemId: itemBatches.itemId })
+      .from(itemBatches)
+      .where(and(eq(itemBatches.orgId, orgId), ilike(itemBatches.location, s)))
     // Cast enum column to text so ilike works on it.
     conditions.push(
       or(
@@ -124,23 +159,56 @@ function buildItemsWhere(
         ilike(items.location, s),
         sql`${items.status}::text ILIKE ${s}`,
         ilike(items.description, s),
-        inArray(items.id, tagMatch)
+        inArray(items.id, tagMatch),
+        inArray(items.id, batchLocationMatch)
       )!
     )
   }
 
   if (args.statusFilter && args.statusFilter !== "All") {
-    const c = statusGroupCondition(args.statusFilter)
-    if (c) conditions.push(c)
+    const list = statusGroupList(args.statusFilter)
+    conditions.push(
+      stateFilter(
+        orgId,
+        db,
+        "status",
+        inArray(items.status, list),
+        list
+      )
+    )
   }
   if (args.statuses && args.statuses.length > 0) {
-    conditions.push(inArray(items.status, args.statuses))
+    conditions.push(
+      stateFilter(
+        orgId,
+        db,
+        "status",
+        inArray(items.status, args.statuses),
+        args.statuses
+      )
+    )
   }
   if (args.conditions && args.conditions.length > 0) {
-    conditions.push(inArray(items.condition, args.conditions))
+    conditions.push(
+      stateFilter(
+        orgId,
+        db,
+        "condition",
+        inArray(items.condition, args.conditions),
+        args.conditions
+      )
+    )
   }
   if (args.locations && args.locations.length > 0) {
-    conditions.push(inArray(items.location, args.locations))
+    conditions.push(
+      stateFilter(
+        orgId,
+        db,
+        "location",
+        inArray(items.location, args.locations),
+        args.locations
+      )
+    )
   }
   if (args.tagIds && args.tagIds.length > 0) {
     // Match items carrying ANY of the selected tags.
@@ -202,13 +270,21 @@ export const getItemsPage = createServerFn({ method: "GET" })
         .where(where),
     ])
 
-    const tagsByItem = await getTagsForItems(
-      orgId,
-      rows.map((r) => r.id)
-    )
+    const ids = rows.map((r) => r.id)
+    const [tagsByItem, batchesByItem] = await Promise.all([
+      getTagsForItems(orgId, ids),
+      getBatchesForItems(
+        orgId,
+        rows.filter((r) => r.kind === "bulk").map((r) => r.id)
+      ),
+    ])
     const total = totalResult[0]?.count ?? 0
     return {
-      items: rows.map((row) => ({ ...row, tags: tagsByItem.get(row.id) ?? [] })),
+      items: rows.map((row) => ({
+        ...row,
+        tags: tagsByItem.get(row.id) ?? [],
+        batches: batchesByItem.get(row.id) ?? [],
+      })),
       total,
       page,
       pageSize,
@@ -216,18 +292,29 @@ export const getItemsPage = createServerFn({ method: "GET" })
     }
   })
 
-/** Distinct location values for the org, for the stock filter UI. */
+/**
+ * Distinct location values for the org, for the stock filter UI.
+ * Union of unit-item locations and bulk-batch locations.
+ */
 export const getLocations = createServerFn({ method: "GET" })
   .middleware([authRequiredMiddleware])
   .handler(async ({ context }): Promise<string[]> => {
     const { orgId } = context
     const db = getDb()
-    const rows = await db
-      .selectDistinct({ location: items.location })
-      .from(items)
-      .where(eq(items.orgId, orgId))
-      .orderBy(asc(items.location))
-    return rows.map((r) => r.location)
+    const [itemRows, batchRows] = await Promise.all([
+      db
+        .selectDistinct({ location: items.location })
+        .from(items)
+        .where(and(eq(items.orgId, orgId), ne(items.kind, "bulk"))),
+      db
+        .selectDistinct({ location: itemBatches.location })
+        .from(itemBatches)
+        .where(eq(itemBatches.orgId, orgId)),
+    ])
+    const set = new Set<string>()
+    for (const r of itemRows) set.add(r.location)
+    for (const r of batchRows) set.add(r.location)
+    return [...set].sort((a, b) => a.localeCompare(b))
   })
 
 export const getStats = createServerFn({ method: "GET" })
@@ -381,6 +468,10 @@ export const createItem = createServerFn({ method: "POST" })
 
     assertValidRequiredRole(has, item.requiredRole)
 
+    const kind = item.kind ?? "unit"
+    const quantity =
+      kind === "bulk" ? Math.max(1, Math.floor(item.quantity ?? 1)) : null
+
     const imageKey = item.imageKey ?? null
     const imageUrl = imageKey ? buildImageUrl(imageKey) : ""
 
@@ -389,6 +480,7 @@ export const createItem = createServerFn({ method: "POST" })
       .values({
         id,
         orgId,
+        kind,
         qrCode: item.qrCode,
         name: item.name,
         description: item.description,
@@ -404,6 +496,19 @@ export const createItem = createServerFn({ method: "POST" })
       })
       .returning()
 
+    // Bulk items get their starting stock as the initial batch.
+    if (kind === "bulk" && quantity !== null) {
+      await db.insert(itemBatches).values({
+        id: generateUlid(),
+        orgId,
+        itemId: id,
+        qty: quantity,
+        location: inserted.location,
+        status: inserted.status,
+        condition: inserted.condition,
+      })
+    }
+
     const actor = { ...(await resolveActor(userId)), orgId }
     await logActivity(actor, {
       itemId: inserted.id,
@@ -412,6 +517,7 @@ export const createItem = createServerFn({ method: "POST" })
       action: "created",
       toLocation: inserted.location,
       toCondition: inserted.condition,
+      quantity,
     })
 
     return inserted
@@ -452,8 +558,18 @@ export const updateItem = createServerFn({ method: "POST" })
       if (k === "imageKey") continue
       if (k === "imageUrl") continue
       if (k === "requiredRole") continue
+      // `quantity` is form-only (initial batch on create) — not a column.
+      if (k === "quantity") continue
       if (k === "orgId" || k === "id" || k === "createdBy") continue
       ;(patch as Record<string, unknown>)[k] = v
+    }
+    // Bulk items: location/status/condition live on batches, not the item
+    // row. Strip them so the mirror columns never drift.
+    if (current.kind === "bulk") {
+      delete patch.location
+      delete patch.status
+      delete patch.condition
+      delete patch.takenOutAt
     }
     let nextImageKey = current.imageKey
     let nextImageUrl = current.imageUrl
@@ -523,6 +639,14 @@ export const deleteItem = createServerFn({ method: "POST" })
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!deleted) throw new Error("Item not found")
 
+    // Clean up join rows — no FKs, so they don't cascade on their own.
+    await db
+      .delete(itemBatches)
+      .where(and(eq(itemBatches.orgId, orgId), eq(itemBatches.itemId, id)))
+    await db
+      .delete(itemTags)
+      .where(and(eq(itemTags.orgId, orgId), eq(itemTags.itemId, id)))
+
     if (deleted.imageKey) {
       await deleteItemImage(orgId, deleted.imageKey)
     }
@@ -586,8 +710,15 @@ export const getItemById = createServerFn({ method: "GET" })
         .limit(1)
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (!row) return undefined
-      const tagsByItem = await getTagsForItems(orgId, [id])
-      return { ...row, tags: tagsByItem.get(id) ?? [] }
+      const [tagsByItem, batchesByItem] = await Promise.all([
+        getTagsForItems(orgId, [id]),
+        getBatchesForItems(orgId, row.kind === "bulk" ? [id] : []),
+      ])
+      return {
+        ...row,
+        tags: tagsByItem.get(id) ?? [],
+        batches: batchesByItem.get(id) ?? [],
+      }
     }
   )
 
@@ -664,6 +795,21 @@ export const bulkDeleteItems = createServerFn({ method: "POST" })
       await db
         .delete(items)
         .where(and(eq(items.orgId, orgId), inArray(items.id, allowedIds)))
+
+      // Clean up join rows — no FKs, so they don't cascade on their own.
+      await db
+        .delete(itemBatches)
+        .where(
+          and(
+            eq(itemBatches.orgId, orgId),
+            inArray(itemBatches.itemId, allowedIds)
+          )
+        )
+      await db
+        .delete(itemTags)
+        .where(
+          and(eq(itemTags.orgId, orgId), inArray(itemTags.itemId, allowedIds))
+        )
 
       await Promise.all(
         toDelete

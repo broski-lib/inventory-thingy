@@ -62,6 +62,14 @@ function BulkScanPage() {
           message: "Tag not registered",
         }
       }
+      if (found.kind === "bulk") {
+        return {
+          qrCode,
+          ok: false,
+          message: "Bulk item — use single scan to adjust batches",
+          itemName: found.name,
+        }
+      }
       await updateItem({
         data: {
           id: found.id,

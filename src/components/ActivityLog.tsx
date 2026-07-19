@@ -174,10 +174,18 @@ function ActivityDetails({ log }: { log: ActivityLog }) {
     log.toCondition !== null &&
     log.fromCondition !== log.toCondition
 
-  if (!hasLocationChange && !hasConditionChange) return null
+  if (!hasLocationChange && !hasConditionChange && log.quantity === null)
+    return null
 
   return (
     <div className="mt-1.5 flex flex-wrap gap-2 text-[10px] font-semibold tracking-wider uppercase">
+      {log.quantity !== null && (
+        <span className="inline-flex items-center gap-1 rounded-md border border-border bg-secondary px-2 py-0.5 text-muted-foreground">
+          <span className="tracking-normal text-foreground normal-case">
+            ×{log.quantity}
+          </span>
+        </span>
+      )}
       {hasLocationChange && (
         <span className="inline-flex items-center gap-1 rounded-md border border-border bg-secondary px-2 py-0.5 text-muted-foreground">
           <span className="text-foreground/60">From</span>

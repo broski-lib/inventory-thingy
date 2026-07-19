@@ -17,6 +17,8 @@ export type ActivityLogInput = {
   toLocation?: string | null
   fromCondition?: ActivityLog["fromCondition"]
   toCondition?: ActivityLog["toCondition"]
+  /** Units affected — bulk (batch) actions only. */
+  quantity?: number | null
 }
 
 export type ActivityActor = {
@@ -73,6 +75,7 @@ export async function logActivity(
     toLocation: input.toLocation ?? null,
     fromCondition: input.fromCondition ?? null,
     toCondition: input.toCondition ?? null,
+    quantity: input.quantity ?? null,
   })
 }
 

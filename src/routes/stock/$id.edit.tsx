@@ -9,27 +9,30 @@ import { useAuth } from "@clerk/tanstack-react-start"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { QrCodeIcon } from "@hugeicons/core-free-icons"
 import { TrashIcon } from "@/components/icons"
-import { getItemById, updateItem, deleteItem } from "@/lib/inventory"
+import { getItemById, updateItem, deleteItem, getLocations } from "@/lib/inventory"
 import { listTags, setItemTags } from "@/lib/tags"
 import { ItemForm } from "@/components/ItemForm"
+import { BatchManager } from "@/components/BatchManager"
 import { PageChrome } from "@/components/PageChrome"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/stock/$id/edit")({
+  staleTime: 0,
   loader: async ({ params }) => {
-    const [item, allTags] = await Promise.all([
+    const [item, allTags, locations] = await Promise.all([
       getItemById({ data: params.id }),
       listTags(),
+      getLocations(),
     ])
     if (!item) throw notFound()
-    return { item, allTags }
+    return { item, allTags, locations }
   },
   component: EditItemPage,
 })
 
 function EditItemPage() {
-  const { item, allTags } = Route.useLoaderData()
+  const { item, allTags, locations } = Route.useLoaderData()
   const navigate = useNavigate()
   const { has } = useAuth()
   const [dirty, setDirty] = useState(false)
@@ -109,10 +112,13 @@ function EditItemPage() {
           condition: item.condition,
           location: item.location,
           status: item.status,
+          kind: item.kind,
+          quantity: 1,
           requiredRole: item.requiredRole,
         }}
         initialImageKey={item.imageKey}
         availableTags={allTags}
+        locationSuggestions={locations}
         initialTagIds={item.tags.map((t) => t.id)}
         canSetRequiredRole={has({ role: "org:admin" })}
         onSubmit={handleSubmit}
@@ -121,6 +127,13 @@ function EditItemPage() {
         submitLabel="Save Changes"
         hideQrCode
       />
+      {item.kind === "bulk" && (
+        <BatchManager
+          itemId={item.id}
+          batches={item.batches}
+          locationSuggestions={locations}
+        />
+      )}
     </PageChrome>
   )
 }
