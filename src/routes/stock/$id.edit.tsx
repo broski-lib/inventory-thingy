@@ -115,6 +115,7 @@ function EditItemPage() {
           kind: item.kind,
           quantity: 1,
           requiredRole: item.requiredRole,
+          printSize: item.printSize,
         }}
         initialImageKey={item.imageKey}
         availableTags={allTags}

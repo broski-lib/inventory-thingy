@@ -1,19 +1,21 @@
 import { useEffect, useState } from "react"
+import { useNavigate } from "@tanstack/react-router"
 import QRCode from "qrcode"
 import { Button } from "@/components/ui/button"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { QrCodeIcon } from "@hugeicons/core-free-icons"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { openPrintWindow, singleTagSheet } from "@/lib/print-sheet"
 
 type QRTagProps = {
   qrCode: string
   itemName: string
+  itemId: string
 }
 
-export function QRTag({ qrCode, itemName }: QRTagProps) {
+export function QRTag({ qrCode, itemName, itemId }: QRTagProps) {
   const [dataUrl, setDataUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const navigate = useNavigate()
 
   useEffect(() => {
     let cancelled = false
@@ -43,11 +45,7 @@ export function QRTag({ qrCode, itemName }: QRTagProps) {
   }
 
   const handlePrint = () => {
-    if (!dataUrl) return
-    openPrintWindow(
-      singleTagSheet({ qrCode, dataUrl, itemName }),
-      "width=240,height=320"
-    )
+    navigate({ to: "/stock/$id/print", params: { id: itemId } })
   }
 
   const loading = !dataUrl && !error

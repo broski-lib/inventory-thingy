@@ -31,6 +31,10 @@ export const ITEM_KINDS = ["unit", "bulk"] as const
 export type ItemKind = (typeof ITEM_KINDS)[number]
 export const itemKind = pgEnum("item_kind", ITEM_KINDS)
 
+export const PRINT_SIZES = ["small", "medium", "large"] as const
+export type PrintSize = (typeof PRINT_SIZES)[number]
+export const printSize = pgEnum("print_size", PRINT_SIZES)
+
 export const items = pgTable(
   "items",
   {
@@ -57,6 +61,9 @@ export const items = pgTable(
     // Clerk org role required to update/delete this item. Null = any org
     // member can edit. Currently only "org:admin" is selectable in the UI.
     requiredRole: text("required_role"),
+    // QR label size for printing. Defaults to "medium". Only override for
+    // unusually small (plants, jewelry) or large (paintings, rugs) items.
+    printSize: printSize("print_size").notNull().default("medium"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

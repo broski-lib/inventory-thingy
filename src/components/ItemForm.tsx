@@ -22,6 +22,8 @@ import { uploadItemImage } from "@/lib/inventory"
 import { createTag } from "@/lib/tags"
 import type { Tag } from "@/lib/tags"
 import { generateQrCode } from "@/lib/ids"
+import type { PrintSize } from "@/lib/schema"
+import { PRINT_SIZES } from "@/lib/schema"
 
 export type ItemFormValues = {
   qrCode: string
@@ -36,6 +38,8 @@ export type ItemFormValues = {
   quantity: number
   /** Clerk org role required to update/delete. Null = any member. */
   requiredRole: string | null
+  /** QR label size for printing. Defaults to "medium". */
+  printSize: PrintSize
 }
 
 type ItemFormProps = {
@@ -67,6 +71,7 @@ const EMPTY: ItemFormValues = {
   kind: "unit",
   quantity: 1,
   requiredRole: null,
+  printSize: "medium",
 }
 
 export const EMPTY_ITEM_FORM: ItemFormValues = EMPTY
@@ -206,60 +211,15 @@ export function ItemForm({
         </Alert>
       )}
 
-      {!hideQrCode && (
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="item-qr">QR Code</Label>
-            <button
-              type="button"
-              onClick={() => update("qrCode", generateQrCode())}
-              className="text-[10px] font-bold tracking-wider text-primary uppercase hover:underline"
-            >
-              Re-roll
-            </button>
-          </div>
-          <Input
-            id="item-qr"
-            value={values.qrCode}
-            readOnly
-            onChange={() => {}}
-            className="font-mono read-only:bg-muted read-only:text-muted-foreground"
-          />
-        </div>
-      )}
-
-      {!hideQrCode && (
-        <div className="flex flex-col gap-1.5">
-          <Label>Item type</Label>
-          <div className="grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1">
-            {(
-              [
-                { id: "unit", label: "Single item", hint: "One QR per item" },
-                { id: "bulk", label: "Bulk stock", hint: "Qty per batch" },
-              ] as const
-            ).map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => update("kind", opt.id)}
-                aria-pressed={values.kind === opt.id}
-                className={
-                  values.kind === opt.id
-                    ? "cursor-pointer rounded-md bg-card px-2 py-1.5 text-xs font-semibold text-foreground shadow-xs"
-                    : "cursor-pointer rounded-md px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-                }
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-          <p className="text-[11px] text-muted-foreground">
-            {values.kind === "bulk"
-              ? "Fungible stock (e.g. pillows). One QR on the rack; quantities tracked per batch."
-              : "A single physical item with its own QR code."}
-          </p>
-        </div>
-      )}
+      <div className="flex flex-col gap-1.5">
+        <Label>Photo</Label>
+        <PhotoUpload
+          state={photo}
+          alt={values.name || "Item photo"}
+          remoteUrl={remoteUrl}
+          onRemove={handlePhotoRemove}
+        />
+      </div>
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="item-name">
@@ -289,29 +249,6 @@ export function ItemForm({
         />
       </div>
 
-      {values.kind === "bulk" && !hideQrCode && (
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="item-quantity">Starting quantity</Label>
-          <Input
-            id="item-quantity"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            required
-            value={qtyText}
-            onChange={(e) => {
-              const raw = e.target.value
-              setQtyText(raw)
-              const n = Math.floor(Number(raw))
-              if (raw !== "" && Number.isFinite(n) && n >= 1) {
-                update("quantity", n)
-              }
-            }}
-            onBlur={() => setQtyText(String(values.quantity))}
-          />
-        </div>
-      )}
-
       {values.kind === "bulk" && hideQrCode ? (
         <p className="rounded-lg border border-border bg-muted px-3 py-2 text-[11px] text-muted-foreground">
           Location, status and condition are tracked per batch — manage them
@@ -324,6 +261,31 @@ export function ItemForm({
               Initial batch
             </p>
           )}
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="item-location">
+              Location <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="item-location"
+              required
+              value={values.location}
+              aria-invalid={locationError || undefined}
+              onChange={(e) => update("location", e.target.value)}
+            />
+            {locationError ? (
+              <p className="text-[11px] font-medium text-destructive">
+                Location is required.
+              </p>
+            ) : (
+              <LocationChips
+                locations={locationSuggestions}
+                value={values.location}
+                onSelect={(loc) => update("location", loc)}
+              />
+            )}
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="item-status">Status</Label>
@@ -362,31 +324,63 @@ export function ItemForm({
               </Select>
             </div>
           </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="item-location">
-              Location <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="item-location"
-              required
-              value={values.location}
-              aria-invalid={locationError || undefined}
-              onChange={(e) => update("location", e.target.value)}
-            />
-            {locationError ? (
-              <p className="text-[11px] font-medium text-destructive">
-                Location is required.
-              </p>
-            ) : (
-              <LocationChips
-                locations={locationSuggestions}
-                value={values.location}
-                onSelect={(loc) => update("location", loc)}
-              />
-            )}
-          </div>
         </>
+      )}
+
+      {!hideQrCode && (
+        <div className="flex flex-col gap-1.5">
+          <Label>Item type</Label>
+          <div className="grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1">
+            {(
+              [
+                { id: "unit", label: "Single item", hint: "One QR per item" },
+                { id: "bulk", label: "Bulk stock", hint: "Qty per batch" },
+              ] as const
+            ).map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => update("kind", opt.id)}
+                aria-pressed={values.kind === opt.id}
+                className={
+                  values.kind === opt.id
+                    ? "cursor-pointer rounded-md bg-card px-2 py-1.5 text-xs font-semibold text-foreground shadow-xs"
+                    : "cursor-pointer rounded-md px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+                }
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {values.kind === "bulk"
+              ? "Fungible stock (e.g. pillows). One QR on the rack; quantities tracked per batch."
+              : "A single physical item with its own QR code."}
+          </p>
+        </div>
+      )}
+
+      {values.kind === "bulk" && !hideQrCode && (
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="item-quantity">Starting quantity</Label>
+          <Input
+            id="item-quantity"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            required
+            value={qtyText}
+            onChange={(e) => {
+              const raw = e.target.value
+              setQtyText(raw)
+              const n = Math.floor(Number(raw))
+              if (raw !== "" && Number.isFinite(n) && n >= 1) {
+                update("quantity", n)
+              }
+            }}
+            onBlur={() => setQtyText(String(values.quantity))}
+          />
+        </div>
       )}
 
       <div className="flex flex-col gap-1.5">
@@ -397,6 +391,50 @@ export function ItemForm({
           onToggle={toggleTag}
           onCreate={handleCreateTag}
         />
+      </div>
+
+      {!hideQrCode && (
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="item-qr">QR Code</Label>
+            <button
+              type="button"
+              onClick={() => update("qrCode", generateQrCode())}
+              className="text-[10px] font-bold tracking-wider text-primary uppercase hover:underline"
+            >
+              Re-roll
+            </button>
+          </div>
+          <Input
+            id="item-qr"
+            value={values.qrCode}
+            readOnly
+            onChange={() => {}}
+            className="font-mono read-only:bg-muted read-only:text-muted-foreground"
+          />
+        </div>
+      )}
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="item-print-size">QR print size</Label>
+        <Select
+          value={values.printSize}
+          onValueChange={(v) => update("printSize", v as PrintSize)}
+        >
+          <SelectTrigger id="item-print-size">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PRINT_SIZES.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s.charAt(0).toUpperCase() + s.slice(1)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-[11px] text-muted-foreground">
+          Small for tiny items (plants, jewelry), large for oversized items (paintings, rugs).
+        </p>
       </div>
 
       {canSetRequiredRole && (
@@ -417,16 +455,6 @@ export function ItemForm({
           </span>
         </label>
       )}
-
-      <div className="flex flex-col gap-1.5">
-        <Label>Photo</Label>
-        <PhotoUpload
-          state={photo}
-          alt={values.name || "Item photo"}
-          remoteUrl={remoteUrl}
-          onRemove={handlePhotoRemove}
-        />
-      </div>
 
       <div className="sticky bottom-0 -mx-4 mt-2 border-t border-border bg-background/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
         <Button type="submit" disabled={busy} className="h-12 w-full">

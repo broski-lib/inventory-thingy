@@ -8,6 +8,7 @@ import { BoxIcon, LockIcon } from "@hugeicons/core-free-icons"
 import { Badge } from "@/components/ui/badge"
 import type { badgeVariants } from "@/components/ui/badge"
 import type { VariantProps } from "class-variance-authority"
+import { cn } from "@/lib/utils"
 
 type BadgeVariant = NonNullable<VariantProps<typeof badgeVariants>["variant"]>
 
@@ -34,6 +35,8 @@ type ItemCardProps = {
   batches?: ItemBatch[]
   onEdit: () => void
   size?: "sm" | "md"
+  /** Disable click handler (used in selection mode). */
+  disabled?: boolean
 }
 
 /**
@@ -46,12 +49,16 @@ export function ItemCard({
   batches,
   onEdit,
   size = "md",
+  disabled = false,
 }: ItemCardProps) {
   const dim = size === "sm" ? "size-12" : "size-14"
   return (
     <article
-      onClick={onEdit}
-      className="relative flex cursor-pointer gap-3 rounded-xl border border-border bg-card p-3 shadow-xs transition-all hover:border-primary"
+      onClick={disabled ? undefined : onEdit}
+      className={cn(
+        "relative flex gap-3 rounded-xl border border-border bg-card p-3 shadow-xs transition-all",
+        !disabled && "cursor-pointer hover:border-primary"
+      )}
     >
       <div
         className={`${dim} flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-accent`}

@@ -722,6 +722,23 @@ export const getItemById = createServerFn({ method: "GET" })
     }
   )
 
+export const getItemsByIds = createServerFn({ method: "GET" })
+  .middleware([authRequiredMiddleware])
+  .validator((ids: string[]) => ids)
+  .handler(
+    async ({
+      data: ids,
+      context,
+    }): Promise<InventoryItem[]> => {
+      const { orgId } = context
+      const db = getDb()
+      return db
+        .select()
+        .from(items)
+        .where(and(eq(items.orgId, orgId), inArray(items.id, ids)))
+    }
+  )
+
 /**
  * Fetch a single item + its full activity log in one round-trip.
  * Both queries run in parallel inside the handler. Returns null if

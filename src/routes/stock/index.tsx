@@ -5,7 +5,6 @@ import {
   Link,
 } from "@tanstack/react-router"
 import { useEffect, useMemo, useRef, useState } from "react"
-import QRCode from "qrcode"
 import { HugeiconsIcon } from "@hugeicons/react"
 import type { IconSvgElement } from "@hugeicons/react"
 import {
@@ -68,7 +67,6 @@ import { Pagination } from "@/components/Pagination"
 import { usePageSize } from "@/hooks/use-page-size"
 import { cn } from "@/lib/utils"
 import { parsePage } from "@/lib/pagination"
-import { bulkPrintSheet, openPrintWindow } from "@/lib/print-sheet"
 import { pluralize } from "@/lib/format"
 
 const PAGE_SIZE_STORAGE_KEY = "stock:pageSize"
@@ -476,38 +474,13 @@ function StockRoute() {
     }
   }
 
-  const handleBulkPrint = async () => {
+  const handleBulkPrint = () => {
     if (selectedArray.length === 0) return
-    const targets = data.items.filter((it) => selectedIds.has(it.id))
-    if (targets.length === 0) return
-    setBulkBusy(true)
-    try {
-      const encoded = await Promise.all(
-        targets.map(async (item) => ({
-          name: item.name,
-          qrCode: item.qrCode,
-          dataUrl: await QRCode.toDataURL(item.qrCode, {
-            width: 200,
-            margin: 1,
-          }),
-        }))
-      )
-      const w = openPrintWindow(
-        bulkPrintSheet(encoded),
-        "width=820,height=1000"
-      )
-      if (!w) {
-        setBulkMessage("Pop-up blocked. Allow pop-ups to print QR codes.")
-        return
-      }
-      finishAction(
-        `Print sheet opened for ${targets.length} ${pluralize(targets.length, "item")}`
-      )
-    } catch (err) {
-      setBulkMessage(err instanceof Error ? err.message : "Print failed")
-    } finally {
-      setBulkBusy(false)
-    }
+    const ids = selectedArray.join(",")
+    navigate({ to: "/stock/print-bulk", search: { ids } })
+    finishAction(
+      `Print sheet opened for ${selectedArray.length} ${pluralize(selectedArray.length, "item")}`
+    )
   }
 
   const selectedCount = selectedIds.size
@@ -524,15 +497,27 @@ function StockRoute() {
               {selectionMode ? "Select items" : "Inventory Manager"}
             </h2>
             {selectionMode ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={exitSelectionMode}
-                className="h-9"
-              >
-                Done
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleSelectAllOnPage}
+                  disabled={data.items.length === 0}
+                  className="h-9 text-xs"
+                >
+                  {allOnPageSelected ? "Clear All" : "Select All"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={exitSelectionMode}
+                  className="h-9"
+                >
+                  Done
+                </Button>
+              </div>
             ) : (
               <div className="flex items-center gap-2">
                 <Button
@@ -1074,20 +1059,23 @@ function SelectionAwareCard({
         onClick={onToggle}
         aria-pressed={selected}
         className={cn(
-          "flex w-full items-stretch gap-3 rounded-xl border p-3 text-left shadow-xs transition-all",
+          "flex w-full items-stretch gap-3 rounded-xl border p-3 text-left shadow-xs transition-all active:scale-[0.98]",
           selected
-            ? "border-primary bg-accent"
-            : "border-border bg-card hover:border-primary"
+            ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+            : "border-border bg-card hover:border-primary/50"
         )}
       >
         <SelectionCheckbox selected={selected} />
-        <ItemCard
-          item={item}
-          tags={item.tags}
-          batches={item.batches}
-          size="md"
-          onEdit={onEdit}
-        />
+        <div className="flex-1 min-w-0">
+          <ItemCard
+            item={item}
+            tags={item.tags}
+            batches={item.batches}
+            size="md"
+            onEdit={onEdit}
+            disabled
+          />
+        </div>
       </button>
     )
   }
@@ -1106,14 +1094,14 @@ function SelectionCheckbox({ selected }: { selected: boolean }) {
   return (
     <span
       className={cn(
-        "mt-1 flex size-5 shrink-0 items-center justify-center rounded-md border-2 transition-colors",
+        "mt-1 flex size-6 shrink-0 items-center justify-center rounded-md border-2 transition-all",
         selected
-          ? "border-primary bg-primary text-primary-foreground"
+          ? "border-primary bg-primary text-primary-foreground scale-110"
           : "border-border bg-card"
       )}
     >
       {selected && (
-        <HugeiconsIcon icon={Tick02Icon} className="size-3" strokeWidth={3} />
+        <HugeiconsIcon icon={Tick02Icon} className="size-4" strokeWidth={3} />
       )}
     </span>
   )

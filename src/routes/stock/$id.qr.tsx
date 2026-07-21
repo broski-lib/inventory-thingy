@@ -38,7 +38,7 @@ function ItemQRPage() {
         </Link>
       }
     >
-      <QRTag qrCode={item.qrCode} itemName={item.name} />
+      <QRTag qrCode={item.qrCode} itemName={item.name} itemId={item.id} />
     </PageChrome>
   )
 }

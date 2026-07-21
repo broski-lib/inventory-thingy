@@ -9,42 +9,29 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as StockRouteImport } from './routes/stock'
-import { Route as ScanRouteImport } from './routes/scan'
-import { Route as OnboardingRouteImport } from './routes/onboarding'
-import { Route as HomeRouteImport } from './routes/home'
-import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as StockIndexRouteImport } from './routes/stock/index'
-import { Route as ScanIndexRouteImport } from './routes/scan/index'
-import { Route as StockNewRouteImport } from './routes/stock/new'
-import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
-import { Route as ScanCameraRouteImport } from './routes/scan/camera'
-import { Route as ScanBulkRouteImport } from './routes/scan/bulk'
+import { Route as ActivityRouteImport } from './routes/activity'
+import { Route as HomeRouteImport } from './routes/home'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as ScanRouteImport } from './routes/scan'
+import { Route as StockRouteImport } from './routes/stock'
 import { Route as LoginSplatRouteImport } from './routes/login.$'
-import { Route as StockIdQrRouteImport } from './routes/stock/$id.qr'
-import { Route as StockIdHistoryRouteImport } from './routes/stock/$id.history'
-import { Route as StockIdEditRouteImport } from './routes/stock/$id.edit'
+import { Route as ScanIndexRouteImport } from './routes/scan/index'
+import { Route as ScanBulkRouteImport } from './routes/scan/bulk'
+import { Route as ScanCameraRouteImport } from './routes/scan/camera'
+import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
+import { Route as StockIndexRouteImport } from './routes/stock/index'
+import { Route as StockNewRouteImport } from './routes/stock/new'
+import { Route as StockPrintBulkRouteImport } from './routes/stock/print-bulk'
 import { Route as ApiImagesSplatRouteImport } from './routes/api/images/$'
+import { Route as StockIdEditRouteImport } from './routes/stock/$id.edit'
+import { Route as StockIdHistoryRouteImport } from './routes/stock/$id.history'
+import { Route as StockIdPrintRouteImport } from './routes/stock/$id.print'
+import { Route as StockIdQrRouteImport } from './routes/stock/$id.qr'
 
-const StockRoute = StockRouteImport.update({
-  id: '/stock',
-  path: '/stock',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ScanRoute = ScanRouteImport.update({
-  id: '/scan',
-  path: '/scan',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OnboardingRoute = OnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HomeRoute = HomeRouteImport.update({
-  id: '/home',
-  path: '/home',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ActivityRoute = ActivityRouteImport.update({
@@ -52,34 +39,34 @@ const ActivityRoute = ActivityRouteImport.update({
   path: '/activity',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const HomeRoute = HomeRouteImport.update({
+  id: '/home',
+  path: '/home',
   getParentRoute: () => rootRouteImport,
 } as any)
-const StockIndexRoute = StockIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => StockRoute,
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScanRoute = ScanRouteImport.update({
+  id: '/scan',
+  path: '/scan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StockRoute = StockRouteImport.update({
+  id: '/stock',
+  path: '/stock',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginSplatRoute = LoginSplatRouteImport.update({
+  id: '/login/$',
+  path: '/login/$',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ScanIndexRoute = ScanIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => ScanRoute,
-} as any)
-const StockNewRoute = StockNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => StockRoute,
-} as any)
-const SignUpSplatRoute = SignUpSplatRouteImport.update({
-  id: '/sign-up/$',
-  path: '/sign-up/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ScanCameraRoute = ScanCameraRouteImport.update({
-  id: '/camera',
-  path: '/camera',
   getParentRoute: () => ScanRoute,
 } as any)
 const ScanBulkRoute = ScanBulkRouteImport.update({
@@ -87,14 +74,39 @@ const ScanBulkRoute = ScanBulkRouteImport.update({
   path: '/bulk',
   getParentRoute: () => ScanRoute,
 } as any)
-const LoginSplatRoute = LoginSplatRouteImport.update({
-  id: '/login/$',
-  path: '/login/$',
+const ScanCameraRoute = ScanCameraRouteImport.update({
+  id: '/camera',
+  path: '/camera',
+  getParentRoute: () => ScanRoute,
+} as any)
+const SignUpSplatRoute = SignUpSplatRouteImport.update({
+  id: '/sign-up/$',
+  path: '/sign-up/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const StockIdQrRoute = StockIdQrRouteImport.update({
-  id: '/$id/qr',
-  path: '/$id/qr',
+const StockIndexRoute = StockIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => StockRoute,
+} as any)
+const StockNewRoute = StockNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => StockRoute,
+} as any)
+const StockPrintBulkRoute = StockPrintBulkRouteImport.update({
+  id: '/print-bulk',
+  path: '/print-bulk',
+  getParentRoute: () => StockRoute,
+} as any)
+const ApiImagesSplatRoute = ApiImagesSplatRouteImport.update({
+  id: '/api/images/$',
+  path: '/api/images/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StockIdEditRoute = StockIdEditRouteImport.update({
+  id: '/$id/edit',
+  path: '/$id/edit',
   getParentRoute: () => StockRoute,
 } as any)
 const StockIdHistoryRoute = StockIdHistoryRouteImport.update({
@@ -102,15 +114,15 @@ const StockIdHistoryRoute = StockIdHistoryRouteImport.update({
   path: '/$id/history',
   getParentRoute: () => StockRoute,
 } as any)
-const StockIdEditRoute = StockIdEditRouteImport.update({
-  id: '/$id/edit',
-  path: '/$id/edit',
+const StockIdPrintRoute = StockIdPrintRouteImport.update({
+  id: '/$id/print',
+  path: '/$id/print',
   getParentRoute: () => StockRoute,
 } as any)
-const ApiImagesSplatRoute = ApiImagesSplatRouteImport.update({
-  id: '/api/images/$',
-  path: '/api/images/$',
-  getParentRoute: () => rootRouteImport,
+const StockIdQrRoute = StockIdQrRouteImport.update({
+  id: '/$id/qr',
+  path: '/$id/qr',
+  getParentRoute: () => StockRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -125,11 +137,13 @@ export interface FileRoutesByFullPath {
   '/scan/camera': typeof ScanCameraRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/stock/new': typeof StockNewRoute
+  '/stock/print-bulk': typeof StockPrintBulkRoute
   '/scan/': typeof ScanIndexRoute
   '/stock/': typeof StockIndexRoute
   '/api/images/$': typeof ApiImagesSplatRoute
   '/stock/$id/edit': typeof StockIdEditRoute
   '/stock/$id/history': typeof StockIdHistoryRoute
+  '/stock/$id/print': typeof StockIdPrintRoute
   '/stock/$id/qr': typeof StockIdQrRoute
 }
 export interface FileRoutesByTo {
@@ -142,11 +156,13 @@ export interface FileRoutesByTo {
   '/scan/camera': typeof ScanCameraRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/stock/new': typeof StockNewRoute
+  '/stock/print-bulk': typeof StockPrintBulkRoute
   '/scan': typeof ScanIndexRoute
   '/stock': typeof StockIndexRoute
   '/api/images/$': typeof ApiImagesSplatRoute
   '/stock/$id/edit': typeof StockIdEditRoute
   '/stock/$id/history': typeof StockIdHistoryRoute
+  '/stock/$id/print': typeof StockIdPrintRoute
   '/stock/$id/qr': typeof StockIdQrRoute
 }
 export interface FileRoutesById {
@@ -162,11 +178,13 @@ export interface FileRoutesById {
   '/scan/camera': typeof ScanCameraRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/stock/new': typeof StockNewRoute
+  '/stock/print-bulk': typeof StockPrintBulkRoute
   '/scan/': typeof ScanIndexRoute
   '/stock/': typeof StockIndexRoute
   '/api/images/$': typeof ApiImagesSplatRoute
   '/stock/$id/edit': typeof StockIdEditRoute
   '/stock/$id/history': typeof StockIdHistoryRoute
+  '/stock/$id/print': typeof StockIdPrintRoute
   '/stock/$id/qr': typeof StockIdQrRoute
 }
 export interface FileRouteTypes {
@@ -183,11 +201,13 @@ export interface FileRouteTypes {
     | '/scan/camera'
     | '/sign-up/$'
     | '/stock/new'
+    | '/stock/print-bulk'
     | '/scan/'
     | '/stock/'
     | '/api/images/$'
     | '/stock/$id/edit'
     | '/stock/$id/history'
+    | '/stock/$id/print'
     | '/stock/$id/qr'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -200,11 +220,13 @@ export interface FileRouteTypes {
     | '/scan/camera'
     | '/sign-up/$'
     | '/stock/new'
+    | '/stock/print-bulk'
     | '/scan'
     | '/stock'
     | '/api/images/$'
     | '/stock/$id/edit'
     | '/stock/$id/history'
+    | '/stock/$id/print'
     | '/stock/$id/qr'
   id:
     | '__root__'
@@ -219,11 +241,13 @@ export interface FileRouteTypes {
     | '/scan/camera'
     | '/sign-up/$'
     | '/stock/new'
+    | '/stock/print-bulk'
     | '/scan/'
     | '/stock/'
     | '/api/images/$'
     | '/stock/$id/edit'
     | '/stock/$id/history'
+    | '/stock/$id/print'
     | '/stock/$id/qr'
   fileRoutesById: FileRoutesById
 }
@@ -241,32 +265,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/stock': {
-      id: '/stock'
-      path: '/stock'
-      fullPath: '/stock'
-      preLoaderRoute: typeof StockRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/scan': {
-      id: '/scan'
-      path: '/scan'
-      fullPath: '/scan'
-      preLoaderRoute: typeof ScanRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/onboarding': {
-      id: '/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof OnboardingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/home': {
-      id: '/home'
-      path: '/home'
-      fullPath: '/home'
-      preLoaderRoute: typeof HomeRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/activity': {
@@ -276,46 +279,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ActivityRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/home': {
+      id: '/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof HomeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/stock/': {
-      id: '/stock/'
-      path: '/'
-      fullPath: '/stock/'
-      preLoaderRoute: typeof StockIndexRouteImport
-      parentRoute: typeof StockRoute
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scan': {
+      id: '/scan'
+      path: '/scan'
+      fullPath: '/scan'
+      preLoaderRoute: typeof ScanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stock': {
+      id: '/stock'
+      path: '/stock'
+      fullPath: '/stock'
+      preLoaderRoute: typeof StockRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login/$': {
+      id: '/login/$'
+      path: '/login/$'
+      fullPath: '/login/$'
+      preLoaderRoute: typeof LoginSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/scan/': {
       id: '/scan/'
       path: '/'
       fullPath: '/scan/'
       preLoaderRoute: typeof ScanIndexRouteImport
-      parentRoute: typeof ScanRoute
-    }
-    '/stock/new': {
-      id: '/stock/new'
-      path: '/new'
-      fullPath: '/stock/new'
-      preLoaderRoute: typeof StockNewRouteImport
-      parentRoute: typeof StockRoute
-    }
-    '/sign-up/$': {
-      id: '/sign-up/$'
-      path: '/sign-up/$'
-      fullPath: '/sign-up/$'
-      preLoaderRoute: typeof SignUpSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/scan/camera': {
-      id: '/scan/camera'
-      path: '/camera'
-      fullPath: '/scan/camera'
-      preLoaderRoute: typeof ScanCameraRouteImport
       parentRoute: typeof ScanRoute
     }
     '/scan/bulk': {
@@ -325,18 +328,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ScanBulkRouteImport
       parentRoute: typeof ScanRoute
     }
-    '/login/$': {
-      id: '/login/$'
-      path: '/login/$'
-      fullPath: '/login/$'
-      preLoaderRoute: typeof LoginSplatRouteImport
+    '/scan/camera': {
+      id: '/scan/camera'
+      path: '/camera'
+      fullPath: '/scan/camera'
+      preLoaderRoute: typeof ScanCameraRouteImport
+      parentRoute: typeof ScanRoute
+    }
+    '/sign-up/$': {
+      id: '/sign-up/$'
+      path: '/sign-up/$'
+      fullPath: '/sign-up/$'
+      preLoaderRoute: typeof SignUpSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/stock/$id/qr': {
-      id: '/stock/$id/qr'
-      path: '/$id/qr'
-      fullPath: '/stock/$id/qr'
-      preLoaderRoute: typeof StockIdQrRouteImport
+    '/stock/': {
+      id: '/stock/'
+      path: '/'
+      fullPath: '/stock/'
+      preLoaderRoute: typeof StockIndexRouteImport
+      parentRoute: typeof StockRoute
+    }
+    '/stock/new': {
+      id: '/stock/new'
+      path: '/new'
+      fullPath: '/stock/new'
+      preLoaderRoute: typeof StockNewRouteImport
+      parentRoute: typeof StockRoute
+    }
+    '/stock/print-bulk': {
+      id: '/stock/print-bulk'
+      path: '/print-bulk'
+      fullPath: '/stock/print-bulk'
+      preLoaderRoute: typeof StockPrintBulkRouteImport
+      parentRoute: typeof StockRoute
+    }
+    '/api/images/$': {
+      id: '/api/images/$'
+      path: '/api/images/$'
+      fullPath: '/api/images/$'
+      preLoaderRoute: typeof ApiImagesSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stock/$id/edit': {
+      id: '/stock/$id/edit'
+      path: '/$id/edit'
+      fullPath: '/stock/$id/edit'
+      preLoaderRoute: typeof StockIdEditRouteImport
       parentRoute: typeof StockRoute
     }
     '/stock/$id/history': {
@@ -346,19 +384,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StockIdHistoryRouteImport
       parentRoute: typeof StockRoute
     }
-    '/stock/$id/edit': {
-      id: '/stock/$id/edit'
-      path: '/$id/edit'
-      fullPath: '/stock/$id/edit'
-      preLoaderRoute: typeof StockIdEditRouteImport
+    '/stock/$id/print': {
+      id: '/stock/$id/print'
+      path: '/$id/print'
+      fullPath: '/stock/$id/print'
+      preLoaderRoute: typeof StockIdPrintRouteImport
       parentRoute: typeof StockRoute
     }
-    '/api/images/$': {
-      id: '/api/images/$'
-      path: '/api/images/$'
-      fullPath: '/api/images/$'
-      preLoaderRoute: typeof ApiImagesSplatRouteImport
-      parentRoute: typeof rootRouteImport
+    '/stock/$id/qr': {
+      id: '/stock/$id/qr'
+      path: '/$id/qr'
+      fullPath: '/stock/$id/qr'
+      preLoaderRoute: typeof StockIdQrRouteImport
+      parentRoute: typeof StockRoute
     }
   }
 }
@@ -379,17 +417,21 @@ const ScanRouteWithChildren = ScanRoute._addFileChildren(ScanRouteChildren)
 
 interface StockRouteChildren {
   StockNewRoute: typeof StockNewRoute
+  StockPrintBulkRoute: typeof StockPrintBulkRoute
   StockIndexRoute: typeof StockIndexRoute
   StockIdEditRoute: typeof StockIdEditRoute
   StockIdHistoryRoute: typeof StockIdHistoryRoute
+  StockIdPrintRoute: typeof StockIdPrintRoute
   StockIdQrRoute: typeof StockIdQrRoute
 }
 
 const StockRouteChildren: StockRouteChildren = {
   StockNewRoute: StockNewRoute,
+  StockPrintBulkRoute: StockPrintBulkRoute,
   StockIndexRoute: StockIndexRoute,
   StockIdEditRoute: StockIdEditRoute,
   StockIdHistoryRoute: StockIdHistoryRoute,
+  StockIdPrintRoute: StockIdPrintRoute,
   StockIdQrRoute: StockIdQrRoute,
 }
 

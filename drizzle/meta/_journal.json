@@ -57,6 +57,13 @@
       "when": 1784409981794,
       "tag": "0007_modern_arachne",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784657539288,
+      "tag": "0008_fearless_norman_osborn",
+      "breakpoints": true
     }
   ]
 }
