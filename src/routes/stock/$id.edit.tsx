@@ -105,6 +105,7 @@ function EditItemPage() {
       }
     >
       <ItemForm
+        key={item.id}
         initial={{
           qrCode: item.qrCode,
           name: item.name,
