@@ -15,6 +15,7 @@ import {
 import { PhotoUpload } from "@/components/PhotoUpload"
 import { TagPicker } from "@/components/TagPicker"
 import { LocationChips } from "@/components/LocationChips"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useItemPhoto } from "@/hooks/use-item-photo"
 import { ITEM_CONDITIONS, ITEM_STATUSES } from "@/lib/item-status"
 import type { ItemCondition, ItemKind, ItemStatus } from "@/lib/item-status"
@@ -439,14 +440,13 @@ export function ItemForm({
 
       {canSetRequiredRole && (
         <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-card p-3">
-          <input
-            type="checkbox"
-            checked={values.requiredRole === "org:admin"}
-            onChange={(e) =>
-              update("requiredRole", e.target.checked ? "org:admin" : null)
-            }
-            className="mt-0.5 size-4 accent-primary"
-          />
+          <Checkbox
+              checked={values.requiredRole === "org:admin"}
+              onCheckedChange={(checked) =>
+                update("requiredRole", checked ? "org:admin" : null)
+              }
+              className="mt-0.5 size-4 rounded"
+            />
           <span className="flex flex-col gap-0.5">
             <span className="text-xs font-semibold">Admin only</span>
             <span className="text-[11px] text-muted-foreground">

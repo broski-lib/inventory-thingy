@@ -25,7 +25,6 @@ import {
   DEFAULT_STOCK_SORT,
 } from "@/lib/inventory"
 import type {
-  InventoryItemWithTags,
   StockSort,
   StockStatusFilter,
 } from "@/lib/inventory"
@@ -36,7 +35,7 @@ import type { Tag } from "@/lib/tags"
 import { TAG_COLORS } from "@/lib/schema"
 import { AppHeader } from "@/components/AppHeader"
 import { BottomNav } from "@/components/BottomNav"
-import { ItemCard } from "@/components/ItemCard"
+import { SelectionAwareCard } from "@/components/SelectionAwareCard"
 import { TagPicker } from "@/components/TagPicker"
 import { PlusIcon, TrashIcon } from "@/components/icons"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -1036,74 +1035,6 @@ function ManageTagRow({
       </div>
       {error && <p className="text-[11px] text-destructive">{error}</p>}
     </div>
-  )
-}
-
-function SelectionAwareCard({
-  item,
-  selectionMode,
-  selected,
-  onEdit,
-  onToggle,
-}: {
-  item: InventoryItemWithTags
-  selectionMode: boolean
-  selected: boolean
-  onEdit: () => void
-  onToggle: () => void
-}) {
-  if (selectionMode) {
-    return (
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-pressed={selected}
-        className={cn(
-          "flex w-full items-stretch gap-3 rounded-xl border p-3 text-left shadow-xs transition-all active:scale-[0.98]",
-          selected
-            ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-            : "border-border bg-card hover:border-primary/50"
-        )}
-      >
-        <SelectionCheckbox selected={selected} />
-        <div className="flex-1 min-w-0">
-          <ItemCard
-            item={item}
-            tags={item.tags}
-            batches={item.batches}
-            size="md"
-            onEdit={onEdit}
-            disabled
-          />
-        </div>
-      </button>
-    )
-  }
-  return (
-    <ItemCard
-      item={item}
-      tags={item.tags}
-      batches={item.batches}
-      size="md"
-      onEdit={onEdit}
-    />
-  )
-}
-
-function SelectionCheckbox({ selected }: { selected: boolean }) {
-  return (
-    <span
-      className={cn(
-        "mt-1 flex size-6 shrink-0 items-center justify-center rounded-md border-2 transition-all",
-        selected
-          ? "border-primary bg-primary text-primary-foreground scale-110"
-          : "border-border bg-card"
-      )}
-    >
-      {selected && (
-        <HugeiconsIcon icon={Tick02Icon} className="size-4" strokeWidth={3} />
-      )}
-    </span>
   )
 }
 
