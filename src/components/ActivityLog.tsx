@@ -12,6 +12,7 @@ import {
   Tick02Icon,
   Wrench01Icon,
 } from "@hugeicons/core-free-icons"
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { formatRelative } from "@/lib/format"
 
@@ -180,31 +181,31 @@ function ActivityDetails({ log }: { log: ActivityLog }) {
   return (
     <div className="mt-1.5 flex flex-wrap gap-2 text-[10px] font-semibold tracking-wider uppercase">
       {log.quantity !== null && (
-        <span className="inline-flex items-center gap-1 rounded-md border border-border bg-secondary px-2 py-0.5 text-muted-foreground">
-          <span className="tracking-normal text-foreground normal-case">
+        <Badge variant="secondary" className="gap-1 px-2 py-0.5 text-[10px] font-semibold uppercase">
+          <span className="text-foreground normal-case">
             ×{log.quantity}
           </span>
-        </span>
+        </Badge>
       )}
       {hasLocationChange && (
-        <span className="inline-flex items-center gap-1 rounded-md border border-border bg-secondary px-2 py-0.5 text-muted-foreground">
+        <Badge variant="secondary" className="gap-1 px-2 py-0.5 text-[10px] font-semibold uppercase">
           <span className="text-foreground/60">From</span>
-          <span className="tracking-normal text-foreground normal-case">
+          <span className="text-foreground normal-case">
             {log.fromLocation}
           </span>
           <span className="text-foreground/60">→</span>
-          <span className="tracking-normal text-foreground normal-case">
+          <span className="text-foreground normal-case">
             {log.toLocation}
           </span>
-        </span>
+        </Badge>
       )}
       {hasConditionChange && (
-        <span className="inline-flex items-center gap-1 rounded-md border border-border bg-secondary px-2 py-0.5 text-muted-foreground">
+        <Badge variant="secondary" className="gap-1 px-2 py-0.5 text-[10px] font-semibold uppercase">
           <HugeiconsIcon icon={Tick02Icon} size={10} strokeWidth={2.5} />
-          <span className="tracking-normal text-foreground normal-case">
+          <span className="text-foreground normal-case">
             {log.fromCondition} → {log.toCondition}
           </span>
-        </span>
+        </Badge>
       )}
     </div>
   )

@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { BoxIcon } from "@hugeicons/core-free-icons"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getItemActivity } from "@/lib/activity"
 import type { ActivityLog } from "@/lib/activity"
-import { formatRelative } from "@/lib/format"
+import { ActivityEntry } from "@/components/ActivityLog"
 
 type ItemHistoryProps = {
   itemId: string
@@ -72,79 +70,8 @@ export function ItemHistory({ itemId, initialLogs }: ItemHistoryProps) {
   return (
     <div className="divide-y divide-border">
       {logs.map((log) => (
-        <ActivityEntry key={log.id} log={log} />
+        <ActivityEntry key={log.id} log={log} showItem={false} />
       ))}
-    </div>
-  )
-}
-
-const TONE_CLASSES: Record<string, string> = {
-  created: "bg-primary/10 text-primary",
-  updated: "bg-muted text-muted-foreground",
-  deleted: "bg-destructive/10 text-destructive",
-  checked_out: "bg-primary/10 text-primary",
-  checked_in: "bg-success/10 text-success",
-  reported_damaged: "bg-destructive/10 text-destructive",
-  moved: "bg-primary/10 text-primary",
-  condition_changed: "bg-warning/10 text-warning-foreground",
-}
-
-const ACTION_LABELS: Record<string, string> = {
-  created: "Registered",
-  updated: "Updated details",
-  deleted: "Removed",
-  checked_out: "Checked out",
-  checked_in: "Checked in",
-  reported_damaged: "Reported damaged",
-  moved: "Relocated",
-  condition_changed: "Condition updated",
-}
-
-function ActivityEntry({ log }: { log: ActivityLog }) {
-  const tone = TONE_CLASSES[log.action] ?? "bg-muted text-muted-foreground"
-  const label = ACTION_LABELS[log.action] ?? log.action
-  const hasLocationChange =
-    log.fromLocation !== null &&
-    log.toLocation !== null &&
-    log.fromLocation !== log.toLocation
-  const hasConditionChange =
-    log.fromCondition !== null &&
-    log.toCondition !== null &&
-    log.fromCondition !== log.toCondition
-
-  return (
-    <div className="flex items-start gap-3 p-4">
-      <div
-        className={`flex size-8 shrink-0 items-center justify-center rounded-full ${tone}`}
-      >
-        <HugeiconsIcon icon={BoxIcon} size={16} strokeWidth={1.8} />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline justify-between gap-2">
-          <p className="truncate text-sm font-medium text-foreground">
-            {label}
-          </p>
-          <span className="shrink-0 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-            {formatRelative(log.createdAt)}
-          </span>
-        </div>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          {log.userName || "Unknown user"}
-          {log.itemQrCode ? (
-            <span className="font-mono"> · {log.itemQrCode}</span>
-          ) : null}
-        </p>
-        {hasLocationChange && (
-          <p className="mt-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-            {log.fromLocation} → {log.toLocation}
-          </p>
-        )}
-        {hasConditionChange && (
-          <p className="mt-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-            {log.fromCondition} → {log.toCondition}
-          </p>
-        )}
-      </div>
     </div>
   )
 }

@@ -3,12 +3,11 @@ import { Html5Qrcode } from "html5-qrcode"
 import { useId, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Image01Icon, KeyboardIcon } from "@hugeicons/core-free-icons"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { LiveScanner } from "@/components/LiveScanner"
 import type { LiveScannerStatus } from "@/components/LiveScanner"
 import { PageChrome } from "@/components/PageChrome"
-import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/scan/camera")({
   component: ScanCameraPage,
@@ -135,29 +134,25 @@ function ScanCameraPage() {
           </form>
         ) : (
           <div className="grid grid-cols-2 gap-2">
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={() => setShowManual(true)}
-              className={cn(
-                buttonVariants({ variant: "outline" }),
-                "h-11 justify-center gap-2 bg-secondary text-foreground hover:bg-accent"
-              )}
+              className="h-11 justify-center gap-2"
             >
               <HugeiconsIcon icon={KeyboardIcon} size={16} strokeWidth={1.6} />
               Enter code
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="outline"
               onClick={() => fileInputRef.current?.click()}
               disabled={fileBusy}
-              className={cn(
-                buttonVariants({ variant: "outline" }),
-                "h-11 justify-center gap-2 bg-secondary text-foreground hover:bg-accent"
-              )}
+              className="h-11 justify-center gap-2"
             >
               <HugeiconsIcon icon={Image01Icon} size={16} strokeWidth={1.6} />
               {fileBusy ? "Reading…" : "From photos"}
-            </button>
+            </Button>
           </div>
         )}
 

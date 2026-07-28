@@ -1,9 +1,9 @@
 import { useState } from "react"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { Tick02Icon } from "@hugeicons/core-free-icons"
 import type { Tag } from "@/lib/tags"
 import { TAG_COLORS } from "@/lib/schema"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { ColorPicker } from "@/components/ColorPicker"
 import { cn } from "@/lib/utils"
 import { PlusIcon } from "@/components/icons"
 
@@ -101,7 +101,7 @@ export function TagPicker({
       </div>
 
       {creating && onCreate && (
-        <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-2.5">
+          <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-2.5">
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -116,46 +116,29 @@ export function TagPicker({
               }
             }}
           />
-          <div className="flex flex-wrap items-center gap-1.5">
-            {TAG_COLORS.map((c) => (
-              <button
-                key={c.value}
-                type="button"
-                aria-label={c.name}
-                onClick={() => setColor(c.value)}
-                className={cn(
-                  "flex size-6 cursor-pointer items-center justify-center rounded-full transition-transform",
-                  color === c.value && "ring-2 ring-foreground ring-offset-2"
-                )}
-                style={{ backgroundColor: c.value }}
-              >
-                {color === c.value && (
-                  <HugeiconsIcon
-                    icon={Tick02Icon}
-                    className="size-3 text-white"
-                    strokeWidth={3}
-                  />
-                )}
-              </button>
-            ))}
-            <button
+          <ColorPicker value={color} onChange={setColor} />
+          <div className="flex items-center gap-2">
+            <Button
               type="button"
-              onClick={() => void handleCreate()}
-              disabled={busy || !name.trim()}
-              className="ml-auto cursor-pointer rounded-md bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground disabled:opacity-50"
-            >
-              {busy ? "Adding..." : "Add"}
-            </button>
-            <button
-              type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => {
                 setCreating(false)
                 setError(null)
               }}
-              className="cursor-pointer px-1 text-[11px] font-semibold text-muted-foreground"
+              className="h-8"
             >
               Cancel
-            </button>
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void handleCreate()}
+              disabled={busy || !name.trim()}
+              className="ml-auto h-8"
+            >
+              {busy ? "Adding..." : "Add"}
+            </Button>
           </div>
           {error && <p className="text-[11px] text-destructive">{error}</p>}
         </div>

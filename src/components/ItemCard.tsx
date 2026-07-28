@@ -97,10 +97,10 @@ export function ItemCard({
               </Badge>
             )}
             {item.requiredRole && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold tracking-wider text-amber-600 uppercase dark:text-amber-400">
+              <Badge variant="warning" className="gap-1 px-1.5 py-0.5 text-[9px]">
                 <HugeiconsIcon icon={LockIcon} size={9} strokeWidth={2.5} />
                 Admin only
-              </span>
+              </Badge>
             )}
           </div>
         </div>
@@ -139,16 +139,17 @@ export function ItemCard({
         {tags && tags.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {tags.map((tag) => (
-              <span
+              <Badge
                 key={tag.id}
-                className="inline-flex items-center gap-1 rounded-full border border-border bg-accent px-1.5 py-0.5 text-[9px] font-semibold text-foreground"
+                variant="outline"
+                className="gap-1 px-1.5 py-0.5 text-[9px] font-semibold"
               >
                 <span
                   className="size-1.5 rounded-full"
                   style={{ backgroundColor: tag.color }}
                 />
                 {tag.name}
-              </span>
+              </Badge>
             ))}
           </div>
         )}

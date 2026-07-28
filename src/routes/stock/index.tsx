@@ -29,7 +29,6 @@ import { ITEM_CONDITIONS, ITEM_STATUSES } from "@/lib/item-status"
 import type { ItemCondition, ItemStatus } from "@/lib/item-status"
 import { listTags } from "@/lib/tags"
 import type { Tag } from "@/lib/tags"
-import { TAG_COLORS } from "@/lib/schema"
 import {
   useBulkDeleteItems,
   useBulkUpdateStatus,
@@ -37,6 +36,7 @@ import {
   useUpdateTag,
   useDeleteTag,
 } from "@/lib/queries"
+import { ColorPicker } from "@/components/ColorPicker"
 import { AppHeader } from "@/components/AppHeader"
 import { BottomNav } from "@/components/BottomNav"
 import { SelectionAwareCard } from "@/components/SelectionAwareCard"
@@ -1029,19 +1029,7 @@ function ManageTagRow({
         </Button>
       </div>
       <div className="flex flex-wrap gap-1">
-        {TAG_COLORS.map((c) => (
-          <button
-            key={c.value}
-            type="button"
-            aria-label={c.name}
-            onClick={() => setColor(c.value)}
-            className={cn(
-              "size-5 cursor-pointer rounded-full transition-transform",
-              color === c.value && "ring-2 ring-foreground ring-offset-2"
-            )}
-            style={{ backgroundColor: c.value }}
-          />
-        ))}
+        <ColorPicker value={color} onChange={setColor} size="sm" />
       </div>
       {error && <p className="text-[11px] text-destructive">{error}</p>}
     </div>

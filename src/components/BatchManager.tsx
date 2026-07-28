@@ -16,6 +16,7 @@ import type { ItemCondition, ItemStatus } from "@/lib/item-status"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -239,7 +240,8 @@ function BatchRow({
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3">
+    <Card className="flex flex-col gap-2 rounded-xl">
+      <CardContent className="flex flex-col gap-2 p-3">
       <div className="flex items-center justify-between gap-2">
         {editingQty ? (
           <span className="flex items-center gap-1.5">
@@ -258,14 +260,16 @@ function BatchRow({
               className="h-8 w-20 text-base sm:text-sm"
               autoFocus
             />
-            <button
+            <Button
               type="button"
+              variant="default"
+              size="icon"
               onClick={saveQty}
               aria-label="Save quantity"
-              className="inline-flex size-8 cursor-pointer items-center justify-center rounded-md bg-primary text-primary-foreground"
+              className="size-8"
             >
               <HugeiconsIcon icon={Tick02Icon} size={14} strokeWidth={2.5} />
-            </button>
+            </Button>
           </span>
         ) : (
           <span className="flex items-center gap-1">
@@ -311,15 +315,17 @@ function BatchRow({
           >
             Move
           </Button>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={onDelete}
             disabled={busy}
             aria-label="Delete batch"
-            className="inline-flex size-8 cursor-pointer items-center justify-center rounded-lg text-destructive hover:bg-destructive/10 disabled:opacity-50"
+            className="size-8 text-destructive hover:bg-destructive/10"
           >
             <TrashIcon className="size-3.5" />
-          </button>
+          </Button>
         </span>
       </div>
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -329,7 +335,8 @@ function BatchRow({
         </Badge>
         <span>{batch.condition}</span>
       </div>
-    </div>
+      </CardContent>
+    </Card>
   )
 }
 
