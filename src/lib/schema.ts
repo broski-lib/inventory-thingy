@@ -17,6 +17,7 @@ export const ITEM_STATUSES = [
   "Staged",
   "Repair",
   "Retired",
+  "Pending Tag",
 ] as const
 
 export const ITEM_CONDITIONS = ["Excellent", "Good", "Worn", "Repair"] as const

@@ -1,8 +1,15 @@
 import { useState } from "react"
 import { useRouter } from "@tanstack/react-router"
+import { useForm } from "@tanstack/react-form"
+import { useStore } from "@tanstack/react-store"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Tick02Icon } from "@hugeicons/core-free-icons"
-import { addBatch, deleteBatch, moveBatchQty, setBatchQty } from "@/lib/batches"
+import {
+  useAddBatch,
+  useDeleteBatch,
+  useMoveBatchQty,
+  useSetBatchQty,
+} from "@/lib/queries"
 import type { ItemBatch } from "@/lib/batches"
 import { ITEM_CONDITIONS, ITEM_STATUSES } from "@/lib/item-status"
 import type { ItemCondition, ItemStatus } from "@/lib/item-status"
@@ -61,6 +68,10 @@ export function BatchManager({
   const [busy, setBusy] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [moveTarget, setMoveTarget] = useState<ItemBatch | null>(null)
+  const addBatchMutation = useAddBatch()
+  const deleteBatchMutation = useDeleteBatch()
+  const moveBatchMutation = useMoveBatchQty()
+  const setBatchQtyMutation = useSetBatchQty()
 
   const total = batches.reduce((sum, b) => sum + b.qty, 0)
 
@@ -104,7 +115,7 @@ export function BatchManager({
     ) {
       return
     }
-    void run(() => deleteBatch({ data: { batchId: batch.id, itemId } }))
+    void run(() => deleteBatchMutation.mutateAsync({ batchId: batch.id, itemId }))
   }
 
   return (
@@ -146,7 +157,7 @@ export function BatchManager({
               onDelete={() => handleDelete(batch)}
               onSetQty={(qty) =>
                 run(() =>
-                  setBatchQty({ data: { batchId: batch.id, itemId, qty } })
+                  setBatchQtyMutation.mutateAsync({ batchId: batch.id, itemId, qty })
                 )
               }
             />
@@ -164,7 +175,7 @@ export function BatchManager({
         locationSuggestions={locationSuggestions}
         onSubmit={(qty, state) =>
           run(async () => {
-            await addBatch({ data: { itemId, qty, ...state } })
+            await addBatchMutation.mutateAsync({ itemId, qty, ...state })
             setAddOpen(false)
           })
         }
@@ -186,13 +197,11 @@ export function BatchManager({
           locationSuggestions={locationSuggestions}
           onSubmit={(qty, state) =>
             run(async () => {
-              await moveBatchQty({
-                data: {
-                  itemId,
-                  fromBatchId: moveTarget.id,
-                  qty,
-                  ...state,
-                },
+              await moveBatchMutation.mutateAsync({
+                itemId,
+                fromBatchId: moveTarget.id,
+                qty,
+                ...state,
               })
               setMoveTarget(null)
             })
@@ -340,31 +349,45 @@ function BatchFormDrawer({
   onClose: () => void
   busy: boolean
   submitLabel: string
-  /** Cap quantity (move flow). Undefined = no cap (add flow). */
   maxQty?: number
   initial: BatchState
   locationSuggestions?: string[]
   onSubmit: (qty: number, state: BatchState) => Promise<void>
 }) {
-  // Raw text so the field can be cleared and retyped; parsed on submit.
-  const [qtyText, setQtyText] = useState("1")
-  const [state, setState] = useState<BatchState>(initial)
+  const form = useForm({
+    defaultValues: {
+      qty: 1,
+      location: initial.location,
+      status: initial.status,
+      condition: initial.condition,
+    },
+    onSubmit: async ({ value }) => {
+      if (!value.location.trim()) return
+      await onSubmit(value.qty, {
+        location: value.location.trim(),
+        status: value.status,
+        condition: value.condition,
+      })
+      form.reset()
+    },
+  })
 
   const handleOpenChange = (next: boolean) => {
     if (!next) {
-      setQtyText("1")
-      setState(initial)
+      form.reset()
       onClose()
     }
   }
 
-  const qty = Math.floor(Number(qtyText))
-  const validQty =
-    qtyText !== "" &&
-    Number.isFinite(qty) &&
+  const isSubmitting = useStore(form.store, (s) => s.isSubmitting)
+  const formBusy = isSubmitting || busy
+  const qty = useStore(form.store, (s) => s.values.qty)
+  const location = useStore(form.store, (s) => s.values.location)
+
+  const valid =
     qty >= 1 &&
-    (maxQty === undefined || qty <= maxQty)
-  const valid = validQty && state.location.trim() !== ""
+    (maxQty === undefined || qty <= maxQty) &&
+    location.trim() !== ""
 
   return (
     <Drawer open={open} onOpenChange={handleOpenChange}>
@@ -373,83 +396,96 @@ function BatchFormDrawer({
           <DrawerTitle>{title}</DrawerTitle>
         </DrawerHeader>
         <DrawerBody className="space-y-4 px-4">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="batch-qty">
-              Quantity{maxQty !== undefined ? ` (max ${maxQty})` : ""}
-            </Label>
-            <Input
-              id="batch-qty"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={maxQty}
-              value={qtyText}
-              onChange={(e) => setQtyText(e.target.value)}
-              className="text-base sm:text-sm"
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="batch-location">Location</Label>
-            <Input
-              id="batch-location"
-              value={state.location}
-              onChange={(e) =>
-                setState((prev) => ({ ...prev, location: e.target.value }))
-              }
-              className="text-base sm:text-sm"
-            />
-            <LocationChips
-              locations={locationSuggestions}
-              value={state.location}
-              onSelect={(loc) =>
-                setState((prev) => ({ ...prev, location: loc }))
-              }
-            />
-          </div>
+          <form.Field name="qty">
+            {(field) => (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="batch-qty">
+                  Quantity{maxQty !== undefined ? ` (max ${maxQty})` : ""}
+                </Label>
+                <Input
+                  id="batch-qty"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={maxQty}
+                  value={String(field.state.value)}
+                  onChange={(e) => {
+                    const n = Math.floor(Number(e.target.value))
+                    if (e.target.value !== "" && Number.isFinite(n)) {
+                      field.handleChange(Math.max(1, n))
+                    }
+                  }}
+                  className="text-base sm:text-sm"
+                />
+              </div>
+            )}
+          </form.Field>
+          <form.Field name="location">
+            {(field) => (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="batch-location">Location</Label>
+                <Input
+                  id="batch-location"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  className="text-base sm:text-sm"
+                />
+                <LocationChips
+                  locations={locationSuggestions}
+                  value={field.state.value}
+                  onSelect={(loc) => field.handleChange(loc)}
+                />
+              </div>
+            )}
+          </form.Field>
           <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label>Status</Label>
-              <Select
-                value={state.status}
-                onValueChange={(v) =>
-                  setState((prev) => ({ ...prev, status: v as ItemStatus }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ITEM_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>Condition</Label>
-              <Select
-                value={state.condition}
-                onValueChange={(v) =>
-                  setState((prev) => ({
-                    ...prev,
-                    condition: v as ItemCondition,
-                  }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ITEM_CONDITIONS.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <form.Field name="status">
+              {(field) => (
+                <div className="flex flex-col gap-1.5">
+                  <Label>Status</Label>
+                  <Select
+                    value={field.state.value}
+                    onValueChange={(v) => field.handleChange(v as ItemStatus)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ITEM_STATUSES.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {s}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </form.Field>
+            <form.Field name="condition">
+              {(field) => (
+                <div className="flex flex-col gap-1.5">
+                  <Label>Condition</Label>
+                  <Select
+                    value={field.state.value}
+                    onValueChange={(v) =>
+                      field.handleChange(v as ItemCondition)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ITEM_CONDITIONS.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {c}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </form.Field>
           </div>
         </DrawerBody>
         <DrawerFooter className="flex-row gap-2 p-4 pb-[max(1.75rem,calc(env(safe-area-inset-bottom)+1rem))]">
@@ -458,17 +494,17 @@ function BatchFormDrawer({
             variant="outline"
             className="flex-1"
             onClick={() => handleOpenChange(false)}
-            disabled={busy}
+            disabled={formBusy}
           >
             Cancel
           </Button>
           <Button
             type="button"
             className="flex-1"
-            disabled={busy || !valid}
-            onClick={() => void onSubmit(qty, { ...state, location: state.location.trim() })}
+            disabled={formBusy || !valid}
+            onClick={() => void form.handleSubmit()}
           >
-            {busy ? "Saving..." : submitLabel}
+            {formBusy ? "Saving..." : submitLabel}
           </Button>
         </DrawerFooter>
       </DrawerContent>

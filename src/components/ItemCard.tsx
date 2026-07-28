@@ -22,6 +22,8 @@ export function getStatusBadgeVariant(status: ItemStatus): BadgeVariant {
       return "staged"
     case "Repair":
       return "repair"
+    case "Pending Tag":
+      return "pending"
     default:
       return "neutral"
   }

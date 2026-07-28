@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useRef, useState } from "react"
 import { useAuth } from "@clerk/tanstack-react-start"
-import { createItem, getLocations } from "@/lib/inventory"
-import { listTags, setItemTags } from "@/lib/tags"
+import { getLocations } from "@/lib/inventory"
+import { listTags } from "@/lib/tags"
+import { useCreateItem, useSetItemTags } from "@/lib/queries"
 import { ItemForm, EMPTY_ITEM_FORM } from "@/components/ItemForm"
 import { PageChrome } from "@/components/PageChrome"
 import { generateQrCode } from "@/lib/ids"
@@ -30,17 +31,21 @@ function NewItemPage() {
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
   const submittingRef = useRef(false)
+  const createItemMutation = useCreateItem()
+  const setItemTagsMutation = useSetItemTags()
 
   const handleSubmit = async (
-    data: Parameters<typeof createItem>[0]["data"] & { tagIds: string[] }
+    data: Parameters<typeof createItemMutation.mutateAsync>[0] & {
+      tagIds: string[]
+    }
   ) => {
     submittingRef.current = true
     setBusy(true)
     try {
       const { tagIds, ...item } = data
-      const created = await createItem({ data: item })
+      const created = await createItemMutation.mutateAsync(item)
       if (tagIds.length > 0) {
-        await setItemTags({ data: { itemId: created.id, tagIds } })
+        await setItemTagsMutation.mutateAsync({ itemId: created.id, tagIds })
       }
       navigate({ to: "/stock" })
     } catch (err) {

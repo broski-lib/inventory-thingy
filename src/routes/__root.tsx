@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ClerkProvider } from "@clerk/tanstack-react-start"
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
 
@@ -34,17 +35,43 @@ export const Route = createRootRoute({
   shellComponent: RootDocument,
 })
 
+let browserQueryClient: QueryClient | undefined
+
+function makeQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 60_000,
+        refetchOnWindowFocus: true,
+      },
+    },
+  })
+}
+
+function getQueryClient() {
+  if (typeof window === "undefined") {
+    return makeQueryClient()
+  }
+  if (!browserQueryClient) {
+    browserQueryClient = makeQueryClient()
+  }
+  return browserQueryClient
+}
+
 function RootDocument({ children }: { children: ReactNode }) {
+  const queryClient = getQueryClient()
   return (
     <html lang="en">
       <head>
         <HeadContent />
       </head>
       <body className="min-h-svh bg-background antialiased">
-        <ClerkProvider>
-          {children}
-          <Scripts />
-        </ClerkProvider>
+        <QueryClientProvider client={queryClient}>
+          <ClerkProvider>
+            {children}
+          </ClerkProvider>
+        </QueryClientProvider>
+        <Scripts />
       </body>
     </html>
   )

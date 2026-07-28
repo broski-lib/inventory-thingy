@@ -9,8 +9,9 @@ import { useAuth } from "@clerk/tanstack-react-start"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { QrCodeIcon } from "@hugeicons/core-free-icons"
 import { TrashIcon } from "@/components/icons"
-import { getItemById, updateItem, deleteItem, getLocations } from "@/lib/inventory"
-import { listTags, setItemTags } from "@/lib/tags"
+import { getItemById, getLocations } from "@/lib/inventory"
+import { listTags } from "@/lib/tags"
+import { useUpdateItem, useDeleteItem, useSetItemTags } from "@/lib/queries"
 import { ItemForm } from "@/components/ItemForm"
 import { BatchManager } from "@/components/BatchManager"
 import { PageChrome } from "@/components/PageChrome"
@@ -38,9 +39,12 @@ function EditItemPage() {
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
   const submittingRef = useRef(false)
+  const updateItemMutation = useUpdateItem()
+  const deleteItemMutation = useDeleteItem()
+  const setItemTagsMutation = useSetItemTags()
 
   const handleSubmit = async (
-    data: Parameters<typeof updateItem>[0]["data"]["item"] & {
+    data: Parameters<typeof updateItemMutation.mutateAsync>[0]["item"] & {
       tagIds: string[]
     }
   ) => {
@@ -48,8 +52,8 @@ function EditItemPage() {
     setBusy(true)
     try {
       const { tagIds, ...patch } = data
-      await updateItem({ data: { id: item.id, item: patch } })
-      await setItemTags({ data: { itemId: item.id, tagIds } })
+      await updateItemMutation.mutateAsync({ id: item.id, item: patch })
+      await setItemTagsMutation.mutateAsync({ itemId: item.id, tagIds })
       navigate({ to: "/stock" })
     } catch (err) {
       submittingRef.current = false
@@ -63,7 +67,7 @@ function EditItemPage() {
     submittingRef.current = true
     setBusy(true)
     try {
-      await deleteItem({ data: item.id })
+      await deleteItemMutation.mutateAsync(item.id)
       navigate({ to: "/stock" })
     } catch (err) {
       submittingRef.current = false
@@ -75,7 +79,6 @@ function EditItemPage() {
   return (
     <PageChrome
       title={item.name}
-      backTo="/stock"
       dirty={dirty}
       submittingRef={submittingRef}
       subtitle={<span className="font-mono tracking-wider">{item.qrCode}</span>}

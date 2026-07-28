@@ -57,6 +57,7 @@ export const STOCK_STATUS_FILTERS = [
   "Available",
   "Staged",
   "Repair",
+  "Pending Tag",
 ] as const
 export type StockStatusFilter = (typeof STOCK_STATUS_FILTERS)[number]
 
@@ -97,6 +98,7 @@ function statusGroupList(filter: StockStatusFilter): ItemStatus[] {
   if (filter === "Available") return ["Available", "In Storage"]
   if (filter === "Staged") return ["Staged", "Reserved"]
   if (filter === "All") return []
+  if (filter === "Pending Tag") return ["Pending Tag"]
   return [filter]
 }
 
@@ -353,6 +355,7 @@ function statusAction(
   if (toStatus === "Reserved" || toStatus === "Staged") return "checked_out"
   if (toStatus === "In Storage" || toStatus === "Available") return "checked_in"
   if (toStatus === "Repair") return "reported_damaged"
+  if (toStatus === "Pending Tag") return "updated"
   return "updated"
 }
 
@@ -489,6 +492,7 @@ export const createItem = createServerFn({ method: "POST" })
         status: item.status,
         imageUrl,
         imageKey,
+        printSize: item.printSize ?? "medium",
         requiredRole: item.requiredRole ?? null,
         createdBy: userId,
         createdAt: new Date(),

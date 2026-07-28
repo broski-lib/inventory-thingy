@@ -21,7 +21,6 @@ function ItemHistoryPage() {
   return (
     <PageChrome
       title={item.name}
-      backTo="/stock"
       subtitle={<span className="font-mono tracking-wider">{item.qrCode}</span>}
       aside={
         <div className="flex items-center gap-1">

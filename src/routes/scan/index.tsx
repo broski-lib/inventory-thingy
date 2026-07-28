@@ -7,9 +7,10 @@ import { BoxIcon, Camera01Icon } from "@hugeicons/core-free-icons"
 import { getDb } from "@/lib/db"
 import { items } from "@/lib/schema"
 import { authRequiredMiddleware } from "@/lib/auth-middleware"
-import { getItemByQrCode, updateItem } from "@/lib/inventory"
+import { getItemByQrCode } from "@/lib/inventory"
 import type { InventoryItem } from "@/lib/inventory"
 import { getBatchesForItems } from "@/lib/batches"
+import { useUpdateItem } from "@/lib/queries"
 import { BatchManager } from "@/components/BatchManager"
 import { AppHeader } from "@/components/AppHeader"
 import { BottomNav } from "@/components/BottomNav"
@@ -19,6 +20,10 @@ import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { getStatusBadgeVariant } from "@/components/ItemCard"
+import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog"
 import type { ItemStatus } from "@/lib/item-status"
 import { cn } from "@/lib/utils"
 
@@ -75,6 +80,8 @@ function ScanRoute() {
   const { recent, lookup } = Route.useLoaderData()
   const navigate = useNavigate()
   const [scanMessage, setScanMessage] = useState("")
+  const [previewImage, setPreviewImage] = useState<string | null>(null)
+  const updateItemMutation = useUpdateItem()
 
   const scannedItem = lookup?.item ?? null
   const scannedBatches = lookup?.batches ?? []
@@ -93,9 +100,8 @@ function ScanRoute() {
     }
     if (newStatus === "Repair") updates.condition = "Repair"
     try {
-      const updated = await updateItem({ data: { id: item.id, item: updates } })
+      const updated = await updateItemMutation.mutateAsync({ id: item.id, item: updates })
       setScanMessage(`Status set to ${newStatus}`)
-      // Reload the page data so subsequent reads see the update.
       navigate({
         to: "/scan",
         search: { code: updated.qrCode },
@@ -198,7 +204,12 @@ function ScanRoute() {
             <Card>
               <CardContent className="gap-3">
                 <div className="flex gap-3">
-                  <div className="size-16 shrink-0 overflow-hidden rounded-lg border border-border bg-accent">
+                  <button
+                    type="button"
+                    onClick={() => scannedItem.imageUrl && setPreviewImage(scannedItem.imageUrl)}
+                    className="size-20 shrink-0 overflow-hidden rounded-lg border border-border bg-accent"
+                    aria-label="View full image"
+                  >
                     {scannedItem.imageUrl ? (
                       <img
                         src={scannedItem.imageUrl}
@@ -209,12 +220,12 @@ function ScanRoute() {
                       <div className="flex size-full items-center justify-center text-primary">
                         <HugeiconsIcon
                           icon={BoxIcon}
-                          size={28}
+                          size={36}
                           strokeWidth={1.5}
                         />
                       </div>
                     )}
-                  </div>
+                  </button>
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-start justify-between gap-2">
                       <h3 className="truncate text-sm font-semibold text-foreground">
@@ -397,6 +408,18 @@ function ScanRoute() {
         </div>
       </section>
       <BottomNav />
+
+      <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
+        <DialogContent className="max-w-[90vw] border-0 bg-black/90 p-2">
+          {previewImage && (
+            <img
+              src={previewImage}
+              alt="Item preview"
+              className="max-h-[80vh] w-full object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </main>
   )
 }

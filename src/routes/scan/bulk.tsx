@@ -16,7 +16,8 @@ import { Badge } from "@/components/ui/badge"
 import { LiveScanner } from "@/components/LiveScanner"
 import type { LiveScannerStatus } from "@/components/LiveScanner"
 import { PageChrome } from "@/components/PageChrome"
-import { getItemByQrCode, updateItem } from "@/lib/inventory"
+import { getItemByQrCode } from "@/lib/inventory"
+import { useUpdateItem } from "@/lib/queries"
 import { ITEM_STATUSES } from "@/lib/item-status"
 import type { ItemStatus } from "@/lib/item-status"
 
@@ -43,6 +44,7 @@ function BulkScanPage() {
   const [lastResult, setLastResult] = useState<BulkResult | null>(null)
   const [editingSettings, setEditingSettings] = useState(false)
   const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const updateItemMutation = useUpdateItem()
 
   const cameraReady = scannerStatus === "scanning" || scannerStatus === "paused"
   const successCount = results.filter((r) => r.ok).length
@@ -70,14 +72,12 @@ function BulkScanPage() {
           itemName: found.name,
         }
       }
-      await updateItem({
-        data: {
-          id: found.id,
-          item: {
-            status: nextStatus,
-            location: nextLocation,
-            condition: nextStatus === "Repair" ? "Repair" : found.condition,
-          },
+      await updateItemMutation.mutateAsync({
+        id: found.id,
+        item: {
+          status: nextStatus,
+          location: nextLocation,
+          condition: nextStatus === "Repair" ? "Repair" : found.condition,
         },
       })
       return {

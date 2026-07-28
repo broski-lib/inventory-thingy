@@ -15,9 +15,6 @@ import {
   Tick02Icon,
 } from "@hugeicons/core-free-icons"
 import {
-  bulkDeleteItems,
-  bulkUpdateLocation,
-  bulkUpdateStatus,
   getItemsPage,
   getLocations,
   STOCK_SORTS,
@@ -30,9 +27,16 @@ import type {
 } from "@/lib/inventory"
 import { ITEM_CONDITIONS, ITEM_STATUSES } from "@/lib/item-status"
 import type { ItemCondition, ItemStatus } from "@/lib/item-status"
-import { deleteTag, listTags, updateTag } from "@/lib/tags"
+import { listTags } from "@/lib/tags"
 import type { Tag } from "@/lib/tags"
 import { TAG_COLORS } from "@/lib/schema"
+import {
+  useBulkDeleteItems,
+  useBulkUpdateStatus,
+  useBulkUpdateLocation,
+  useUpdateTag,
+  useDeleteTag,
+} from "@/lib/queries"
 import { AppHeader } from "@/components/AppHeader"
 import { BottomNav } from "@/components/BottomNav"
 import { SelectionAwareCard } from "@/components/SelectionAwareCard"
@@ -160,6 +164,7 @@ function filterSearch(search: {
 }
 
 export const Route = createFileRoute("/stock/")({
+  staleTime: 0,
   validateSearch: (search: Record<string, unknown>): StockSearch => ({
     q: typeof search.q === "string" ? search.q : undefined,
     page: parsePage(search.page),
@@ -224,6 +229,10 @@ function StockRoute() {
   const q = search.q ?? ""
   const statusFilter: StockStatusFilter = search.sf ?? "All"
   const sort: StockSort = search.sort ?? DEFAULT_STOCK_SORT
+
+  const bulkDeleteMutation = useBulkDeleteItems()
+  const bulkUpdateStatusMutation = useBulkUpdateStatus()
+  const bulkUpdateLocationMutation = useBulkUpdateLocation()
 
   const [pageSize, setPageSize] = usePageSize(
     PAGE_SIZE_STORAGE_KEY,
@@ -423,8 +432,7 @@ function StockRoute() {
     if (selectedArray.length === 0) return
     setBulkBusy(true)
     try {
-      const result = await bulkDeleteItems({ data: selectedArray })
-      // Drop the deleted ids from the selection and clear the panel.
+      const result = await bulkDeleteMutation.mutateAsync(selectedArray)
       setSelectedIds(new Set())
       setBulkPanel(null)
       finishAction(
@@ -441,8 +449,9 @@ function StockRoute() {
     if (selectedArray.length === 0) return
     setBulkBusy(true)
     try {
-      const result = await bulkUpdateStatus({
-        data: { ids: selectedArray, status: bulkStatus },
+      const result = await bulkUpdateStatusMutation.mutateAsync({
+        ids: selectedArray,
+        status: bulkStatus,
       })
       finishAction(
         `Updated ${result.updated} ${pluralize(result.updated, "item")} to ${bulkStatus}${skipNote(result.skipped)}`
@@ -459,8 +468,9 @@ function StockRoute() {
     if (selectedArray.length === 0 || !location) return
     setBulkBusy(true)
     try {
-      const result = await bulkUpdateLocation({
-        data: { ids: selectedArray, location },
+      const result = await bulkUpdateLocationMutation.mutateAsync({
+        ids: selectedArray,
+        location,
       })
       setBulkLocation("")
       finishAction(
@@ -943,6 +953,8 @@ function ManageTagRow({
   const [color, setColor] = useState(tag.color)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const updateTagMutation = useUpdateTag()
+  const deleteTagMutation = useDeleteTag()
 
   const dirty = name.trim() !== tag.name || color !== tag.color
 
@@ -951,12 +963,10 @@ function ManageTagRow({
     setBusy(true)
     setError(null)
     try {
-      await updateTag({
-        data: {
-          id: tag.id,
-          name: name.trim() !== tag.name ? name.trim() : undefined,
-          color: color !== tag.color ? color : undefined,
-        },
+      await updateTagMutation.mutateAsync({
+        id: tag.id,
+        name: name.trim() !== tag.name ? name.trim() : undefined,
+        color: color !== tag.color ? color : undefined,
       })
       onChanged()
     } catch (err) {
@@ -973,7 +983,7 @@ function ManageTagRow({
     setBusy(true)
     setError(null)
     try {
-      await deleteTag({ data: tag.id })
+      await deleteTagMutation.mutateAsync(tag.id)
       onChanged()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Delete failed")

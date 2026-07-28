@@ -1,13 +1,17 @@
 import { useCallback, useEffect } from "react"
 import type { MutableRefObject, ReactNode } from "react"
-import { useNavigate, useBlocker } from "@tanstack/react-router"
+import { useNavigate, useBlocker, useRouter } from "@tanstack/react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons"
 import { useEdgeSwipe } from "@/hooks/use-edge-swipe"
 
 type PageChromeProps = {
   title: string
-  backTo: string
+  /** Route path to navigate to when the back button is tapped.
+   *  Omit or pass `null` to use `history.back()` (recommended for pages
+   *  that should return the user to wherever they came from, preserving
+   *  any filter/page state on the previous route). */
+  backTo?: string | null
   /** Path params for `backTo` when the target is a dynamic route
    *  (e.g. `/stock/$id/edit` needs `{ id }`). */
   backToParams?: Record<string, string>
@@ -52,6 +56,7 @@ export function PageChrome({
   children,
 }: PageChromeProps) {
   const navigate = useNavigate()
+  const router = useRouter()
 
   // In-app navigation guard. useBlocker runs the predicate before any
   // router navigation (Link click, navigate(), back/forward) and
@@ -80,13 +85,12 @@ export function PageChrome({
   }, [dirty])
 
   const handleBack = useCallback(() => {
-    // `backTo` is a runtime string supplied by the caller, so the
-    // strongly-typed `to` literal from `useNavigate` doesn't narrow
-    // to a single route. The cast is the documented escape hatch for
-    // dynamic-routing components that don't know their target at
-    // definition time.
-    navigate({ to: backTo, params: backToParams } as never)
-  }, [navigate, backTo, backToParams])
+    if (backTo) {
+      navigate({ to: backTo, params: backToParams } as never)
+    } else {
+      router.history.back()
+    }
+  }, [navigate, router, backTo, backToParams])
 
   // Edge-swipe back: swipe right from the left edge, or swipe left
   // from the right edge, to go back. Reachable by either thumb.
