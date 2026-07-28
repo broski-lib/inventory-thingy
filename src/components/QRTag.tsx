@@ -64,7 +64,9 @@ export function QRTag({ qrCode, itemName, itemId }: QRTagProps) {
             <img
               src={dataUrl}
               alt={`QR code for ${itemName}`}
-              className="size-56"
+              loading="lazy"
+              decoding="async"
+              className="size-48"
             />
           ) : (
             <div

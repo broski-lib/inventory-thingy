@@ -78,7 +78,7 @@ const ScanCameraRoute = ScanCameraRouteImport.update({
   id: '/camera',
   path: '/camera',
   getParentRoute: () => ScanRoute,
-} as any)
+} as any).lazy(() => import('./routes/scan/camera.lazy').then((d) => d.Route))
 const SignUpSplatRoute = SignUpSplatRouteImport.update({
   id: '/sign-up/$',
   path: '/sign-up/$',

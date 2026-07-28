@@ -63,12 +63,16 @@ function ItemPrintPage() {
             <img
               src={dataUrl}
               alt={`QR code for ${item.name}`}
+              loading="lazy"
+              decoding="async"
               className="size-48 print:hidden"
             />
             <img
               src={dataUrl}
               alt={`QR code for ${item.name}`}
               style={{ width: printPx, height: printPx }}
+              loading="lazy"
+              decoding="async"
               className="hidden print:block"
             />
             <p className="mt-3 max-w-[200px] text-center text-sm font-semibold text-foreground">

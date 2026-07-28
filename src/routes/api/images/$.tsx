@@ -22,7 +22,7 @@ export const Route = createFileRoute("/api/images/$")({
         if (object.httpMetadata?.contentType) {
           headers.set("Content-Type", object.httpMetadata.contentType)
         }
-        headers.set("Cache-Control", "private, max-age=3600")
+        headers.set("Cache-Control", "private, max-age=86400")
         headers.set("X-Content-Type-Options", "nosniff")
         return new Response(object.body, { headers })
       },

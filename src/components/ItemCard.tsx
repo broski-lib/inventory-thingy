@@ -69,6 +69,8 @@ export function ItemCard({
           <img
             src={item.imageUrl}
             alt={item.name}
+            loading="lazy"
+            decoding="async"
             className="size-full object-cover"
           />
         ) : (

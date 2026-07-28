@@ -1,2 +1,2 @@
-export { ITEM_STATUSES, ITEM_CONDITIONS, ITEM_KINDS } from "@/lib/schema"
-export type { ItemStatus, ItemCondition, ItemKind } from "@/lib/schema"
+export { ITEM_STATUSES, ITEM_CONDITIONS, ITEM_KINDS } from "@/lib/constants"
+export type { ItemStatus, ItemCondition, ItemKind } from "@/lib/constants"

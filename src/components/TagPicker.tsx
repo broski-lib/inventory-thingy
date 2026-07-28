@@ -1,6 +1,6 @@
 import { useState } from "react"
 import type { Tag } from "@/lib/tags"
-import { TAG_COLORS } from "@/lib/schema"
+import { TAG_COLORS } from "@/lib/constants"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ColorPicker } from "@/components/ColorPicker"

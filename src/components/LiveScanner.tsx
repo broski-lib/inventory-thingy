@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Html5Qrcode, Html5QrcodeScannerState } from "html5-qrcode"
-import type { QrcodeErrorCallback, QrcodeSuccessCallback } from "html5-qrcode"
+import type { Html5Qrcode } from "html5-qrcode"
+import type {
+  QrcodeErrorCallback,
+  QrcodeSuccessCallback,
+} from "html5-qrcode"
 
 type LiveScannerProps = {
   active: boolean
@@ -21,6 +24,17 @@ export type LiveScannerStatus =
 
 const ELEMENT_ID = "live-qr-reader"
 const DEBOUNCE_MS = 1200
+
+let ScannerClass: typeof Html5Qrcode | null = null
+let ScannerState: { SCANNING: number; PAUSED: number; } | null = null
+
+async function loadScanner() {
+  if (ScannerClass && ScannerState) return { Html5Qrcode: ScannerClass, Html5QrcodeScannerState: ScannerState }
+  const mod = await import("html5-qrcode")
+  ScannerClass = mod.Html5Qrcode
+  ScannerState = { SCANNING: mod.Html5QrcodeScannerState.SCANNING, PAUSED: mod.Html5QrcodeScannerState.PAUSED }
+  return { Html5Qrcode: ScannerClass, Html5QrcodeScannerState: ScannerState }
+}
 
 export function LiveScanner({
   active,
@@ -48,10 +62,6 @@ export function LiveScanner({
     [onStatusChange]
   )
 
-  // The start effect owns the Html5Qrcode instance for its entire
-  // lifetime. The pause/resume effect reads from the ref once the
-  // instance is ready, so toggling paused before the camera is
-  // initialized is a safe no-op.
   useEffect(() => {
     if (!active) return
 
@@ -59,77 +69,82 @@ export function LiveScanner({
     updateStatus("starting")
     setErrorMessage(null)
 
-    const scanner = new Html5Qrcode(ELEMENT_ID, /* verbose */ false)
-    scannerRef.current = scanner
+    let scanner: Html5Qrcode
 
-    const onSuccess: QrcodeSuccessCallback = (decodedText) => {
-      if (busyRef.current) return
-      busyRef.current = true
-      void (async () => {
-        try {
-          await onDetectedRef.current(decodedText)
-        } finally {
-          // Small debounce so the same code isn't re-decoded instantly.
-          setTimeout(() => {
-            busyRef.current = false
-          }, DEBOUNCE_MS)
-        }
-      })()
-    }
+    loadScanner().then(({ Html5Qrcode }) => {
+      if (cancelled) return
 
-    const onFailure: QrcodeErrorCallback = () => {
-      // No-op: html5-qrcode fires this for every frame without a code.
-    }
+      scanner = new Html5Qrcode(ELEMENT_ID, false)
+      scannerRef.current = scanner
 
-    scanner
-      .start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 240, height: 240 } },
-        onSuccess,
-        onFailure
-      )
-      .then(() => {
-        if (cancelled) {
-          void scanner.stop().catch(() => {})
-          return
-        }
-        updateStatus("scanning")
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return
-        const message = err instanceof Error ? err.message : String(err)
-        if (/permission|denied|notallowed/i.test(message)) {
-          updateStatus(
-            "denied",
-            "Camera access denied. Allow camera in your browser settings."
-          )
-        } else if (/notfound|no\scamera/i.test(message)) {
-          updateStatus("error", "No camera found on this device.")
-        } else {
-          updateStatus("error", message)
-        }
-        onError?.(message)
-      })
+      const onSuccess: QrcodeSuccessCallback = (decodedText) => {
+        if (busyRef.current) return
+        busyRef.current = true
+        void (async () => {
+          try {
+            await onDetectedRef.current(decodedText)
+          } finally {
+            setTimeout(() => {
+              busyRef.current = false
+            }, DEBOUNCE_MS)
+          }
+        })()
+      }
+
+      const onFailure: QrcodeErrorCallback = () => {}
+
+      scanner
+        .start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 240, height: 240 } },
+          onSuccess,
+          onFailure
+        )
+        .then(() => {
+          if (cancelled) {
+            void scanner.stop().catch(() => {})
+            return
+          }
+          updateStatus("scanning")
+        })
+        .catch((err: unknown) => {
+          if (cancelled) return
+          const message = err instanceof Error ? err.message : String(err)
+          if (/permission|denied|notallowed/i.test(message)) {
+            updateStatus(
+              "denied",
+              "Camera access denied. Allow camera in your browser settings."
+            )
+          } else if (/notfound|no\scamera/i.test(message)) {
+            updateStatus("error", "No camera found on this device.")
+          } else {
+            updateStatus("error", message)
+          }
+          onError?.(message)
+        })
+    })
 
     return () => {
       cancelled = true
       busyRef.current = false
       scannerRef.current = null
-      try {
-        const state = scanner.getState()
-        if (
-          state === Html5QrcodeScannerState.SCANNING ||
-          state === Html5QrcodeScannerState.PAUSED
-        ) {
-          void scanner.stop().catch(() => {})
-        } else {
-          scanner.clear()
-        }
-      } catch {
+      if (scanner) {
         try {
-          scanner.clear()
+          loadScanner().then(({ Html5QrcodeScannerState }) => {
+            const state = scanner.getState()
+            if (
+              state === Html5QrcodeScannerState.SCANNING ||
+              state === Html5QrcodeScannerState.PAUSED
+            ) {
+              void scanner.stop().catch(() => {})
+            } else {
+              scanner.clear()
+            }
+          }).catch(() => {
+            try { scanner.clear() } catch { /* noop */ }
+          })
         } catch {
-          /* noop */
+          try { scanner.clear() } catch { /* noop */ }
         }
       }
       updateStatus("stopped")

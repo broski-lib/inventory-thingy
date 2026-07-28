@@ -1,15 +1,9 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router"
-import { createServerFn } from "@tanstack/react-start"
-import { desc, eq } from "drizzle-orm"
 import { useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { BoxIcon, Camera01Icon } from "@hugeicons/core-free-icons"
-import { getDb } from "@/lib/db"
-import { items } from "@/lib/schema"
-import { authRequiredMiddleware } from "@/lib/auth-middleware"
-import { getItemByQrCode } from "@/lib/inventory"
 import type { InventoryItem } from "@/lib/inventory"
-import { getBatchesForItems } from "@/lib/batches"
+import { loadScan, lookupItem } from "@/lib/scan-queries"
 import { useUpdateItem } from "@/lib/queries"
 import { BatchManager } from "@/components/BatchManager"
 import { AppHeader } from "@/components/AppHeader"
@@ -26,36 +20,6 @@ import {
 } from "@/components/ui/dialog"
 import type { ItemStatus } from "@/lib/item-status"
 import { cn } from "@/lib/utils"
-
-const loadScan = createServerFn({ method: "GET" })
-  .middleware([authRequiredMiddleware])
-  .handler(async ({ context }) => {
-    const { orgId } = context
-    const db = getDb()
-    const recent = await db
-      .select({
-        id: items.id,
-        qrCode: items.qrCode,
-        name: items.name,
-        imageUrl: items.imageUrl,
-        status: items.status,
-      })
-      .from(items)
-      .where(eq(items.orgId, orgId))
-      .orderBy(desc(items.updatedAt))
-      .limit(8)
-    return { recent }
-  })
-
-const lookupItem = createServerFn({ method: "GET" })
-  .middleware([authRequiredMiddleware])
-  .validator((code: string) => code)
-  .handler(async ({ data: code, context }) => {
-    const found = await getItemByQrCode({ data: code })
-    if (!found || found.kind !== "bulk") return { code, item: found, batches: [] }
-    const batchesByItem = await getBatchesForItems(context.orgId, [found.id])
-    return { code, item: found, batches: batchesByItem.get(found.id) ?? [] }
-  })
 
 type ScanSearch = {
   code?: string
@@ -415,6 +379,7 @@ function ScanRoute() {
             <img
               src={previewImage}
               alt="Item preview"
+              loading="lazy"
               className="max-h-[80vh] w-full object-contain"
             />
           )}

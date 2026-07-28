@@ -9,31 +9,45 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core"
+import {
+  ITEM_STATUSES,
+  ITEM_CONDITIONS,
+  ITEM_KINDS,
+  PRINT_SIZES,
+  TAG_COLORS,
+  ACTIVITY_ACTIONS,
+} from "./constants"
+import type {
+  ItemStatus,
+  ItemCondition,
+  ItemKind,
+  PrintSize,
+  TagColor,
+  ActivityAction,
+} from "./constants"
 
-export const ITEM_STATUSES = [
-  "Available",
-  "In Storage",
-  "Reserved",
-  "Staged",
-  "Repair",
-  "Retired",
-  "Pending Tag",
-] as const
-
-export const ITEM_CONDITIONS = ["Excellent", "Good", "Worn", "Repair"] as const
-
-export type ItemStatus = (typeof ITEM_STATUSES)[number]
-export type ItemCondition = (typeof ITEM_CONDITIONS)[number]
+export {
+  ITEM_STATUSES,
+  ITEM_CONDITIONS,
+  ITEM_KINDS,
+  PRINT_SIZES,
+  TAG_COLORS,
+  ACTIVITY_ACTIONS,
+}
+export type {
+  ItemStatus,
+  ItemCondition,
+  ItemKind,
+  PrintSize,
+  TagColor,
+  ActivityAction,
+}
 
 export const itemStatus = pgEnum("item_status", ITEM_STATUSES)
 export const condition = pgEnum("condition", ITEM_CONDITIONS)
 
-export const ITEM_KINDS = ["unit", "bulk"] as const
-export type ItemKind = (typeof ITEM_KINDS)[number]
 export const itemKind = pgEnum("item_kind", ITEM_KINDS)
 
-export const PRINT_SIZES = ["small", "medium", "large"] as const
-export type PrintSize = (typeof PRINT_SIZES)[number]
 export const printSize = pgEnum("print_size", PRINT_SIZES)
 
 export const items = pgTable(
@@ -80,24 +94,6 @@ export const items = pgTable(
     index("idx_items_name").on(table.name),
   ]
 )
-
-/**
- * Preset tag colors. Stored as lowercase hex on the tag row; the UI offers
- * this palette only, so colors stay consistent across the app.
- */
-export const TAG_COLORS = [
-  { name: "Red", value: "#ef4444" },
-  { name: "Orange", value: "#f97316" },
-  { name: "Amber", value: "#f59e0b" },
-  { name: "Green", value: "#22c55e" },
-  { name: "Teal", value: "#14b8a6" },
-  { name: "Blue", value: "#3b82f6" },
-  { name: "Purple", value: "#a855f7" },
-  { name: "Pink", value: "#ec4899" },
-  { name: "Gray", value: "#6b7280" },
-] as const
-
-export type TagColor = (typeof TAG_COLORS)[number]["value"]
 
 export const tags = pgTable(
   "tags",
@@ -162,19 +158,6 @@ export const itemBatches = pgTable(
     index("idx_item_batches_status").on(table.status),
   ]
 )
-
-export const ACTIVITY_ACTIONS = [
-  "created",
-  "updated",
-  "deleted",
-  "checked_out",
-  "checked_in",
-  "reported_damaged",
-  "moved",
-  "condition_changed",
-] as const
-
-export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number]
 
 export const activityAction = pgEnum("activity_action", ACTIVITY_ACTIONS)
 

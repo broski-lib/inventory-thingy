@@ -23,8 +23,8 @@ import type { ItemCondition, ItemKind, ItemStatus } from "@/lib/item-status"
 import { useUploadItemImage, useCreateTag } from "@/lib/queries"
 import type { Tag } from "@/lib/tags"
 import { generateQrCode } from "@/lib/ids"
-import type { PrintSize } from "@/lib/schema"
-import { PRINT_SIZES } from "@/lib/schema"
+import type { PrintSize } from "@/lib/constants"
+import { PRINT_SIZES } from "@/lib/constants"
 
 export type ItemFormValues = {
   qrCode: string

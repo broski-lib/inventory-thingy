@@ -17,14 +17,13 @@ import {
 import {
   getItemsPage,
   getLocations,
+} from "@/lib/inventory"
+import type { StockSort, StockStatusFilter } from "@/lib/constants"
+import {
   STOCK_SORTS,
   STOCK_STATUS_FILTERS,
   DEFAULT_STOCK_SORT,
-} from "@/lib/inventory"
-import type {
-  StockSort,
-  StockStatusFilter,
-} from "@/lib/inventory"
+} from "@/lib/constants"
 import { ITEM_CONDITIONS, ITEM_STATUSES } from "@/lib/item-status"
 import type { ItemCondition, ItemStatus } from "@/lib/item-status"
 import { listTags } from "@/lib/tags"

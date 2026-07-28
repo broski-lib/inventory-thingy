@@ -3,7 +3,7 @@ import { and, asc, eq, ilike, inArray, ne, or, desc, sql } from "drizzle-orm"
 import type { SQL } from "drizzle-orm"
 import { getDb } from "./db"
 import { items, activityLogs, itemBatches, itemTags, tags } from "./schema"
-import type { ItemCondition, ItemStatus } from "./schema"
+import type { ItemCondition, ItemStatus, StockSort, StockStatusFilter } from "./constants"
 import { generateUlid } from "./ids"
 import { logActivity, resolveActor } from "./activity"
 import type { ActivityActor, ActivityLog } from "./activity"
@@ -51,28 +51,6 @@ export type UpdateItemInput = {
     imageKey?: string | null
   }
 }
-
-export const STOCK_STATUS_FILTERS = [
-  "All",
-  "Available",
-  "Staged",
-  "Repair",
-  "Pending Tag",
-] as const
-export type StockStatusFilter = (typeof STOCK_STATUS_FILTERS)[number]
-
-export const STOCK_SORTS = [
-  { id: "updated_desc", label: "Recently updated" },
-  { id: "updated_asc", label: "Least recently updated" },
-  { id: "created_desc", label: "Newest first" },
-  { id: "created_asc", label: "Oldest first" },
-  { id: "name_asc", label: "Name A–Z" },
-  { id: "name_desc", label: "Name Z–A" },
-  { id: "location_asc", label: "Location A–Z" },
-  { id: "location_desc", label: "Location Z–A" },
-] as const
-export type StockSort = (typeof STOCK_SORTS)[number]["id"]
-export const DEFAULT_STOCK_SORT: StockSort = "updated_desc"
 
 export type ItemsPage = {
   items: InventoryItemWithTags[]

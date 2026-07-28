@@ -105,12 +105,16 @@ function BulkPrintPage() {
                   <img
                     src={item.dataUrl}
                     alt={`QR for ${item.qrCode}`}
+                    loading="lazy"
+                    decoding="async"
                     className="aspect-square w-full print:hidden"
                   />
                   <img
                     src={item.dataUrl}
                     alt={`QR for ${item.qrCode}`}
                     style={{ width: printPx, height: printPx }}
+                    loading="lazy"
+                    decoding="async"
                     className="hidden print:block"
                   />
                   <p className="mt-1 max-w-full truncate text-center font-mono text-[8px] font-bold tracking-wide">

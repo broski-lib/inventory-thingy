@@ -1,6 +1,6 @@
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Tick02Icon } from "@hugeicons/core-free-icons"
-import { TAG_COLORS } from "@/lib/schema"
+import { TAG_COLORS } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 
 type ColorPickerProps = {
