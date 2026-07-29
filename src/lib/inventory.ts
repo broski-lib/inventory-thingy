@@ -3,7 +3,7 @@ import { and, asc, eq, ilike, inArray, ne, or, desc, sql } from "drizzle-orm"
 import type { SQL } from "drizzle-orm"
 import { getDb } from "./db"
 import { items, activityLogs, itemBatches, itemTags, tags } from "./schema"
-import type { ItemCondition, ItemStatus, StockSort, StockStatusFilter } from "./constants"
+import type { ItemCondition, ItemKind, ItemStatus, StockSort, StockStatusFilter } from "./constants"
 import { generateUlid } from "./ids"
 import { logActivity, resolveActor } from "./activity"
 import type { ActivityActor, ActivityLog } from "./activity"
@@ -70,6 +70,7 @@ export type GetItemsPageArgs = {
   locations?: string[]
   tagIds?: string[]
   sort?: StockSort
+  kinds?: ItemKind[]
 }
 
 function statusGroupList(filter: StockStatusFilter): ItemStatus[] {
@@ -199,6 +200,9 @@ function buildItemsWhere(
         and(eq(itemTags.orgId, orgId), inArray(itemTags.tagId, args.tagIds))
       )
     conditions.push(inArray(items.id, tagFilter))
+  }
+  if (args.kinds && args.kinds.length > 0) {
+    conditions.push(inArray(items.kind, args.kinds))
   }
   return and(...conditions)!
 }

@@ -24,8 +24,8 @@ import {
   STOCK_STATUS_FILTERS,
   DEFAULT_STOCK_SORT,
 } from "@/lib/constants"
-import { ITEM_CONDITIONS, ITEM_STATUSES } from "@/lib/item-status"
-import type { ItemCondition, ItemStatus } from "@/lib/item-status"
+import { ITEM_CONDITIONS, ITEM_KINDS, ITEM_STATUSES } from "@/lib/item-status"
+import type { ItemCondition, ItemKind, ItemStatus } from "@/lib/item-status"
 import { listTags } from "@/lib/tags"
 import type { Tag } from "@/lib/tags"
 import {
@@ -85,6 +85,7 @@ type StockSearch = {
   loc?: string[]
   tags?: string[]
   sort?: StockSort
+  kinds?: ItemKind[]
 }
 
 function parsePageSize(value: unknown): number | undefined {
@@ -148,6 +149,7 @@ function filterSearch(search: {
   loc?: string[]
   tags?: string[]
   sort?: StockSort
+  kinds?: ItemKind[]
 }) {
   return {
     sf: search.sf && search.sf !== "All" ? search.sf : undefined,
@@ -159,6 +161,7 @@ function filterSearch(search: {
       search.sort && search.sort !== DEFAULT_STOCK_SORT
         ? search.sort
         : undefined,
+    kinds: search.kinds && search.kinds.length > 0 ? search.kinds : undefined,
   }
 }
 
@@ -174,6 +177,7 @@ export const Route = createFileRoute("/stock/")({
     loc: parseCsv(search.loc),
     tags: parseCsv(search.tags),
     sort: parseSort(search.sort),
+    kinds: parseEnumCsv(search.kinds, ITEM_KINDS),
   }),
   loaderDeps: ({ search }) => ({
     q: search.q,
@@ -185,6 +189,7 @@ export const Route = createFileRoute("/stock/")({
     loc: search.loc,
     tags: search.tags,
     sort: search.sort,
+    kinds: search.kinds,
   }),
   loader: async ({ deps }) => {
     const [page, allTags, locations] = await Promise.all([
@@ -199,6 +204,7 @@ export const Route = createFileRoute("/stock/")({
           locations: deps.loc,
           tagIds: deps.tags,
           sort: deps.sort,
+          kinds: deps.kinds,
         },
       }),
       listTags(),
@@ -217,6 +223,7 @@ type DraftFilters = {
   loc: string[]
   tags: string[]
   sort: StockSort
+  kinds: ItemKind[]
 }
 
 function StockRoute() {
@@ -250,6 +257,7 @@ function StockRoute() {
     loc: [],
     tags: [],
     sort: DEFAULT_STOCK_SORT,
+    kinds: [],
   })
 
   // Selection state
@@ -329,6 +337,7 @@ function StockRoute() {
       loc: search.loc ?? [],
       tags: search.tags ?? [],
       sort,
+      kinds: search.kinds ?? [],
     })
     setFilterOpen(true)
   }
@@ -343,7 +352,7 @@ function StockRoute() {
   }
 
   const toggleDraftValue = (
-    key: "st" | "cond" | "loc" | "tags",
+    key: "st" | "cond" | "loc" | "tags" | "kinds",
     value: string
   ) => {
     setDraft((prev) => {
@@ -362,6 +371,7 @@ function StockRoute() {
     (search.cond?.length ?? 0) +
     (search.loc?.length ?? 0) +
     (search.tags?.length ?? 0) +
+    (search.kinds?.length ?? 0) +
     (sort !== DEFAULT_STOCK_SORT ? 1 : 0)
 
   // ---- Selection logic ----
@@ -790,6 +800,19 @@ function StockRoute() {
               )}
             </FilterSection>
 
+            <FilterSection label="Item kind">
+              <div className="flex flex-wrap gap-1.5">
+                {ITEM_KINDS.map((k) => (
+                  <FilterPill
+                    key={k}
+                    label={k === "unit" ? "Single item" : "Bulk stock"}
+                    selected={draft.kinds.includes(k)}
+                    onClick={() => toggleDraftValue("kinds", k)}
+                  />
+                ))}
+              </div>
+            </FilterSection>
+
             <FilterSection
               label="Tags"
               action={
@@ -815,13 +838,14 @@ function StockRoute() {
               variant="outline"
               className="flex-1"
               onClick={() => {
-                setDraft({
-                  st: [],
-                  cond: [],
-                  loc: [],
-                  tags: [],
-                  sort: DEFAULT_STOCK_SORT,
-                })
+                  setDraft({
+                    st: [],
+                    cond: [],
+                    loc: [],
+                    tags: [],
+                    sort: DEFAULT_STOCK_SORT,
+                    kinds: [],
+                  })
               }}
             >
               Clear

@@ -1,5 +1,5 @@
-import type { ItemStatus } from "@/lib/item-status"
-import type { InventoryItem } from "@/lib/inventory"
+import type { ItemStatus } from "@/lib/constants"
+import type { InventoryItemWithTags } from "@/lib/inventory"
 import type { ItemBatch } from "@/lib/batches"
 import type { Tag } from "@/lib/tags"
 import { LocationIcon, ShieldIcon } from "@/components/icons"
@@ -8,7 +8,6 @@ import { BoxIcon, LockIcon } from "@hugeicons/core-free-icons"
 import { Badge } from "@/components/ui/badge"
 import type { badgeVariants } from "@/components/ui/badge"
 import type { VariantProps } from "class-variance-authority"
-import { cn } from "@/lib/utils"
 
 type BadgeVariant = NonNullable<VariantProps<typeof badgeVariants>["variant"]>
 
@@ -30,21 +29,14 @@ export function getStatusBadgeVariant(status: ItemStatus): BadgeVariant {
 }
 
 type ItemCardProps = {
-  item: InventoryItem
-  /** Resolved tags for the item (from getItemsPage). Omit to hide. */
+  item: InventoryItemWithTags
   tags?: Tag[]
-  /** Batches for bulk items — renders total + breakdown chips. */
   batches?: ItemBatch[]
   onEdit: () => void
   size?: "sm" | "md"
-  /** Disable click handler (used in selection mode). */
   disabled?: boolean
 }
 
-/**
- * Inventory card. Tap the body to edit. No menu / no long-press —
- * the QR code is surfaced from the item page header instead.
- */
 export function ItemCard({
   item,
   tags,
@@ -53,17 +45,19 @@ export function ItemCard({
   size = "md",
   disabled = false,
 }: ItemCardProps) {
-  const dim = size === "sm" ? "size-12" : "size-14"
+  const imgHeight = size === "sm" ? "h-28" : "h-36"
+
   return (
     <article
       onClick={disabled ? undefined : onEdit}
-      className={cn(
-        "relative flex gap-3 rounded-xl border border-border bg-card p-3 shadow-xs transition-all",
-        !disabled && "cursor-pointer hover:border-primary"
-      )}
+      className={
+        disabled
+          ? "flex flex-col"
+          : "flex cursor-pointer flex-col rounded-xl border border-border bg-card shadow-xs transition-all hover:border-primary active:scale-[0.99]"
+      }
     >
       <div
-        className={`${dim} flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-accent`}
+        className={`${imgHeight} flex w-full shrink-0 items-center justify-center overflow-hidden rounded-t-xl border-b border-border bg-accent`}
       >
         {item.imageUrl ? (
           <img
@@ -76,16 +70,16 @@ export function ItemCard({
         ) : (
           <HugeiconsIcon
             icon={BoxIcon}
-            size={size === "sm" ? 20 : 22}
+            size={size === "sm" ? 32 : 40}
             strokeWidth={1.5}
             className="text-primary"
           />
         )}
       </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+      <div className="flex flex-col gap-1.5 p-3">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="truncate text-xs font-semibold text-foreground">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-foreground">
               {item.name}
             </p>
             <p className="font-mono text-[10px] text-muted-foreground">
@@ -106,6 +100,7 @@ export function ItemCard({
             )}
           </div>
         </div>
+
         {item.kind === "bulk" && batches ? (
           <div className="flex flex-col gap-1">
             <span className="text-[10px] font-bold text-foreground">
@@ -132,12 +127,13 @@ export function ItemCard({
               <LocationIcon />
               <span className="truncate">{item.location}</span>
             </span>
-            <span className="font-semibold text-foreground">
+            <span className="shrink-0 font-semibold text-foreground">
               <ShieldIcon />
               {item.condition}
             </span>
           </div>
         )}
+
         {tags && tags.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {tags.map((tag) => (

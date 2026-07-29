@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import type { MutableRefObject, ReactNode } from "react"
 import { useNavigate, useBlocker, useRouter } from "@tanstack/react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -57,6 +57,7 @@ export function PageChrome({
 }: PageChromeProps) {
   const navigate = useNavigate()
   const router = useRouter()
+  const navigatingRef = useRef(false)
 
   // In-app navigation guard. useBlocker runs the predicate before any
   // router navigation (Link click, navigate(), back/forward) and
@@ -85,11 +86,19 @@ export function PageChrome({
   }, [dirty])
 
   const handleBack = useCallback(() => {
+    if (navigatingRef.current) return
+    navigatingRef.current = true
     if (backTo) {
       navigate({ to: backTo, params: backToParams } as never)
     } else {
       router.history.back()
     }
+    // Reset after navigation completes (or fails silently).
+    // Navigate/back are async — the ref prevents double-invoke during
+    // edge-swipe spamming or rapid double-tap.
+    setTimeout(() => {
+      navigatingRef.current = false
+    }, 300)
   }, [navigate, router, backTo, backToParams])
 
   // Edge-swipe back: swipe right from the left edge, or swipe left

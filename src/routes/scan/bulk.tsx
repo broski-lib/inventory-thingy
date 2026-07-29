@@ -32,12 +32,22 @@ type BulkResult = {
   itemName?: string
 }
 
-const DEFAULT_LOCATION = "Warehouse A, Bay 1"
+const BULK_LOCATION_KEY = "scan:bulk-location"
+
+function loadPersistedLocation(): string {
+  if (typeof window === "undefined") return "Warehouse A, Bay 1"
+  return window.localStorage.getItem(BULK_LOCATION_KEY) || "Warehouse A, Bay 1"
+}
+
+function persistLocation(value: string) {
+  if (typeof window === "undefined") return
+  window.localStorage.setItem(BULK_LOCATION_KEY, value)
+}
 
 function BulkScanPage() {
   const navigate = useNavigate()
   const [status, setStatus] = useState<ItemStatus>("Available")
-  const [location, setLocation] = useState(DEFAULT_LOCATION)
+  const [location, setLocation] = useState(loadPersistedLocation)
   const [scannerStatus, setScannerStatus] = useState<LiveScannerStatus>("idle")
   const [paused, setPaused] = useState(false)
   const [results, setResults] = useState<BulkResult[]>([])
@@ -45,6 +55,10 @@ function BulkScanPage() {
   const [editingSettings, setEditingSettings] = useState(false)
   const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const updateItemMutation = useUpdateItem()
+
+  useEffect(() => {
+    if (!editingSettings) persistLocation(location)
+  }, [editingSettings, location])
 
   const cameraReady = scannerStatus === "scanning" || scannerStatus === "paused"
   const successCount = results.filter((r) => r.ok).length
