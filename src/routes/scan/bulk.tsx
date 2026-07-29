@@ -17,11 +17,13 @@ import { LiveScanner } from "@/components/LiveScanner"
 import type { LiveScannerStatus } from "@/components/LiveScanner"
 import { PageChrome } from "@/components/PageChrome"
 import { getItemByQrCode } from "@/lib/inventory"
+import { loadScan } from "@/lib/scan-queries"
 import { useUpdateItem } from "@/lib/queries"
 import { ITEM_STATUSES } from "@/lib/item-status"
 import type { ItemStatus } from "@/lib/item-status"
 
 export const Route = createFileRoute("/scan/bulk")({
+  loader: async () => loadScan(),
   component: BulkScanPage,
 })
 
@@ -45,6 +47,7 @@ function persistLocation(value: string) {
 }
 
 function BulkScanPage() {
+  const { recent } = Route.useLoaderData()
   const navigate = useNavigate()
   const [status, setStatus] = useState<ItemStatus>("Available")
   const [location, setLocation] = useState(loadPersistedLocation)
@@ -189,6 +192,30 @@ function BulkScanPage() {
             </div>
           )}
         </div>
+
+        {recent.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+              Recently modified
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {recent.map((item) => (
+                <span
+                  key={item.id}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-foreground"
+                >
+                  <HugeiconsIcon
+                    icon={BoxIcon}
+                    size={11}
+                    strokeWidth={1.5}
+                    className="shrink-0 text-muted-foreground"
+                  />
+                  <span className="truncate max-w-[120px]">{item.name}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         <LiveScanner
           active
