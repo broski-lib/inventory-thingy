@@ -8,10 +8,17 @@ import { useUpdateItem } from "@/lib/queries"
 import { BatchManager } from "@/components/BatchManager"
 import { AppHeader } from "@/components/AppHeader"
 import { BottomNav } from "@/components/BottomNav"
-import { BoltIcon, WrenchIcon, EditIcon } from "@/components/icons"
+import { BoltIcon, EditIcon } from "@/components/icons"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
 import { getStatusBadgeVariant } from "@/components/ItemCard"
 import {
@@ -19,6 +26,7 @@ import {
   DialogContent,
 } from "@/components/ui/dialog"
 import type { ItemStatus } from "@/lib/item-status"
+import { ITEM_STATUSES } from "@/lib/item-status"
 import { cn } from "@/lib/utils"
 
 type ScanSearch = {
@@ -241,20 +249,27 @@ function ScanRoute() {
 
                   <div className="grid grid-cols-2 gap-2">
                     {!isBulk && (
-                      <Button
-                        variant="outline"
-                        className="h-11"
-                        onClick={() =>
+                      <Select
+                        value={scannedItem.status}
+                        onValueChange={(v) =>
                           handleQuickStatus(
                             scannedItem,
-                            "Repair",
-                            "Intake bench"
+                            v as ItemStatus,
+                            scannedItem.location
                           )
                         }
                       >
-                        <WrenchIcon />
-                        Report Damaged
-                      </Button>
+                        <SelectTrigger className="h-11">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ITEM_STATUSES.map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {s}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     )}
                     <Button
                       variant="outline"

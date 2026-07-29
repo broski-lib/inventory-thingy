@@ -40,6 +40,7 @@ import { AppHeader } from "@/components/AppHeader"
 import { BottomNav } from "@/components/BottomNav"
 import { SelectionAwareCard } from "@/components/SelectionAwareCard"
 import { TagPicker } from "@/components/TagPicker"
+import { useCompactCards } from "@/components/ItemCard"
 import { PlusIcon, TrashIcon } from "@/components/icons"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -245,6 +246,28 @@ function StockRoute() {
     DEFAULT_PAGE_SIZE,
     search.ps
   )
+
+  // Keep URL and localStorage in sync. When they disagree, the URL wins
+  // (explicit param) — but when the URL has no param, push the stored
+  // value. Cross-tab storage events also trigger re-sync.
+  useEffect(() => {
+    const fromUrl = search.ps
+    if (fromUrl !== undefined && fromUrl === pageSize) return
+    if (fromUrl !== undefined) {
+      // URL has a value that differs from localStorage — adopt URL value.
+      setPageSize(fromUrl)
+      return
+    }
+    // No ps param. Push the localStorage value to the URL.
+    if (pageSize === DEFAULT_PAGE_SIZE) return
+    navigate({
+      to: "/stock",
+      search: (prev) => ({ ...prev, ps: pageSize }),
+      replace: true,
+    })
+  }, [search.ps, pageSize, DEFAULT_PAGE_SIZE, setPageSize, navigate])
+
+  const [compactCards, setCompactCards] = useCompactCards()
   const [searchInput, setSearchInput] = useState(q)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -553,6 +576,15 @@ function StockRoute() {
                   />
                   Select
                 </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCompactCards((v) => !v)}
+                  className="h-9 text-xs text-muted-foreground"
+                >
+                  {compactCards ? "Large" : "Compact"}
+                </Button>
                 <Link
                   to="/stock/new"
                   className={cn(
@@ -699,6 +731,7 @@ function StockRoute() {
                     item={item}
                     selectionMode={selectionMode}
                     selected={selectedIds.has(item.id)}
+                    compact={compactCards}
                     onEdit={() =>
                       navigate({
                         to: "/stock/$id/edit",

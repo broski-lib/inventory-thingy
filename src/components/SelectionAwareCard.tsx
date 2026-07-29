@@ -10,12 +10,14 @@ export function SelectionAwareCard({
   selected,
   onEdit,
   onToggle,
+  compact,
 }: {
   item: InventoryItemWithTags
   selectionMode: boolean
   selected: boolean
   onEdit: () => void
   onToggle: () => void
+  compact?: boolean
 }) {
   if (selectionMode) {
     return (
@@ -39,6 +41,7 @@ export function SelectionAwareCard({
             size="md"
             onEdit={onEdit}
             disabled
+            compact={compact}
           />
         </div>
       </button>
@@ -51,6 +54,7 @@ export function SelectionAwareCard({
       batches={item.batches}
       size="md"
       onEdit={onEdit}
+      compact={compact}
     />
   )
 }

@@ -86,6 +86,7 @@ function BulkPrintPage() {
       </div>
 
       <div className="px-4 py-6 print:p-0">
+        <style>{`@media print { .print-tag { break-inside: avoid; page-break-inside: avoid; } }`}</style>
         <h1 className="mb-4 text-center text-sm font-semibold uppercase tracking-wider text-foreground print:hidden">
           QR Tag Sheet — {printItems.length} item{printItems.length === 1 ? "" : "s"}
         </h1>
@@ -93,14 +94,13 @@ function BulkPrintPage() {
         {printItems.length === 0 ? (
           <p className="text-center text-muted-foreground">Generating QR codes...</p>
         ) : (
-          <div className="grid grid-cols-3 gap-0">
+          <div className="grid grid-cols-3 gap-0 print:grid-cols-3">
             {printItems.map((item) => {
               const printPx = PRINT_SIZE_PX[item.printSize]
               return (
                 <div
                   key={item.qrCode}
-                  className="flex flex-col items-center border border-dashed border-border p-2 print:border-black"
-                  style={{ breakInside: "avoid" }}
+                  className="print-tag flex flex-col items-center border border-dashed border-border p-2 print:border-black"
                 >
                   <img
                     src={item.dataUrl}
