@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import type { badgeVariants } from "@/components/ui/badge"
 import type { VariantProps } from "class-variance-authority"
 import { useEffect, useState } from "react"
+import { useLongPress } from "@/hooks/use-long-press"
 
 type BadgeVariant = NonNullable<VariantProps<typeof badgeVariants>["variant"]>
 
@@ -53,6 +54,7 @@ type ItemCardProps = {
   tags?: Tag[]
   batches?: ItemBatch[]
   onEdit: () => void
+  onLongPress?: () => void
   size?: "sm" | "md"
   disabled?: boolean
   compact?: boolean
@@ -63,20 +65,33 @@ export function ItemCard({
   tags,
   batches,
   onEdit,
+  onLongPress,
   size = "md",
   disabled = false,
   compact = false,
 }: ItemCardProps) {
+  const longPress = useLongPress({
+    onLongPress: onLongPress ?? (() => {}),
+  })
+  const lpHandlers = onLongPress ? longPress.handlers : {}
   if (compact) {
     const dim = size === "sm" ? "size-12" : "size-14"
     return (
       <article
-        onClick={disabled ? undefined : onEdit}
+        onClick={
+          disabled
+            ? undefined
+            : () => {
+                if (longPress.wasLongPress()) return
+                onEdit()
+              }
+        }
         className={
           disabled
             ? "relative flex gap-3"
             : "relative flex cursor-pointer gap-3 rounded-xl border border-border bg-card p-3 shadow-xs transition-all hover:border-primary"
         }
+        {...lpHandlers}
       >
         <div
           className={`${dim} flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-accent`}
@@ -179,12 +194,20 @@ export function ItemCard({
   // Large card: image on top at natural aspect ratio
   return (
     <article
-      onClick={disabled ? undefined : onEdit}
+      onClick={
+        disabled
+          ? undefined
+          : () => {
+              if (longPress.wasLongPress()) return
+              onEdit()
+            }
+      }
       className={
         disabled
           ? "flex flex-col"
           : "flex cursor-pointer flex-col rounded-xl border border-border bg-card shadow-xs transition-all hover:border-primary active:scale-[0.99]"
       }
+      {...lpHandlers}
     >
       <div className="flex w-full shrink-0 items-center justify-center overflow-hidden rounded-t-xl border-b border-border bg-accent">
         {item.imageUrl ? (
@@ -193,10 +216,10 @@ export function ItemCard({
             alt={item.name}
             loading="lazy"
             decoding="async"
-            className="max-h-48 w-full object-contain"
+            className="aspect-[4/3] w-full object-cover"
           />
         ) : (
-          <div className="flex h-28 w-full items-center justify-center">
+          <div className="flex aspect-[4/3] w-full items-center justify-center">
             <HugeiconsIcon
               icon={BoxIcon}
               size={40}

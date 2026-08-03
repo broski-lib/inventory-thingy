@@ -533,11 +533,9 @@ function StockRoute() {
         <AppHeader />
 
         <div className="mt-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold">
-              {selectionMode ? "Select items" : "Inventory Manager"}
-            </h2>
-            {selectionMode ? (
+          {selectionMode && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold">Select items</span>
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
@@ -559,97 +557,112 @@ function StockRoute() {
                   Done
                 </Button>
               </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => enterSelectionMode()}
-                  disabled={data.items.length === 0}
-                  className="h-9"
-                >
-                  <HugeiconsIcon
-                    icon={Tick02Icon}
-                    size={14}
-                    strokeWidth={1.8}
-                  />
-                  Select
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setCompactCards((v) => !v)}
-                  className="h-9 text-xs text-muted-foreground"
-                >
-                  {compactCards ? "Large" : "Compact"}
-                </Button>
-                <Link
-                  to="/stock/new"
-                  className={cn(
-                    buttonVariants({ variant: "default", size: "sm" }),
-                    "h-9"
-                  )}
-                >
-                  <PlusIcon />
-                  Add Item
-                </Link>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          {!selectionMode && (
-            <>
-              <div className="flex items-center gap-2">
-                <Select
-                  value={statusFilter}
-                  onValueChange={(v) =>
-                    handleStatusFilterChange(v as StockStatusFilter)
-                  }
-                >
-                  <SelectTrigger className="h-9 flex-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STOCK_STATUS_FILTERS.map((filter) => (
-                      <SelectItem key={filter} value={filter}>
-                        {filter === "All" ? "All statuses" : filter}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  type="button"
-                  variant={activeFilterCount > 0 ? "default" : "outline"}
-                  size="sm"
-                  onClick={openFilterSheet}
-                  className="h-9 shrink-0"
-                >
-                  <HugeiconsIcon icon={FilterIcon} size={14} strokeWidth={2} />
-                  Filters
-                  {activeFilterCount > 0 && (
-                    <span
-                      className={cn(
-                        "flex size-4 items-center justify-center rounded-full text-[9px] font-bold",
-                        activeFilterCount > 0
-                          ? "bg-background text-foreground"
-                          : "bg-primary text-primary-foreground"
-                      )}
-                    >
-                      {activeFilterCount}
-                    </span>
-                  )}
-                </Button>
-              </div>
-
+          <div className={selectionMode ? "pointer-events-none opacity-40" : ""}>
+            <div className="flex items-center gap-2">
               <SearchInput
                 value={searchInput}
                 onChange={setSearchInput}
                 placeholder="Search tag, piece name, project..."
               />
-            </>
-          )}
+              <Link
+                to="/stock/new"
+                className={cn(
+                  buttonVariants({ variant: "default", size: "sm" }),
+                  "h-9 shrink-0"
+                )}
+              >
+                <PlusIcon />
+                Add
+              </Link>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <Select
+                value={statusFilter}
+                onValueChange={(v) =>
+                  handleStatusFilterChange(v as StockStatusFilter)
+                }
+              >
+                <SelectTrigger className="h-9 flex-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STOCK_STATUS_FILTERS.map((filter) => (
+                    <SelectItem key={filter} value={filter}>
+                      {filter === "All" ? "All statuses" : filter}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                variant={activeFilterCount > 0 ? "default" : "outline"}
+                size="sm"
+                onClick={openFilterSheet}
+                className="h-9 shrink-0"
+              >
+                <HugeiconsIcon icon={FilterIcon} size={14} strokeWidth={2} />
+                {activeFilterCount > 0 ? (
+                  <span className="flex size-4 items-center justify-center rounded-full bg-background text-[9px] font-bold text-foreground">
+                    {activeFilterCount}
+                  </span>
+                ) : (
+                  "Filters"
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => enterSelectionMode()}
+                disabled={data.items.length === 0}
+                className="h-9 shrink-0 text-xs"
+              >
+                <HugeiconsIcon
+                  icon={Tick02Icon}
+                  size={14}
+                  strokeWidth={1.8}
+                />
+                Select
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setCompactCards((v) => !v)}
+                className="h-9 w-[72px] shrink-0 text-xs text-muted-foreground"
+              >
+                {compactCards ? "Full" : "Compact"}
+              </Button>
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                {data.total === 0
+                  ? "Showing 0 items"
+                  : `Showing ${data.total} ${pluralize(data.total, "item")}`}
+              </p>
+              <label className="flex items-center gap-2 text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                <span>Per page</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) =>
+                    handlePageSizeChange(Number.parseInt(e.target.value, 10))
+                  }
+                  className="h-7 cursor-pointer rounded-md border border-border bg-card px-2 text-[11px] font-semibold tracking-wider text-foreground uppercase"
+                >
+                  {PAGE_SIZE_OPTIONS.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </div>
 
           {selectionMode && data.items.length > 0 && (
             <button
@@ -675,32 +688,6 @@ function StockRoute() {
               </span>
               {allOnPageSelected ? "Deselect page" : "Select page"}
             </button>
-          )}
-
-          {!selectionMode && (
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                {data.total === 0
-                  ? "Showing 0 items"
-                  : `Showing ${data.total} ${pluralize(data.total, "item")}`}
-              </p>
-              <label className="flex items-center gap-2 text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                <span>Per page</span>
-                <select
-                  value={pageSize}
-                  onChange={(e) =>
-                    handlePageSizeChange(Number.parseInt(e.target.value, 10))
-                  }
-                  className="h-7 cursor-pointer rounded-md border border-border bg-card px-2 text-[11px] font-semibold tracking-wider text-foreground uppercase"
-                >
-                  {PAGE_SIZE_OPTIONS.map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
           )}
 
           {bulkMessage && selectionMode && (
@@ -739,6 +726,7 @@ function StockRoute() {
                       })
                     }
                     onToggle={() => toggleSelected(item.id)}
+                    onLongPress={(id) => enterSelectionMode([id])}
                   />
                 ))}
               </>
@@ -901,6 +889,7 @@ function StockRoute() {
         <BulkActionBar
           selectedCount={selectedCount}
           onClear={clearSelection}
+          onDone={exitSelectionMode}
           panel={bulkPanel}
           setPanel={setBulkPanel}
           busy={bulkBusy}
@@ -1095,6 +1084,7 @@ function ManageTagRow({
 function BulkActionBar({
   selectedCount,
   onClear,
+  onDone,
   panel,
   setPanel,
   busy,
@@ -1109,6 +1099,7 @@ function BulkActionBar({
 }: {
   selectedCount: number
   onClear: () => void
+  onDone: () => void
   panel: BulkPanel
   setPanel: (p: BulkPanel) => void
   busy: boolean
@@ -1217,6 +1208,13 @@ function BulkActionBar({
           className="shrink-0 px-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase hover:text-foreground disabled:opacity-50"
         >
           Clear
+        </button>
+        <button
+          type="button"
+          onClick={onDone}
+          className="shrink-0 px-2 text-[11px] font-semibold tracking-wider text-primary uppercase hover:text-primary/80"
+        >
+          Done
         </button>
         <div className="ml-auto flex flex-1 items-center justify-end gap-1">
           <ActionIcon

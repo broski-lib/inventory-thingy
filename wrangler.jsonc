@@ -6,9 +6,17 @@
 		"nodejs_compat"
 	],
 	"main": "@tanstack/react-start/server-entry",
+	"workers_dev": false,
 	"observability": {
 		"enabled": true
 	},
+	"routes": [
+		{
+			"pattern": "inventory.brockshaffer.dev",
+			"zone_name": "brockshaffer.dev",
+			"custom_domain": true
+		}
+	],
 	"vars": {
 		"VITE_CLERK_SIGN_IN_URL": "/login",
 		"VITE_CLERK_SIGN_UP_URL": "/sign-up",

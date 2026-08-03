@@ -21,10 +21,6 @@ import {
 } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
 import { getStatusBadgeVariant } from "@/components/ItemCard"
-import {
-  Dialog,
-  DialogContent,
-} from "@/components/ui/dialog"
 import type { ItemStatus } from "@/lib/item-status"
 import { ITEM_STATUSES } from "@/lib/item-status"
 import { cn } from "@/lib/utils"
@@ -88,7 +84,7 @@ function ScanRoute() {
 
   const scanAnother = () => {
     setScanMessage("")
-    navigate({ to: "/scan", search: {}, replace: true })
+    navigate({ to: "/scan/camera" })
   }
 
   return (
@@ -315,9 +311,23 @@ function ScanRoute() {
               )}
 
               {!isBulk && (
-              <div className="sticky bottom-0 -mx-4 mt-2 border-t border-border bg-card/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
-                {scannedItem.status !== "Reserved" &&
-                scannedItem.status !== "Staged" ? (
+              <div className="sticky bottom-0 -mx-4 mt-4 border-t border-border bg-card/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
+                {scannedItem.status === "Pending Tag" ? (
+                  <Button
+                    onClick={() =>
+                      handleQuickStatus(
+                        scannedItem,
+                        "In Storage",
+                        "Warehouse A, Bay 1"
+                      )
+                    }
+                    className="h-12 w-full"
+                  >
+                    <BoltIcon />
+                    Mark Tag Added
+                  </Button>
+                ) : scannedItem.status !== "Reserved" &&
+                  scannedItem.status !== "Staged" ? (
                   <Button
                     onClick={() =>
                       handleQuickStatus(
@@ -388,18 +398,27 @@ function ScanRoute() {
       </section>
       <BottomNav />
 
-      <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
-        <DialogContent className="max-w-[90vw] border-0 bg-black/90 p-2">
-          {previewImage && (
-            <img
-              src={previewImage}
-              alt="Item preview"
-              loading="lazy"
-              className="max-h-[80vh] w-full object-contain"
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setPreviewImage(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setPreviewImage(null)}
+            className="absolute top-4 right-4 z-10 flex size-8 items-center justify-center rounded-full bg-background/20 text-white backdrop-blur"
+            aria-label="Close preview"
+          >
+            ×
+          </button>
+          <img
+            src={previewImage}
+            alt="Item preview"
+            className="max-h-[85vh] max-w-full rounded-xl border border-border object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </main>
   )
 }

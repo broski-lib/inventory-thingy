@@ -7,7 +7,7 @@ import {
 import { useRef, useState } from "react"
 import { useAuth } from "@clerk/tanstack-react-start"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { QrCodeIcon } from "@hugeicons/core-free-icons"
+import { QrCodeIcon, TransactionHistoryIcon } from "@hugeicons/core-free-icons"
 import { TrashIcon } from "@/components/icons"
 import { getItemById, getLocations } from "@/lib/inventory"
 import { listTags } from "@/lib/tags"
@@ -84,6 +84,17 @@ function EditItemPage() {
       subtitle={<span className="font-mono tracking-wider">{item.qrCode}</span>}
       aside={
         <div className="flex items-center gap-1">
+          <Link
+            to="/stock/$id/history"
+            params={{ id: item.id }}
+            aria-label="View history"
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "icon" }),
+              "size-9 text-muted-foreground"
+            )}
+          >
+            <HugeiconsIcon icon={TransactionHistoryIcon} size={18} strokeWidth={1.7} />
+          </Link>
           <Link
             to="/stock/$id/qr"
             params={{ id: item.id }}

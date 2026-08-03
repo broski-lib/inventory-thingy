@@ -1,8 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Camera01Icon, DeliveryTruck01Icon } from "@hugeicons/core-free-icons"
+import {
+  BoxIcon,
+  Camera01Icon,
+  PackageIcon,
+} from "@hugeicons/core-free-icons"
 import { getRecentActivity } from "@/lib/activity"
 import { getStats } from "@/lib/inventory"
 import { authRequiredMiddleware } from "@/lib/auth-middleware"
@@ -10,11 +14,10 @@ import type { ActivityLog } from "@/lib/activity"
 import { AppHeader } from "@/components/AppHeader"
 import { BottomNav } from "@/components/BottomNav"
 import { HomeActivity } from "@/components/HomeActivity"
-import { SearchInput } from "@/components/SearchInput"
-import { Card, CardContent } from "@/components/ui/card"
-import type { ItemStatus } from "@/lib/item-status"
+import { buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
-const HOME_ACTIVITY_LIMIT = 3
+const HOME_ACTIVITY_LIMIT = 5
 
 const loadHome = createServerFn({ method: "GET" })
   .middleware([authRequiredMiddleware])
@@ -35,8 +38,12 @@ function HomeRoute() {
   const { stats, recent } = Route.useLoaderData()
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState("")
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const openScanner = () => navigate({ to: "/scan" })
+  const totalItems = stats.statusCounts.reduce(
+    (sum, sc) => sum + sc.count,
+    0
+  )
 
   const handleActivityItemClick = (log: ActivityLog) => {
     if (!log.itemId) return
@@ -46,22 +53,12 @@ function HomeRoute() {
     })
   }
 
-  const getCount = (statuses: readonly ItemStatus[]) =>
-    stats.statusCounts
-      .filter((sc: { status: string; count: number }) =>
-        (statuses as readonly string[]).includes(sc.status)
-      )
-      .reduce(
-        (sum: number, sc: { status: string; count: number }) => sum + sc.count,
-        0
-      )
-  const availableCount = getCount(["Available", "In Storage"])
-  const stagedCount = getCount(["Staged", "Reserved"])
-  const repairCount = getCount(["Repair"])
-
   const handleSearch = (value: string) => {
     setSearchQuery(value)
-    navigate({ to: "/stock", search: { q: value, page: 1 } })
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      navigate({ to: "/stock", search: { q: value, page: 1 } })
+    }, 300)
   }
 
   return (
@@ -69,82 +66,84 @@ function HomeRoute() {
       <section className="mx-auto flex w-full max-w-md flex-col px-4 pt-4">
         <AppHeader />
 
-        <div className="mt-5 space-y-5">
-          <Card className="rounded-xl border-primary bg-primary text-primary-foreground [--card-spacing:--spacing(4)]">
-            <CardContent className="gap-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm text-primary-foreground/70">Today</p>
-                  <p className="mt-1 text-3xl font-semibold">
-                    {stats.movesToday} updates
-                  </p>
-                </div>
-                <div className="rounded-md bg-primary-foreground/10 p-3">
-                  <HugeiconsIcon
-                    icon={DeliveryTruck01Icon}
-                    size={28}
-                    strokeWidth={1.6}
-                  />
-                </div>
-              </div>
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                <div className="rounded-md bg-primary-foreground/10 p-2 text-center">
-                  <p className="text-lg font-semibold">{availableCount}</p>
-                  <p className="truncate text-[10px] text-primary-foreground/70">
-                    Available
-                  </p>
-                </div>
-                <div className="rounded-md bg-primary-foreground/10 p-2 text-center">
-                  <p className="text-lg font-semibold">{stagedCount}</p>
-                  <p className="truncate text-[10px] text-primary-foreground/70">
-                    Staged/Res
-                  </p>
-                </div>
-                <div className="rounded-md bg-primary-foreground/10 p-2 text-center">
-                  <p className="text-lg font-semibold">{repairCount}</p>
-                  <p className="truncate text-[10px] text-primary-foreground/70">
-                    Repair
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="mt-5 space-y-4">
+          <div className="grid grid-cols-2 gap-2">
+            <Link
+              to="/scan/camera"
+              className={cn(
+                buttonVariants({ variant: "default", size: "lg" }),
+                "h-12 justify-center gap-2"
+              )}
+            >
+              <HugeiconsIcon icon={Camera01Icon} size={18} strokeWidth={1.6} />
+              Scan tag
+            </Link>
+            <Link
+              to="/stock"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "lg" }),
+                "h-12 justify-center gap-2"
+              )}
+            >
+              <HugeiconsIcon icon={BoxIcon} size={18} strokeWidth={1.6} />
+              Browse stock
+            </Link>
+          </div>
 
-          <button
-            type="button"
-            onClick={openScanner}
-            className="flex h-14 w-full items-center justify-center gap-2 rounded-xl border border-primary bg-primary text-base font-semibold text-primary-foreground shadow-xs transition active:scale-[0.99]"
-          >
-            <HugeiconsIcon icon={Camera01Icon} size={20} strokeWidth={1.8} />
-            Scan a tag
-          </button>
+          <div className="relative">
+            <HugeiconsIcon
+              icon={PackageIcon}
+              size={14}
+              strokeWidth={1.8}
+              className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Search inventory..."
+              className="h-10 w-full rounded-lg border border-border bg-card pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground outline-none transition focus:border-primary"
+            />
+          </div>
 
-          <SearchInput
-            value={searchQuery}
-            onChange={handleSearch}
-            placeholder="Search live inventory..."
-          />
+          <div className="flex items-center gap-4 rounded-xl border border-border bg-card px-4 py-3">
+            <div className="flex-1">
+              <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                Inventory
+              </p>
+              <p className="mt-0.5 text-xl font-semibold">
+                {totalItems} items
+              </p>
+            </div>
+            <div className="h-8 w-px bg-border" />
+            <div className="flex-1">
+              <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                Today
+              </p>
+              <p className="mt-0.5 text-xl font-semibold">
+                {stats.movesToday} updates
+              </p>
+            </div>
+          </div>
 
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-foreground">
-                Activity Log
+                Recent activity
               </h2>
               <Link
                 to="/activity"
                 className="inline-flex h-8 items-center px-2 text-xs font-medium text-muted-foreground hover:text-primary"
               >
-                View all activity →
+                View all →
               </Link>
             </div>
-            <Card>
-              <CardContent>
-                <HomeActivity
-                  onItemClick={handleActivityItemClick}
-                  logs={recent}
-                />
-              </CardContent>
-            </Card>
+            <div className="rounded-xl border border-border bg-card">
+              <HomeActivity
+                onItemClick={handleActivityItemClick}
+                logs={recent}
+              />
+            </div>
           </section>
         </div>
       </section>

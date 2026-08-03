@@ -10,6 +10,7 @@ export function SelectionAwareCard({
   selected,
   onEdit,
   onToggle,
+  onLongPress,
   compact,
 }: {
   item: InventoryItemWithTags
@@ -17,6 +18,7 @@ export function SelectionAwareCard({
   selected: boolean
   onEdit: () => void
   onToggle: () => void
+  onLongPress?: (id: string) => void
   compact?: boolean
 }) {
   if (selectionMode) {
@@ -54,6 +56,7 @@ export function SelectionAwareCard({
       batches={item.batches}
       size="md"
       onEdit={onEdit}
+      onLongPress={onLongPress ? () => onLongPress(item.id) : undefined}
       compact={compact}
     />
   )

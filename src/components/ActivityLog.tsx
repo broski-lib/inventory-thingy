@@ -9,10 +9,8 @@ import {
   ArrowLeftRightIcon,
   PackageRemoveIcon,
   Settings02Icon,
-  Tick02Icon,
   Wrench01Icon,
 } from "@hugeicons/core-free-icons"
-import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { formatRelative } from "@/lib/format"
 
@@ -136,27 +134,25 @@ export function ActivityEntry({
         <HugeiconsIcon icon={Icon} size={16} strokeWidth={1.8} />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex items-baseline justify-between gap-2">
-          <p className="truncate text-sm font-medium text-foreground">
-            {meta.label}
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground">
+              {meta.label}
+            </p>
             {showItem && log.itemName && (
-              <>
-                {" "}
-                <span className="font-normal text-muted-foreground">
-                  ·
-                </span>{" "}
-                <span className="text-foreground">{log.itemName}</span>
-              </>
+              <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                {log.itemName}
+              </p>
             )}
-          </p>
-          <span className="text-[10px] tracking-wider whitespace-nowrap text-muted-foreground uppercase">
+          </div>
+          <span className="mt-0.5 shrink-0 text-[10px] font-medium whitespace-nowrap text-muted-foreground">
             {formatRelative(log.createdAt)}
           </span>
         </div>
-        <p className="mt-0.5 text-xs text-muted-foreground">
+        <p className="mt-1 text-[11px] text-muted-foreground/70">
           {log.userName || "Unknown user"}
           {log.itemQrCode ? (
-            <span className="font-mono"> · {log.itemQrCode}</span>
+            <span className="ml-1 font-mono">{log.itemQrCode}</span>
           ) : null}
         </p>
         <ActivityDetails log={log} />
@@ -179,33 +175,25 @@ function ActivityDetails({ log }: { log: ActivityLog }) {
     return null
 
   return (
-    <div className="mt-1.5 flex flex-wrap gap-2 text-[10px] font-semibold tracking-wider uppercase">
+    <div className="mt-2 flex flex-wrap gap-1.5">
       {log.quantity !== null && (
-        <Badge variant="secondary" className="gap-1 px-2 py-0.5 text-[10px] font-semibold uppercase">
-          <span className="text-foreground normal-case">
-            ×{log.quantity}
-          </span>
-        </Badge>
+        <span className="inline-flex items-center gap-1 rounded-md border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium">
+          ×{log.quantity}
+        </span>
       )}
       {hasLocationChange && (
-        <Badge variant="secondary" className="gap-1 px-2 py-0.5 text-[10px] font-semibold uppercase">
-          <span className="text-foreground/60">From</span>
-          <span className="text-foreground normal-case">
-            {log.fromLocation}
-          </span>
-          <span className="text-foreground/60">→</span>
-          <span className="text-foreground normal-case">
-            {log.toLocation}
-          </span>
-        </Badge>
+        <span className="inline-flex items-center gap-1 rounded-md border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium">
+          <span className="text-muted-foreground">{log.fromLocation}</span>
+          <span className="text-muted-foreground/40">→</span>
+          <span>{log.toLocation}</span>
+        </span>
       )}
       {hasConditionChange && (
-        <Badge variant="secondary" className="gap-1 px-2 py-0.5 text-[10px] font-semibold uppercase">
-          <HugeiconsIcon icon={Tick02Icon} size={10} strokeWidth={2.5} />
-          <span className="text-foreground normal-case">
-            {log.fromCondition} → {log.toCondition}
-          </span>
-        </Badge>
+        <span className="inline-flex items-center gap-1 rounded-md border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium">
+          <span className="text-muted-foreground">{log.fromCondition}</span>
+          <span className="text-muted-foreground/40">→</span>
+          <span>{log.toCondition}</span>
+        </span>
       )}
     </div>
   )
