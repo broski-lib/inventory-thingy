@@ -532,7 +532,7 @@ function StockRoute() {
       <section className="mx-auto flex w-full max-w-md flex-col px-4 pt-[max(1rem,env(safe-area-inset-top))]">
         <AppHeader />
 
-        <div className="mt-5 space-y-4">
+        <div className="mt-2 space-y-3">
           {selectionMode && (
             <div className="flex items-center justify-between">
               <span className="text-sm font-semibold">Select items</span>
@@ -565,7 +565,7 @@ function StockRoute() {
               <SearchInput
                 value={searchInput}
                 onChange={setSearchInput}
-                placeholder="Search tag, piece name, project..."
+                placeholder="Search name, code, location..."
               />
               <Link
                 to="/stock/new"
@@ -579,7 +579,7 @@ function StockRoute() {
               </Link>
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="mt-2 flex items-center gap-1.5">
               <Select
                 value={statusFilter}
                 onValueChange={(v) =>
@@ -645,7 +645,14 @@ function StockRoute() {
                   ? "Showing 0 items"
                   : `Showing ${data.total} ${pluralize(data.total, "item")}`}
               </p>
-              <label className="flex items-center gap-2 text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+              <div className="flex items-center gap-3">
+                <Link
+                  to="/stock/racks"
+                  className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase hover:text-primary"
+                >
+                  Rack sheet
+                </Link>
+                <label className="flex items-center gap-2 text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                 <span>Per page</span>
                 <select
                   value={pageSize}
@@ -662,6 +669,7 @@ function StockRoute() {
                 </select>
               </label>
             </div>
+          </div>
           </div>
 
           {selectionMode && data.items.length > 0 && (

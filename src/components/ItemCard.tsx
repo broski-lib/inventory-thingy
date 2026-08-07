@@ -129,6 +129,11 @@ export function ItemCard({
                   {item.status}
                 </Badge>
               )}
+              {item.kind === "bulk" && (
+                <Badge variant={item.tagged ? "available" : "neutral"}>
+                  {item.tagged ? "Tagged" : "Untagged"}
+                </Badge>
+              )}
               {item.requiredRole && (
                 <Badge variant="warning" className="gap-1 px-1.5 py-0.5 text-[9px]">
                   <HugeiconsIcon icon={LockIcon} size={9} strokeWidth={2.5} />

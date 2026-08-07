@@ -200,10 +200,15 @@ function ScanRoute() {
                         {scannedItem.name}
                       </h3>
                       {isBulk ? (
-                        <Badge variant="neutral">
-                          ×
-                          {scannedBatches.reduce((sum, b) => sum + b.qty, 0)}
-                        </Badge>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <Badge variant={scannedItem.tagged ? "available" : "neutral"}>
+                            {scannedItem.tagged ? "Tagged" : "Untagged"}
+                          </Badge>
+                          <Badge variant="neutral">
+                            ×
+                            {scannedBatches.reduce((sum, b) => sum + b.qty, 0)}
+                          </Badge>
+                        </div>
                       ) : (
                         <Badge
                           variant={getStatusBadgeVariant(scannedItem.status)}

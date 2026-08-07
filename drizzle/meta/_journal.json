@@ -71,6 +71,20 @@
       "when": 1785249760753,
       "tag": "0009_clumsy_electro",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786066269549,
+      "tag": "0010_spooky_sleepwalker",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1786066866025,
+      "tag": "0011_thankful_maginty",
+      "breakpoints": true
     }
   ]
 }

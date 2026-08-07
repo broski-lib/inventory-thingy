@@ -101,6 +101,17 @@ function EditItemPage() {
       subtitle={<span className="font-mono tracking-wider">{item.qrCode}</span>}
       aside={
         <div className="flex items-center gap-1">
+          {item.kind === "unit" && (
+            <button
+              type="button"
+              onClick={handleConvertToBulk}
+              disabled={busy}
+              className="inline-flex h-7 items-center gap-1 rounded-md border border-border px-2 text-[10px] font-semibold text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+            >
+              <BoltIcon />
+              To bulk
+            </button>
+          )}
           <Link
             to="/stock/$id/history"
             params={{ id: item.id }}
@@ -148,6 +159,7 @@ function EditItemPage() {
           quantity: 1,
           requiredRole: item.requiredRole,
           printSize: item.printSize,
+          tagged: item.tagged,
         }}
         initialImageKey={item.imageKey}
         availableTags={allTags}
@@ -160,22 +172,6 @@ function EditItemPage() {
         submitLabel="Save Changes"
         hideQrCode
       />
-      {item.kind === "unit" && (
-        <div className="border-t border-border px-4 py-3">
-          <p className="mb-2 text-[11px] text-muted-foreground">
-            Need quantity tracking? Convert to a bulk item. Its current location and status become the first batch.
-          </p>
-          <button
-            type="button"
-            onClick={handleConvertToBulk}
-            disabled={busy}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-semibold text-foreground hover:bg-accent disabled:opacity-50"
-          >
-            <BoltIcon />
-            Convert to bulk
-          </button>
-        </div>
-      )}
       {item.kind === "bulk" && (
         <BatchManager
           itemId={item.id}

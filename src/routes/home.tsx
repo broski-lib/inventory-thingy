@@ -90,6 +90,17 @@ function HomeRoute() {
             </Link>
           </div>
 
+          <Link
+            to="/stock/racks"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "lg" }),
+              "h-10 w-full justify-center gap-2 text-xs font-semibold"
+            )}
+          >
+            <HugeiconsIcon icon={BoxIcon} size={15} strokeWidth={1.6} />
+            Racks
+          </Link>
+
           <div className="relative">
             <HugeiconsIcon
               icon={PackageIcon}

@@ -194,4 +194,17 @@
   body {
     background: white !important;
   }
+  header, .sticky, [role="banner"] {
+    position: static !important;
+  }
+  .rack-sheet-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    border-color: #ccc !important;
+    box-shadow: none !important;
+  }
+  .rack-sheet-section + .rack-sheet-section {
+    margin-top: 1rem;
+    page-break-before: auto;
+  }
 }

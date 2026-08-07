@@ -37,6 +37,7 @@ export type ItemFormValues = {
   quantity: number
   requiredRole: string | null
   printSize: PrintSize
+  tagged: boolean
 }
 
 type ItemFormProps = {
@@ -66,6 +67,7 @@ const EMPTY: ItemFormValues = {
   quantity: 1,
   requiredRole: null,
   printSize: "medium",
+  tagged: true,
 }
 
 export const EMPTY_ITEM_FORM: ItemFormValues = EMPTY
@@ -169,6 +171,7 @@ export function ItemForm({
   const formBusy = isSubmitting || busy
 
   const kind = useStore(form.store, (s) => s.values.kind)
+  const tagged = useStore(form.store, (s) => s.values.tagged)
   const name = useStore(form.store, (s) => s.values.name)
   const location = useStore(form.store, (s) => s.values.location)
   const locFieldVisible = locationFieldVisible(form.state.values)
@@ -368,7 +371,10 @@ export function ItemForm({
                   <button
                     key={opt.id}
                     type="button"
-                    onClick={() => field.handleChange(opt.id)}
+                    onClick={() => {
+                      field.handleChange(opt.id)
+                      field.form.setFieldValue("tagged", opt.id !== "bulk")
+                    }}
                     aria-pressed={field.state.value === opt.id}
                     className={
                       field.state.value === opt.id
@@ -414,6 +420,47 @@ export function ItemForm({
         </form.Field>
       )}
 
+      {kind === "bulk" && (
+        <form.Field name="tagged">
+          {(field) => (
+            <div className="flex flex-col gap-1.5">
+              <Label>Unit tags</Label>
+              <div className="grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1">
+                <button
+                  type="button"
+                  onClick={() => field.handleChange(true)}
+                  aria-pressed={field.state.value === true}
+                  className={
+                    field.state.value === true
+                      ? "cursor-pointer rounded-md bg-card px-2 py-1.5 text-xs font-semibold text-foreground shadow-xs"
+                      : "cursor-pointer rounded-md px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+                  }
+                >
+                  Tagged
+                </button>
+                <button
+                  type="button"
+                  onClick={() => field.handleChange(false)}
+                  aria-pressed={field.state.value === false}
+                  className={
+                    field.state.value === false
+                      ? "cursor-pointer rounded-md bg-card px-2 py-1.5 text-xs font-semibold text-foreground shadow-xs"
+                      : "cursor-pointer rounded-md px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+                  }
+                >
+                  Untagged
+                </button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {field.state.value
+                  ? "Every unit has a physical QR tag. Use single or bulk scan."
+                  : "Units can't wear tags (e.g. pillows, glassware). Manage via rack sheet."}
+              </p>
+            </div>
+          )}
+        </form.Field>
+      )}
+
       <div className="flex flex-col gap-1.5">
         <Label>Tags</Label>
         <TagPicker
@@ -424,7 +471,7 @@ export function ItemForm({
         />
       </div>
 
-      {!hideQrCode && (
+      {!hideQrCode && (kind !== "bulk" || tagged) && (
         <form.Field name="qrCode">
           {(field) => (
             <div className="flex flex-col gap-1.5">
@@ -450,7 +497,8 @@ export function ItemForm({
         </form.Field>
       )}
 
-      <form.Field name="printSize">
+      {(kind !== "bulk" || tagged) && (
+        <form.Field name="printSize">
         {(field) => (
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="item-print-size">QR print size</Label>
@@ -476,6 +524,7 @@ export function ItemForm({
           </div>
         )}
       </form.Field>
+      )}
 
       {canSetRequiredRole && (
         <form.Field name="requiredRole">

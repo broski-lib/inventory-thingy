@@ -28,6 +28,9 @@ import { Route as StockIdEditRouteImport } from './routes/stock/$id.edit'
 import { Route as StockIdHistoryRouteImport } from './routes/stock/$id.history'
 import { Route as StockIdPrintRouteImport } from './routes/stock/$id.print'
 import { Route as StockIdQrRouteImport } from './routes/stock/$id.qr'
+import { Route as StockRacksIndexRouteImport } from './routes/stock/racks/index'
+import { Route as StockRacksIdRouteImport } from './routes/stock/racks/$id'
+import { Route as StockRacksNewRouteImport } from './routes/stock/racks/new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -124,6 +127,21 @@ const StockIdQrRoute = StockIdQrRouteImport.update({
   path: '/$id/qr',
   getParentRoute: () => StockRoute,
 } as any)
+const StockRacksIndexRoute = StockRacksIndexRouteImport.update({
+  id: '/racks/',
+  path: '/racks/',
+  getParentRoute: () => StockRoute,
+} as any)
+const StockRacksIdRoute = StockRacksIdRouteImport.update({
+  id: '/racks/$id',
+  path: '/racks/$id',
+  getParentRoute: () => StockRoute,
+} as any)
+const StockRacksNewRoute = StockRacksNewRouteImport.update({
+  id: '/racks/new',
+  path: '/racks/new',
+  getParentRoute: () => StockRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -145,6 +163,9 @@ export interface FileRoutesByFullPath {
   '/stock/$id/history': typeof StockIdHistoryRoute
   '/stock/$id/print': typeof StockIdPrintRoute
   '/stock/$id/qr': typeof StockIdQrRoute
+  '/stock/racks/$id': typeof StockRacksIdRoute
+  '/stock/racks/new': typeof StockRacksNewRoute
+  '/stock/racks/': typeof StockRacksIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -164,6 +185,9 @@ export interface FileRoutesByTo {
   '/stock/$id/history': typeof StockIdHistoryRoute
   '/stock/$id/print': typeof StockIdPrintRoute
   '/stock/$id/qr': typeof StockIdQrRoute
+  '/stock/racks/$id': typeof StockRacksIdRoute
+  '/stock/racks/new': typeof StockRacksNewRoute
+  '/stock/racks': typeof StockRacksIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -186,6 +210,9 @@ export interface FileRoutesById {
   '/stock/$id/history': typeof StockIdHistoryRoute
   '/stock/$id/print': typeof StockIdPrintRoute
   '/stock/$id/qr': typeof StockIdQrRoute
+  '/stock/racks/$id': typeof StockRacksIdRoute
+  '/stock/racks/new': typeof StockRacksNewRoute
+  '/stock/racks/': typeof StockRacksIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -209,6 +236,9 @@ export interface FileRouteTypes {
     | '/stock/$id/history'
     | '/stock/$id/print'
     | '/stock/$id/qr'
+    | '/stock/racks/$id'
+    | '/stock/racks/new'
+    | '/stock/racks/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -228,6 +258,9 @@ export interface FileRouteTypes {
     | '/stock/$id/history'
     | '/stock/$id/print'
     | '/stock/$id/qr'
+    | '/stock/racks/$id'
+    | '/stock/racks/new'
+    | '/stock/racks'
   id:
     | '__root__'
     | '/'
@@ -249,6 +282,9 @@ export interface FileRouteTypes {
     | '/stock/$id/history'
     | '/stock/$id/print'
     | '/stock/$id/qr'
+    | '/stock/racks/$id'
+    | '/stock/racks/new'
+    | '/stock/racks/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -398,6 +434,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StockIdQrRouteImport
       parentRoute: typeof StockRoute
     }
+    '/stock/racks/': {
+      id: '/stock/racks/'
+      path: '/racks'
+      fullPath: '/stock/racks/'
+      preLoaderRoute: typeof StockRacksIndexRouteImport
+      parentRoute: typeof StockRoute
+    }
+    '/stock/racks/$id': {
+      id: '/stock/racks/$id'
+      path: '/racks/$id'
+      fullPath: '/stock/racks/$id'
+      preLoaderRoute: typeof StockRacksIdRouteImport
+      parentRoute: typeof StockRoute
+    }
+    '/stock/racks/new': {
+      id: '/stock/racks/new'
+      path: '/racks/new'
+      fullPath: '/stock/racks/new'
+      preLoaderRoute: typeof StockRacksNewRouteImport
+      parentRoute: typeof StockRoute
+    }
   }
 }
 
@@ -423,6 +480,9 @@ interface StockRouteChildren {
   StockIdHistoryRoute: typeof StockIdHistoryRoute
   StockIdPrintRoute: typeof StockIdPrintRoute
   StockIdQrRoute: typeof StockIdQrRoute
+  StockRacksIdRoute: typeof StockRacksIdRoute
+  StockRacksNewRoute: typeof StockRacksNewRoute
+  StockRacksIndexRoute: typeof StockRacksIndexRoute
 }
 
 const StockRouteChildren: StockRouteChildren = {
@@ -433,6 +493,9 @@ const StockRouteChildren: StockRouteChildren = {
   StockIdHistoryRoute: StockIdHistoryRoute,
   StockIdPrintRoute: StockIdPrintRoute,
   StockIdQrRoute: StockIdQrRoute,
+  StockRacksIdRoute: StockRacksIdRoute,
+  StockRacksNewRoute: StockRacksNewRoute,
+  StockRacksIndexRoute: StockRacksIndexRoute,
 }
 
 const StockRouteWithChildren = StockRoute._addFileChildren(StockRouteChildren)

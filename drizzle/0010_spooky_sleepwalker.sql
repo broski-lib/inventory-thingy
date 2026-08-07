@@ -1,0 +1,1 @@
+ALTER TABLE "items" ADD COLUMN "tagged" boolean DEFAULT true NOT NULL;

@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   integer,
   pgEnum,
@@ -79,6 +80,9 @@ export const items = pgTable(
     // QR label size for printing. Defaults to "medium". Only override for
     // unusually small (plants, jewelry) or large (paintings, rugs) items.
     printSize: printSize("print_size").notNull().default("medium"),
+    // For bulk items: whether individual units wear physical QR tags.
+    // True = tagged (every unit has its own QR), false = untagged (rack sheet only).
+    tagged: boolean("tagged").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -156,6 +160,47 @@ export const itemBatches = pgTable(
     index("idx_item_batches_item_id").on(table.itemId),
     index("idx_item_batches_location").on(table.location),
     index("idx_item_batches_status").on(table.status),
+  ]
+)
+
+/**
+ * A physical storage rack/bin with its own QR code. Holds a curated
+ * collection of (usually untagged) bulk items with per-rack quantities.
+ */
+export const racks = pgTable(
+  "racks",
+  {
+    id: text("id").primaryKey(),
+    orgId: text("org_id").notNull(),
+    name: text("name").notNull(),
+    location: text("location").notNull().default(""),
+    qrCode: text("qr_code").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("racks_org_qr_unique").on(table.orgId, table.qrCode),
+    index("idx_racks_org_id").on(table.orgId),
+  ]
+)
+
+export const rackItems = pgTable(
+  "rack_items",
+  {
+    rackId: text("rack_id").notNull(),
+    orgId: text("org_id").notNull(),
+    itemId: text("item_id").notNull(),
+    qty: integer("qty").notNull().default(1),
+  },
+  (table) => [
+    primaryKey({ columns: [table.rackId, table.itemId] }),
+    index("idx_rack_items_org_id").on(table.orgId),
+    index("idx_rack_items_rack_id").on(table.rackId),
+    index("idx_rack_items_item_id").on(table.itemId),
   ]
 )
 

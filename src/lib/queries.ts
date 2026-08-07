@@ -13,6 +13,8 @@ import type { CreateItemInput, UpdateItemInput } from "./inventory"
 import type { ItemCondition, ItemStatus } from "./schema"
 import { createTag, updateTag, deleteTag, setItemTags } from "./tags"
 import { addBatch, moveBatchQty, setBatchQty, deleteBatch } from "./batches"
+import { createRack, updateRack, deleteRack } from "./racks"
+import type { CreateRackInput, UpdateRackInput } from "./racks"
 
 function useInvalidate() {
   const queryClient = useQueryClient()
@@ -182,6 +184,36 @@ export function useDeleteBatch() {
   return useMutation({
     mutationFn: (input: { batchId: string; itemId: string }) =>
       deleteBatch({ data: input }),
+    onSuccess: () => {
+      invalidate()
+    },
+  })
+}
+
+export function useCreateRack() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: CreateRackInput) => createRack({ data: input }),
+    onSuccess: () => {
+      invalidate()
+    },
+  })
+}
+
+export function useUpdateRack() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (input: UpdateRackInput) => updateRack({ data: input }),
+    onSuccess: () => {
+      invalidate()
+    },
+  })
+}
+
+export function useDeleteRack() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (id: string) => deleteRack({ data: id }),
     onSuccess: () => {
       invalidate()
     },
