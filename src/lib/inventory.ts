@@ -277,8 +277,9 @@ export const getItemsPage = createServerFn({ method: "GET" })
   })
 
 /**
- * Distinct location values for the org, for the stock filter UI.
- * Union of unit-item locations and bulk-batch locations.
+ * Distinct location values for the org, sorted by most-recently-used
+ * (leftmost = most recent). Union of unit-item locations and bulk-batch
+ * locations.
  */
 export const getLocations = createServerFn({ method: "GET" })
   .middleware([authRequiredMiddleware])
@@ -287,18 +288,71 @@ export const getLocations = createServerFn({ method: "GET" })
     const db = getDb()
     const [itemRows, batchRows] = await Promise.all([
       db
-        .selectDistinct({ location: items.location })
+        .select({
+          location: items.location,
+          lastUsed: sql<Date>`max(${items.updatedAt})`.as("last_used"),
+        })
         .from(items)
-        .where(and(eq(items.orgId, orgId), ne(items.kind, "bulk"))),
+        .where(and(eq(items.orgId, orgId), ne(items.kind, "bulk")))
+        .groupBy(items.location),
       db
-        .selectDistinct({ location: itemBatches.location })
+        .select({
+          location: itemBatches.location,
+          lastUsed: sql<Date>`max(${itemBatches.updatedAt})`.as("last_used"),
+        })
         .from(itemBatches)
-        .where(eq(itemBatches.orgId, orgId)),
+        .where(eq(itemBatches.orgId, orgId))
+        .groupBy(itemBatches.location),
     ])
-    const set = new Set<string>()
-    for (const r of itemRows) set.add(r.location)
-    for (const r of batchRows) set.add(r.location)
-    return [...set].sort((a, b) => a.localeCompare(b))
+    const best = new Map<string, Date>()
+    for (const r of itemRows) best.set(r.location, r.lastUsed)
+    for (const r of batchRows) {
+      const prev = best.get(r.location)
+      if (!prev || r.lastUsed > prev) best.set(r.location, r.lastUsed)
+    }
+    return [...best.entries()]
+      .sort((a, b) => b[1].getTime() - a[1].getTime())
+      .map(([loc]) => loc)
+  })
+
+/**
+ * Most-frequent location across items and batches, for use as a
+ * sensible default (e.g. bulk-scan page).
+ */
+export const getMostCommonLocation = createServerFn({ method: "GET" })
+  .middleware([authRequiredMiddleware])
+  .handler(async ({ context }): Promise<string | null> => {
+    const { orgId } = context
+    const db = getDb()
+    const [itemRows, batchRows] = await Promise.all([
+      db
+        .select({
+          location: items.location,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(items)
+        .where(and(eq(items.orgId, orgId), ne(items.kind, "bulk")))
+        .groupBy(items.location),
+      db
+        .select({
+          location: itemBatches.location,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(itemBatches)
+        .where(eq(itemBatches.orgId, orgId))
+        .groupBy(itemBatches.location),
+    ])
+    const totals = new Map<string, number>()
+    for (const r of itemRows) totals.set(r.location, r.count)
+    for (const r of batchRows) {
+      totals.set(r.location, (totals.get(r.location) ?? 0) + r.count)
+    }
+    let best = ""
+    let bestCount = 0
+    for (const [loc, count] of totals) {
+      if (count > bestCount) { best = loc; bestCount = count }
+    }
+    return best || null
   })
 
 export const getStats = createServerFn({ method: "GET" })
@@ -549,9 +603,12 @@ export const updateItem = createServerFn({ method: "POST" })
       if (k === "orgId" || k === "id" || k === "createdBy") continue
       ;(patch as Record<string, unknown>)[k] = v
     }
+
+    const convertingToBulk = patch.kind === "bulk" && current.kind === "unit"
+
     // Bulk items: location/status/condition live on batches, not the item
     // row. Strip them so the mirror columns never drift.
-    if (current.kind === "bulk") {
+    if (current.kind === "bulk" || convertingToBulk) {
       delete patch.location
       delete patch.status
       delete patch.condition
@@ -595,6 +652,21 @@ export const updateItem = createServerFn({ method: "POST" })
 
     if (oldKeyToDelete) {
       await deleteItemImage(orgId, oldKeyToDelete)
+    }
+
+    // Converting a unit item to bulk: seed an initial batch from the
+    // item's current state so its existing location/status/condition
+    // are preserved.
+    if (convertingToBulk) {
+      await db.insert(itemBatches).values({
+        id: generateUlid(),
+        orgId,
+        itemId: id,
+        qty: 1,
+        location: current.location,
+        status: current.status,
+        condition: current.condition,
+      })
     }
 
     const actor = { ...(await resolveActor(userId)), orgId }

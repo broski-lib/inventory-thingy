@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge"
 import { LiveScanner } from "@/components/LiveScanner"
 import type { LiveScannerStatus } from "@/components/LiveScanner"
 import { PageChrome } from "@/components/PageChrome"
-import { getItemByQrCode } from "@/lib/inventory"
+import { getItemByQrCode, getMostCommonLocation } from "@/lib/inventory"
 import { loadScan } from "@/lib/scan-queries"
 import { useUpdateItem } from "@/lib/queries"
 import { ITEM_STATUSES } from "@/lib/item-status"
@@ -36,9 +36,9 @@ type BulkResult = {
 
 const BULK_LOCATION_KEY = "scan:bulk-location"
 
-function loadPersistedLocation(): string {
-  if (typeof window === "undefined") return "Warehouse A, Bay 1"
-  return window.localStorage.getItem(BULK_LOCATION_KEY) || "Warehouse A, Bay 1"
+function loadPersistedLocation(): string | null {
+  if (typeof window === "undefined") return null
+  return window.localStorage.getItem(BULK_LOCATION_KEY) || null
 }
 
 function persistLocation(value: string) {
@@ -46,11 +46,28 @@ function persistLocation(value: string) {
   window.localStorage.setItem(BULK_LOCATION_KEY, value)
 }
 
+async function resolveDefaultLocation(): Promise<string> {
+  const cached = loadPersistedLocation()
+  if (cached) return cached
+  try {
+    const common = await getMostCommonLocation()
+    if (common) {
+      persistLocation(common)
+      return common
+    }
+  } catch {
+    // ignore — fall back to hardcoded default
+  }
+  const fallback = "Warehouse A, Bay 1"
+  persistLocation(fallback)
+  return fallback
+}
+
 function BulkScanPage() {
   const { recent } = Route.useLoaderData()
   const navigate = useNavigate()
-  const [status, setStatus] = useState<ItemStatus>("Available")
-  const [location, setLocation] = useState(loadPersistedLocation)
+  const [status, setStatus] = useState<ItemStatus>("Reserved")
+  const [location, setLocation] = useState("")
   const [scannerStatus, setScannerStatus] = useState<LiveScannerStatus>("idle")
   const [paused, setPaused] = useState(false)
   const [results, setResults] = useState<BulkResult[]>([])
@@ -62,6 +79,12 @@ function BulkScanPage() {
   useEffect(() => {
     if (!editingSettings) persistLocation(location)
   }, [editingSettings, location])
+
+  useEffect(() => {
+    resolveDefaultLocation().then((loc) => {
+      setLocation(loc)
+    })
+  }, [])
 
   const cameraReady = scannerStatus === "scanning" || scannerStatus === "paused"
   const successCount = results.filter((r) => r.ok).length
@@ -196,7 +219,7 @@ function BulkScanPage() {
         {recent.length > 0 && (
           <div className="flex flex-col gap-1.5">
             <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-              Recently modified
+              Recent items
             </p>
             <div className="flex flex-wrap gap-1.5">
               {recent.map((item) => (

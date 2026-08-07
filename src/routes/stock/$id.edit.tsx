@@ -8,7 +8,7 @@ import { useRef, useState } from "react"
 import { useAuth } from "@clerk/tanstack-react-start"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { QrCodeIcon, TransactionHistoryIcon } from "@hugeicons/core-free-icons"
-import { TrashIcon } from "@/components/icons"
+import { TrashIcon, BoltIcon } from "@/components/icons"
 import { getItemById, getLocations } from "@/lib/inventory"
 import { listTags } from "@/lib/tags"
 import { useUpdateItem, useDeleteItem, useSetItemTags } from "@/lib/queries"
@@ -73,6 +73,23 @@ function EditItemPage() {
       submittingRef.current = false
       setBusy(false)
       alert(err instanceof Error ? err.message : "Could not delete item.")
+    }
+  }
+
+  const handleConvertToBulk = async () => {
+    if (!confirm(`Convert "${item.name}" to bulk stock? Its current location, status and condition will become the initial batch. You can manage batches after converting.`)) return
+    submittingRef.current = true
+    setBusy(true)
+    try {
+      await updateItemMutation.mutateAsync({
+        id: item.id,
+        item: { kind: "bulk" },
+      })
+      navigate({ to: "/stock" })
+    } catch (err) {
+      submittingRef.current = false
+      setBusy(false)
+      alert(err instanceof Error ? err.message : "Could not convert item.")
     }
   }
 
@@ -143,6 +160,22 @@ function EditItemPage() {
         submitLabel="Save Changes"
         hideQrCode
       />
+      {item.kind === "unit" && (
+        <div className="border-t border-border px-4 py-3">
+          <p className="mb-2 text-[11px] text-muted-foreground">
+            Need quantity tracking? Convert to a bulk item. Its current location and status become the first batch.
+          </p>
+          <button
+            type="button"
+            onClick={handleConvertToBulk}
+            disabled={busy}
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-semibold text-foreground hover:bg-accent disabled:opacity-50"
+          >
+            <BoltIcon />
+            Convert to bulk
+          </button>
+        </div>
+      )}
       {item.kind === "bulk" && (
         <BatchManager
           itemId={item.id}

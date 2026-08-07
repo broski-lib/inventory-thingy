@@ -89,7 +89,7 @@ function ScanRoute() {
 
   return (
     <main className="min-h-svh bg-secondary pb-24 text-foreground">
-      <section className="mx-auto flex w-full max-w-md flex-col px-4 pt-4">
+      <section className="mx-auto flex w-full max-w-md flex-col px-4 pt-[max(1rem,env(safe-area-inset-top))]">
         <AppHeader />
 
         <div className="mt-5 space-y-4">
@@ -128,7 +128,7 @@ function ScanRoute() {
             <Card>
               <CardContent className="gap-2">
                 <p className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
-                  Recent tags
+                  Recent items
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {recent.map((item) => (

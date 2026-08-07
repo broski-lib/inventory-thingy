@@ -529,7 +529,7 @@ function StockRoute() {
 
   return (
     <main className="min-h-svh bg-secondary pb-56 text-foreground">
-      <section className="mx-auto flex w-full max-w-md flex-col px-4 pt-4">
+      <section className="mx-auto flex w-full max-w-md flex-col px-4 pt-[max(1rem,env(safe-area-inset-top))]">
         <AppHeader />
 
         <div className="mt-5 space-y-4">
