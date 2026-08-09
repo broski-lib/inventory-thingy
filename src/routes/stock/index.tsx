@@ -66,6 +66,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { SearchInput } from "@/components/SearchInput"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Pagination } from "@/components/Pagination"
 import { usePageSize } from "@/hooks/use-page-size"
 import { cn } from "@/lib/utils"
@@ -167,7 +168,8 @@ function filterSearch(search: {
 }
 
 export const Route = createFileRoute("/stock/")({
-  staleTime: 30_000,
+  staleTime: 0,
+  pendingMs: 250,
   validateSearch: (search: Record<string, unknown>): StockSearch => ({
     q: typeof search.q === "string" ? search.q : undefined,
     page: parsePage(search.page),
@@ -214,6 +216,7 @@ export const Route = createFileRoute("/stock/")({
     return { page, allTags, locations }
   },
   component: StockRoute,
+  pendingComponent: StockPending,
 })
 
 type BulkPanel = "status" | "location" | "print" | "delete" | null
@@ -1302,5 +1305,31 @@ function ActionIcon({
         iconSvg
       )}
     </button>
+  )
+}
+
+function StockPending() {
+  return (
+    <main className="min-h-svh bg-secondary pb-56 text-foreground">
+      <section className="mx-auto flex w-full max-w-md flex-col px-4 pt-[max(1rem,env(safe-area-inset-top))]">
+        <div className="mt-2 space-y-3">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-9 flex-1 rounded-lg" />
+            <Skeleton className="h-9 w-16 rounded-lg" />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Skeleton className="h-9 flex-1" />
+            <Skeleton className="h-9 w-20" />
+            <Skeleton className="h-9 w-16" />
+            <Skeleton className="h-9 w-[72px]" />
+          </div>
+          <div className="space-y-3 pt-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-20 rounded-xl" />
+            ))}
+          </div>
+        </div>
+      </section>
+    </main>
   )
 }
