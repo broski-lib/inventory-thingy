@@ -17,6 +17,7 @@ type ActivitySearch = {
 }
 
 export const Route = createFileRoute("/activity")({
+  staleTime: 30_000,
   validateSearch: (search: Record<string, unknown>): ActivitySearch => ({
     page: parsePage(search.page),
   }),

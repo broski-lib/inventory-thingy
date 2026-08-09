@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation } from "@tanstack/react-query"
 import { useRouter } from "@tanstack/react-router"
 import {
   createItem,
@@ -17,11 +17,9 @@ import { createRack, updateRack, deleteRack } from "./racks"
 import type { CreateRackInput, UpdateRackInput } from "./racks"
 
 function useInvalidate() {
-  const queryClient = useQueryClient()
   const router = useRouter()
   return () => {
     router.invalidate()
-    queryClient.invalidateQueries()
   }
 }
 

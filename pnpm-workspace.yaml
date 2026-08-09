@@ -6,6 +6,7 @@ allowBuilds:
   unrs-resolver: true
   msw: false
   sharp: set this to true or false
-  workerd: set this to true or false
+  workerd: true
+  core-js: true
 
 confirmModulesPurge: false

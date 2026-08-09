@@ -116,7 +116,9 @@ export function BatchManager({
     ) {
       return
     }
-    void run(() => deleteBatchMutation.mutateAsync({ batchId: batch.id, itemId }))
+    void run(async () => {
+      await deleteBatchMutation.mutateAsync({ batchId: batch.id, itemId })
+    })
   }
 
   return (

@@ -167,7 +167,7 @@ function filterSearch(search: {
 }
 
 export const Route = createFileRoute("/stock/")({
-  staleTime: 0,
+  staleTime: 30_000,
   validateSearch: (search: Record<string, unknown>): StockSearch => ({
     q: typeof search.q === "string" ? search.q : undefined,
     page: parsePage(search.page),

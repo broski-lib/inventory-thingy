@@ -14,9 +14,6 @@ const config = defineConfig({
     modulePreload: {
       polyfill: false,
       resolveDependencies: (_filename, deps, _context) => {
-        // Don't modulepreload large shared chunks — the browser will
-        // fetch them on demand via dynamic import instead of blocking
-        // the initial page paint.
         const skipPatterns = [
           /select-/,
           /drawer-/,
