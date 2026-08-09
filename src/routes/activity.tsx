@@ -24,6 +24,7 @@ export const Route = createFileRoute("/activity")({
   loader: async ({ deps }) =>
     getActivityPage({ data: { page: deps.page, pageSize: PAGE_SIZE } }),
   component: ActivityRoute,
+  pendingComponent: ActivitySkeleton,
 })
 
 function ActivityRoute() {

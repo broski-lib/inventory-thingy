@@ -1,16 +1,19 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   BoxIcon,
   Camera01Icon,
   PackageIcon,
 } from "@hugeicons/core-free-icons"
+import { eq, sql, and } from "drizzle-orm"
 import { getRecentActivity } from "@/lib/activity"
-import { getStats } from "@/lib/inventory"
+import { getDb } from "@/lib/db"
+import { items } from "@/lib/schema"
 import { authRequiredMiddleware } from "@/lib/auth-middleware"
 import type { ActivityLog } from "@/lib/activity"
+import { Skeleton } from "@/components/ui/skeleton"
 import { AppHeader } from "@/components/AppHeader"
 import { BottomNav } from "@/components/BottomNav"
 import { HomeActivity } from "@/components/HomeActivity"
@@ -21,17 +24,46 @@ const HOME_ACTIVITY_LIMIT = 5
 
 const loadHome = createServerFn({ method: "GET" })
   .middleware([authRequiredMiddleware])
-  .handler(async () => {
-    const [stats, recent] = await Promise.all([
-      getStats(),
+  .handler(async ({ context }) => {
+    const { orgId } = context
+    const db = getDb()
+
+    const [statusCounts, movesTodayResult, recent] = await Promise.all([
+      db
+        .select({
+          status: items.status,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(items)
+        .where(eq(items.orgId, orgId))
+        .groupBy(items.status),
+      db
+        .select({
+          count: sql<number>`count(*)::int`,
+        })
+        .from(items)
+        .where(
+          and(
+            eq(items.orgId, orgId),
+            sql`${items.updatedAt} >= date_trunc('day', now())`
+          )
+        ),
       getRecentActivity({ data: HOME_ACTIVITY_LIMIT }),
     ])
-    return { stats, recent }
+
+    return {
+      stats: {
+        statusCounts,
+        movesToday: movesTodayResult[0]?.count ?? 0,
+      },
+      recent,
+    }
   })
 
 export const Route = createFileRoute("/home")({
   loader: async () => loadHome(),
   component: HomeRoute,
+  pendingComponent: HomeSkeleton,
 })
 
 function HomeRoute() {
@@ -39,6 +71,12 @@ function HomeRoute() {
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState("")
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [])
 
   const totalItems = stats.statusCounts.reduce(
     (sum, sc) => sum + sc.count,
@@ -156,6 +194,26 @@ function HomeRoute() {
               />
             </div>
           </section>
+        </div>
+      </section>
+      <BottomNav />
+    </main>
+  )
+}
+
+function HomeSkeleton() {
+  return (
+    <main className="min-h-svh bg-secondary pb-24 text-foreground">
+      <section className="mx-auto flex w-full max-w-md flex-col px-4 pt-[max(1rem,env(safe-area-inset-top))]">
+        <AppHeader />
+        <div className="mt-5 space-y-4">
+          <div className="grid grid-cols-2 gap-2">
+            <Skeleton className="h-12 rounded-lg" />
+            <Skeleton className="h-12 rounded-lg" />
+          </div>
+          <Skeleton className="h-10 w-full rounded-lg" />
+          <Skeleton className="h-20 rounded-xl" />
+          <Skeleton className="h-32 rounded-xl" />
         </div>
       </section>
       <BottomNav />
