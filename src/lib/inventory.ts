@@ -305,10 +305,11 @@ export const getLocations = createServerFn({ method: "GET" })
         .groupBy(itemBatches.location),
     ])
     const best = new Map<string, Date>()
-    for (const r of itemRows) best.set(r.location, r.lastUsed)
+    for (const r of itemRows) best.set(r.location, new Date(r.lastUsed))
     for (const r of batchRows) {
       const prev = best.get(r.location)
-      if (!prev || r.lastUsed > prev) best.set(r.location, r.lastUsed)
+      const d = new Date(r.lastUsed)
+      if (!prev || d > prev) best.set(r.location, d)
     }
     return [...best.entries()]
       .sort((a, b) => b[1].getTime() - a[1].getTime())

@@ -85,6 +85,13 @@
       "when": 1786066866025,
       "tag": "0011_thankful_maginty",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1785000000000,
+      "tag": "0012_shallow_stone_man",
+      "breakpoints": true
     }
   ]
 }

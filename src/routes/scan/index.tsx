@@ -4,6 +4,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { BoxIcon, Camera01Icon } from "@hugeicons/core-free-icons"
 import type { InventoryItem } from "@/lib/inventory"
 import { loadScan, lookupItem } from "@/lib/scan-queries"
+import { getMostCommonLocation } from "@/lib/inventory"
 import { useUpdateItem } from "@/lib/queries"
 import { BatchManager } from "@/components/BatchManager"
 import { AppHeader } from "@/components/AppHeader"
@@ -35,21 +36,24 @@ export const Route = createFileRoute("/scan/")({
   }),
   loaderDeps: ({ search }) => ({ code: search.code }),
   loader: async ({ deps }) => {
-    const [{ recent }, lookup] = await Promise.all([
+    const [{ recent }, lookup, defaultLocation] = await Promise.all([
       loadScan(),
       deps.code ? lookupItem({ data: deps.code }) : Promise.resolve(null),
+      getMostCommonLocation(),
     ])
-    return { recent, lookup }
+    return { recent, lookup, defaultLocation }
   },
   component: ScanRoute,
 })
 
 function ScanRoute() {
-  const { recent, lookup } = Route.useLoaderData()
+  const { recent, lookup, defaultLocation } = Route.useLoaderData()
   const navigate = useNavigate()
   const [scanMessage, setScanMessage] = useState("")
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const updateItemMutation = useUpdateItem()
+
+  const fallbackLocation = defaultLocation ?? "Warehouse A, Bay 1"
 
   const scannedItem = lookup?.item ?? null
   const scannedBatches = lookup?.batches ?? []
@@ -323,10 +327,10 @@ function ScanRoute() {
                       handleQuickStatus(
                         scannedItem,
                         "In Storage",
-                        "Warehouse A, Bay 1"
+                        fallbackLocation
                       )
                     }
-                    className="h-12 w-full"
+                    className="h-12 w-full px-6"
                   >
                     <BoltIcon />
                     Mark Tag Added
@@ -341,7 +345,7 @@ function ScanRoute() {
                         "Staging Staged"
                       )
                     }
-                    className="h-12 w-full"
+                    className="h-12 w-full px-6"
                   >
                     <BoltIcon />
                     Check Out
@@ -352,10 +356,10 @@ function ScanRoute() {
                       handleQuickStatus(
                         scannedItem,
                         "In Storage",
-                        "Warehouse A, Bay 1"
+                        fallbackLocation
                       )
                     }
-                    className="h-12 w-full bg-success hover:bg-success/90"
+                    className="h-12 w-full px-6 bg-success hover:bg-success/90"
                   >
                     <BoltIcon />
                     Check In

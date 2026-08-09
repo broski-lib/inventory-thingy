@@ -86,7 +86,7 @@ function BulkPrintPage() {
       </div>
 
       <div className="px-4 py-6 print:p-0">
-        <style>{`@media print { .print-tag { break-inside: avoid; page-break-inside: avoid; } }`}</style>
+        <style>{`@media print { .print-tag { break-inside: avoid; page-break-inside: avoid; } .print-tag:nth-child(12n) { page-break-after: always; } .print-tag:last-child { page-break-after: auto; } }`}</style>
         <h1 className="mb-4 text-center text-sm font-semibold uppercase tracking-wider text-foreground print:hidden">
           QR Tag Sheet — {printItems.length} item{printItems.length === 1 ? "" : "s"}
         </h1>
