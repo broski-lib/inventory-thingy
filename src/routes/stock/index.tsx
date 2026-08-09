@@ -720,13 +720,14 @@ function StockRoute() {
               </div>
             ) : (
               <>
-                {data.items.map((item) => (
+                {data.items.map((item, idx) => (
                   <SelectionAwareCard
                     key={item.id}
                     item={item}
                     selectionMode={selectionMode}
                     selected={selectedIds.has(item.id)}
                     compact={compactCards}
+                    priority={idx === 0}
                     onEdit={() =>
                       navigate({
                         to: "/stock/$id/edit",

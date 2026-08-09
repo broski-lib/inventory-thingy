@@ -12,6 +12,7 @@ export function SelectionAwareCard({
   onToggle,
   onLongPress,
   compact,
+  priority,
 }: {
   item: InventoryItemWithTags
   selectionMode: boolean
@@ -20,6 +21,7 @@ export function SelectionAwareCard({
   onToggle: () => void
   onLongPress?: (id: string) => void
   compact?: boolean
+  priority?: boolean
 }) {
   if (selectionMode) {
     return (
@@ -36,15 +38,16 @@ export function SelectionAwareCard({
       >
         <SelectionCheckbox selected={selected} />
         <div className="min-w-0 flex-1">
-          <ItemCard
-            item={item}
-            tags={item.tags}
-            batches={item.batches}
-            size="md"
-            onEdit={onEdit}
-            disabled
-            compact={compact}
-          />
+            <ItemCard
+              item={item}
+              tags={item.tags}
+              batches={item.batches}
+              size="md"
+              onEdit={onEdit}
+              disabled
+              compact={compact}
+              priority={priority}
+            />
         </div>
       </button>
     )
@@ -58,6 +61,7 @@ export function SelectionAwareCard({
       onEdit={onEdit}
       onLongPress={onLongPress ? () => onLongPress(item.id) : undefined}
       compact={compact}
+      priority={priority}
     />
   )
 }

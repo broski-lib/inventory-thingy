@@ -58,6 +58,7 @@ type ItemCardProps = {
   size?: "sm" | "md"
   disabled?: boolean
   compact?: boolean
+  priority?: boolean
 }
 
 export function ItemCard({
@@ -69,6 +70,7 @@ export function ItemCard({
   size = "md",
   disabled = false,
   compact = false,
+  priority = false,
 }: ItemCardProps) {
   const longPress = useLongPress({
     onLongPress: onLongPress ?? (() => {}),
@@ -100,7 +102,8 @@ export function ItemCard({
             <img
               src={item.imageUrl}
               alt={item.name}
-              loading="lazy"
+              loading={priority ? "eager" : "lazy"}
+              fetchPriority={priority ? "high" : undefined}
               decoding="async"
               className="size-full object-cover"
             />
@@ -219,7 +222,8 @@ export function ItemCard({
           <img
             src={item.imageUrl}
             alt={item.name}
-            loading="lazy"
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : undefined}
             decoding="async"
             className="aspect-[4/3] w-full object-cover"
           />
