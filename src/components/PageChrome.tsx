@@ -107,7 +107,8 @@ export function PageChrome({
 
   return (
     <main className="bg-background text-foreground">
-      <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-border bg-secondary">
+        <div className="mx-auto h-[env(safe-area-inset-top)]" />
         <div className="mx-auto flex h-14 max-w-2xl items-center gap-2 px-3">
           <button
             type="button"
@@ -128,7 +129,7 @@ export function PageChrome({
           {aside && <div className="shrink-0">{aside}</div>}
         </div>
       </header>
-      <div className="mx-auto min-h-[calc(100dvh-3.5rem)] max-w-2xl pb-24">
+      <div className="mx-auto min-h-[calc(100dvh-3.5rem-env(safe-area-inset-top))] max-w-2xl pb-24">
         {children}
       </div>
     </main>

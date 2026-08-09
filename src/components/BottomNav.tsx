@@ -47,7 +47,7 @@ export function BottomNav({ active: forcedActive }: BottomNavProps) {
   const active = forcedActive ?? derived
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-md border-t border-border bg-background/95 px-4 pt-2 pb-4 backdrop-blur">
+    <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-md border-t border-border bg-secondary px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div className="grid grid-cols-3 gap-2">
         <Link to="/home">
           {({ isActive }) => {

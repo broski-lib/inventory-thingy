@@ -250,25 +250,19 @@ function StockRoute() {
     search.ps
   )
 
-  // Keep URL and localStorage in sync. When they disagree, the URL wins
-  // (explicit param) — but when the URL has no param, push the stored
-  // value. Cross-tab storage events also trigger re-sync.
+  // Push stored page size into the URL on first visit when no ps param
+  // exists. Explicit user changes go through handlePageSizeChange which
+  // updates both localStorage and the URL together — no bidirectional
+  // sync needed after that.
   useEffect(() => {
-    const fromUrl = search.ps
-    if (fromUrl !== undefined && fromUrl === pageSize) return
-    if (fromUrl !== undefined) {
-      // URL has a value that differs from localStorage — adopt URL value.
-      setPageSize(fromUrl)
-      return
-    }
-    // No ps param. Push the localStorage value to the URL.
+    if (search.ps !== undefined) return
     if (pageSize === DEFAULT_PAGE_SIZE) return
     navigate({
       to: "/stock",
       search: (prev) => ({ ...prev, ps: pageSize }),
       replace: true,
     })
-  }, [search.ps, pageSize, DEFAULT_PAGE_SIZE, setPageSize, navigate])
+  }, [])
 
   const [compactCards, setCompactCards] = useCompactCards()
   const [searchInput, setSearchInput] = useState(q)
@@ -1129,7 +1123,7 @@ function BulkActionBar({
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-18 z-30 border-t border-border bg-background/95 backdrop-blur">
+    <div className="fixed inset-x-0 bottom-18 z-30 border-t border-border bg-secondary">
       {panel === "status" && (
         <div className="mx-auto flex max-w-md items-center gap-2 border-b border-border px-4 py-2">
           <Select

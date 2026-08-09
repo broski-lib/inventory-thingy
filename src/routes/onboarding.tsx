@@ -26,7 +26,6 @@ function OnboardingRoute() {
           </div>
           <OrganizationList
             hidePersonal
-            skipInvitationScreen
             afterSelectOrganizationUrl="/home"
             afterCreateOrganizationUrl="/home"
           />

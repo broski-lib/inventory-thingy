@@ -68,7 +68,8 @@ function LandingRoute() {
 function SiteNav() {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur">
-      <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-2 px-4">
+        <div className="mx-auto h-[env(safe-area-inset-top)]" />
+        <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-2 px-4">
         <Link
           to="/"
           className="flex items-center gap-2 text-sm font-semibold tracking-tight"

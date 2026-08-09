@@ -97,7 +97,7 @@ function RootDocument({ children }: { children: ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body className="min-h-svh bg-background antialiased">
+      <body className="min-h-svh bg-secondary antialiased">
         <QueryClientProvider client={queryClient}>
           <ClerkProvider>
             {children}
