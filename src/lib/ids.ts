@@ -122,7 +122,9 @@ export function ulidTimestamp(ulid: string): Date | null {
   for (const ch of timeChars) {
     const idx = CROCKFORD.indexOf(ch)
     if (idx < 0) return null
-    value = (value << 5) | idx
+    value = value * 32 + idx
   }
-  return new Date(value)
+  // 48-bit timestamp encoded to 10 base32 chars = 50 bits (2 bits padding).
+  // Shift right by 2 to recover the original 48-bit value.
+  return new Date(Math.floor(value / 4))
 }
