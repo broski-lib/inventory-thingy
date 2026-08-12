@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useRef, useState } from "react"
 import { useAuth } from "@clerk/tanstack-react-start"
-import { getLocations } from "@/lib/inventory"
+import { getLocations, getCategories } from "@/lib/inventory"
 import { listTags } from "@/lib/tags"
 import { useCreateItem, useSetItemTags } from "@/lib/queries"
 import { ItemForm, EMPTY_ITEM_FORM } from "@/components/ItemForm"
@@ -17,8 +17,8 @@ export const Route = createFileRoute("/stock/new")({
     qr: typeof search.qr === "string" ? search.qr : undefined,
   }),
   loader: async () => {
-    const [allTags, locations] = await Promise.all([listTags(), getLocations()])
-    return { allTags, locations }
+    const [allTags, locations, categories] = await Promise.all([listTags(), getLocations(), getCategories()])
+    return { allTags, locations, categories }
   },
   component: NewItemPage,
 })
@@ -26,7 +26,7 @@ export const Route = createFileRoute("/stock/new")({
 function NewItemPage() {
   const navigate = useNavigate()
   const search = Route.useSearch()
-  const { allTags, locations } = Route.useLoaderData()
+  const { allTags, locations, categories } = Route.useLoaderData()
   const { has } = useAuth()
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -69,6 +69,7 @@ function NewItemPage() {
         }}
         availableTags={allTags}
         locationSuggestions={locations}
+        categories={categories}
         canSetRequiredRole={has({ role: "org:admin" })}
         onSubmit={handleSubmit}
         onDirtyChange={setDirty}

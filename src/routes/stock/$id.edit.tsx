@@ -9,7 +9,7 @@ import { useAuth } from "@clerk/tanstack-react-start"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { QrCodeIcon, TransactionHistoryIcon } from "@hugeicons/core-free-icons"
 import { TrashIcon, BoltIcon } from "@/components/icons"
-import { getItemById, getLocations } from "@/lib/inventory"
+import { getItemById, getLocations, getCategories } from "@/lib/inventory"
 import { listTags } from "@/lib/tags"
 import { useUpdateItem, useDeleteItem, useSetItemTags } from "@/lib/queries"
 import { ItemForm } from "@/components/ItemForm"
@@ -21,19 +21,20 @@ import { cn } from "@/lib/utils"
 export const Route = createFileRoute("/stock/$id/edit")({
   staleTime: 0,
   loader: async ({ params }) => {
-    const [item, allTags, locations] = await Promise.all([
+    const [item, allTags, locations, categories] = await Promise.all([
       getItemById({ data: params.id }),
       listTags(),
       getLocations(),
+      getCategories(),
     ])
     if (!item) throw notFound()
-    return { item, allTags, locations }
+    return { item, allTags, locations, categories }
   },
   component: EditItemPage,
 })
 
 function EditItemPage() {
-  const { item, allTags, locations } = Route.useLoaderData()
+  const { item, allTags, locations, categories } = Route.useLoaderData()
   const navigate = useNavigate()
   const { has } = useAuth()
   const [dirty, setDirty] = useState(false)
@@ -154,6 +155,7 @@ function EditItemPage() {
           description: item.description,
           condition: item.condition,
           location: item.location,
+          category: item.category ?? "",
           status: item.status,
           kind: item.kind,
           quantity: 1,
@@ -164,6 +166,7 @@ function EditItemPage() {
         initialImageKey={item.imageKey}
         availableTags={allTags}
         locationSuggestions={locations}
+        categories={categories}
         initialTagIds={item.tags.map((t) => t.id)}
         canSetRequiredRole={has({ role: "org:admin" })}
         onSubmit={handleSubmit}

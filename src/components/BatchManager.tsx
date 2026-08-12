@@ -415,13 +415,13 @@ function BatchFormDrawer({
                   id="batch-qty"
                   type="number"
                   inputMode="numeric"
-                  min={1}
+                  min={0}
                   max={maxQty}
                   value={String(field.state.value)}
                   onChange={(e) => {
                     const n = Math.floor(Number(e.target.value))
-                    if (e.target.value !== "" && Number.isFinite(n)) {
-                      field.handleChange(Math.max(1, n))
+                    if (e.target.value === "" || Number.isFinite(n)) {
+                      field.handleChange(Math.max(0, Math.min(n, maxQty ?? Infinity)))
                     }
                   }}
                   className="text-base sm:text-sm"

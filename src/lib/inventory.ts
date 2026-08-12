@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start"
 import { and, asc, eq, ilike, inArray, ne, or, desc, sql } from "drizzle-orm"
 import type { SQL } from "drizzle-orm"
-import { getDb } from "./db"
+import { getDb, runInTransaction } from "./db"
+import { drizzle } from "drizzle-orm/neon-http"
 import { items, activityLogs, itemBatches, itemTags, tags } from "./schema"
 import type { ItemCondition, ItemKind, ItemStatus, StockSort, StockStatusFilter } from "./constants"
 import { generateUlid } from "./ids"
@@ -138,6 +139,7 @@ function buildItemsWhere(
         ilike(items.name, s),
         ilike(items.qrCode, s),
         ilike(items.location, s),
+        ilike(items.category, s),
         sql`${items.status}::text ILIKE ${s}`,
         ilike(items.description, s),
         inArray(items.id, tagMatch),
@@ -356,6 +358,33 @@ export const getMostCommonLocation = createServerFn({ method: "GET" })
     return best || null
   })
 
+/**
+ * Distinct non-empty category values for the org, sorted by frequency
+ * (most common first). Pulled from unit items and bulk batch items.
+ */
+export const getCategories = createServerFn({ method: "GET" })
+  .middleware([authRequiredMiddleware])
+  .handler(async ({ context }): Promise<string[]> => {
+    const { orgId } = context
+    const db = getDb()
+    const rows = await db
+      .select({
+        category: items.category,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(items)
+      .where(
+        and(
+          eq(items.orgId, orgId),
+          ne(items.category, ""),
+          ne(items.category, "Uncategorized")
+        )
+      )
+      .groupBy(items.category)
+      .orderBy(desc(sql`count(*)`))
+    return rows.map((r) => r.category)
+  })
+
 export const getStats = createServerFn({ method: "GET" })
   .middleware([authRequiredMiddleware])
   .handler(async ({ context }) => {
@@ -504,7 +533,24 @@ export const createItem = createServerFn({ method: "POST" })
   .handler(async ({ data: item, context }) => {
     const { userId, orgId, has } = context
     const db = getDb()
-    const id = generateUlid()
+    let id = generateUlid()
+
+    // Ensure the ID is unique within the org (ULIDs are designed to be
+    // collision-resistant, but this is a safety net).
+    let idCollision = true
+    for (let attempts = 0; attempts < 3 && idCollision; attempts++) {
+      const existing = await db
+        .select({ id: items.id })
+        .from(items)
+        .where(and(eq(items.orgId, orgId), eq(items.id, id)))
+        .limit(1)
+      if (existing.length === 0) {
+        idCollision = false
+      } else {
+        id = generateUlid()
+      }
+    }
+    if (idCollision) throw new Error("Failed to generate a unique ID — please try again")
 
     assertValidRequiredRole(has, item.requiredRole)
 
@@ -515,40 +561,46 @@ export const createItem = createServerFn({ method: "POST" })
     const imageKey = item.imageKey ?? null
     const imageUrl = imageKey ? buildImageUrl(imageKey) : ""
 
-    const [inserted] = await db
-      .insert(items)
-      .values({
-        id,
-        orgId,
-        kind,
-        qrCode: item.qrCode,
-        name: item.name,
-        description: item.description,
-        condition: item.condition,
-        location: item.location,
-        status: item.status,
-        imageUrl,
-        imageKey,
-        printSize: item.printSize ?? "medium",
-        requiredRole: item.requiredRole ?? null,
-        createdBy: userId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .returning()
+    const [inserted] = await runInTransaction(async (tx) => {
+      const txDb = drizzle(tx, { schema: { items, itemBatches } })
+      const [row] = await txDb
+        .insert(items)
+        .values({
+          id,
+          orgId,
+          kind,
+          qrCode: item.qrCode,
+          name: item.name,
+          description: item.description,
+          condition: item.condition,
+          location: item.location,
+          status: item.status,
+          category: item.category ?? "",
+          imageUrl,
+          imageKey,
+          printSize: item.printSize ?? "medium",
+          requiredRole: item.requiredRole ?? null,
+          createdBy: userId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning()
 
-    // Bulk items get their starting stock as the initial batch.
-    if (kind === "bulk" && quantity !== null) {
-      await db.insert(itemBatches).values({
-        id: generateUlid(),
-        orgId,
-        itemId: id,
-        qty: quantity,
-        location: inserted.location,
-        status: inserted.status,
-        condition: inserted.condition,
-      })
-    }
+      // Bulk items get their starting stock as the initial batch.
+      if (kind === "bulk" && quantity !== null) {
+        await txDb.insert(itemBatches).values({
+          id: generateUlid(),
+          orgId,
+          itemId: id,
+          qty: quantity,
+          location: row.location,
+          status: row.status,
+          condition: row.condition,
+        })
+      }
+
+      return [row]
+    })
 
     const actor = { ...(await resolveActor(userId)), orgId }
     await logActivity(actor, {
@@ -691,20 +743,23 @@ export const deleteItem = createServerFn({ method: "POST" })
     if (currentRows.length === 0) throw new Error("Item not found")
     assertCanEditItem(has, currentRows[0].requiredRole)
 
-    const [deleted] = await db
-      .delete(items)
-      .where(and(eq(items.orgId, orgId), eq(items.id, id)))
-      .returning()
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (!deleted) throw new Error("Item not found")
+    const [deleted] = await runInTransaction(async (tx) => {
+      const txDb = drizzle(tx, { schema: { items, itemBatches, itemTags } })
+      const [row] = await txDb
+        .delete(items)
+        .where(and(eq(items.orgId, orgId), eq(items.id, id)))
+        .returning()
+      if (!row) throw new Error("Item not found")
 
-    // Clean up join rows — no FKs, so they don't cascade on their own.
-    await db
-      .delete(itemBatches)
-      .where(and(eq(itemBatches.orgId, orgId), eq(itemBatches.itemId, id)))
-    await db
-      .delete(itemTags)
-      .where(and(eq(itemTags.orgId, orgId), eq(itemTags.itemId, id)))
+      await txDb
+        .delete(itemBatches)
+        .where(and(eq(itemBatches.orgId, orgId), eq(itemBatches.itemId, id)))
+      await txDb
+        .delete(itemTags)
+        .where(and(eq(itemTags.orgId, orgId), eq(itemTags.itemId, id)))
+
+      return [row]
+    })
 
     if (deleted.imageKey) {
       await deleteItemImage(orgId, deleted.imageKey)

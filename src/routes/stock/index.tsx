@@ -17,6 +17,7 @@ import {
 import {
   getItemsPage,
   getLocations,
+  getCategories,
 } from "@/lib/inventory"
 import type { StockSort, StockStatusFilter } from "@/lib/constants"
 import {
@@ -169,7 +170,6 @@ function filterSearch(search: {
 
 export const Route = createFileRoute("/stock/")({
   staleTime: 0,
-  pendingMs: 250,
   validateSearch: (search: Record<string, unknown>): StockSearch => ({
     q: typeof search.q === "string" ? search.q : undefined,
     page: parsePage(search.page),
@@ -195,25 +195,26 @@ export const Route = createFileRoute("/stock/")({
     kinds: search.kinds,
   }),
   loader: async ({ deps }) => {
-    const [page, allTags, locations] = await Promise.all([
-      getItemsPage({
-        data: {
-          page: deps.page ?? 1,
-          pageSize: deps.ps ?? DEFAULT_PAGE_SIZE,
-          search: deps.q,
-          statusFilter: deps.sf,
-          statuses: deps.st,
-          conditions: deps.cond,
-          locations: deps.loc,
-          tagIds: deps.tags,
-          sort: deps.sort,
-          kinds: deps.kinds,
-        },
-      }),
-      listTags(),
-      getLocations(),
-    ])
-    return { page, allTags, locations }
+      const [page, allTags, locations, categories] = await Promise.all([
+        getItemsPage({
+          data: {
+            page: deps.page ?? 1,
+            pageSize: deps.ps ?? DEFAULT_PAGE_SIZE,
+            search: deps.q,
+            statusFilter: deps.sf,
+            statuses: deps.st,
+            conditions: deps.cond,
+            locations: deps.loc,
+            tagIds: deps.tags,
+            sort: deps.sort,
+            kinds: deps.kinds,
+          },
+        }),
+        listTags(),
+        getLocations(),
+        getCategories(),
+      ])
+      return { page, allTags, locations, categories }
   },
   component: StockRoute,
   pendingComponent: StockPending,

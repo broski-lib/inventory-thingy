@@ -1,1 +1,0 @@
-ALTER TYPE "public"."item_status" ADD VALUE 'Pending Tag';

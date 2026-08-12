@@ -16,6 +16,7 @@ import {
 import { PhotoUpload } from "@/components/PhotoUpload"
 import { TagPicker } from "@/components/TagPicker"
 import { LocationChips } from "@/components/LocationChips"
+import { CategoryChips } from "@/components/CategoryChips"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useItemPhoto } from "@/hooks/use-item-photo"
 import { ITEM_CONDITIONS, ITEM_STATUSES } from "@/lib/item-status"
@@ -32,6 +33,7 @@ export type ItemFormValues = {
   description: string
   condition: ItemCondition
   location: string
+  category: string
   status: ItemStatus
   kind: ItemKind
   quantity: number
@@ -46,6 +48,7 @@ type ItemFormProps = {
   availableTags?: Tag[]
   initialTagIds?: string[]
   locationSuggestions?: string[]
+  categories?: string[]
   canSetRequiredRole?: boolean
   onSubmit: (
     data: ItemFormValues & { imageKey: string | null; tagIds: string[] }
@@ -62,6 +65,7 @@ const EMPTY: ItemFormValues = {
   description: "",
   condition: "Good",
   location: "",
+  category: "",
   status: "In Storage",
   kind: "unit",
   quantity: 1,
@@ -78,6 +82,7 @@ export function ItemForm({
   availableTags = [],
   initialTagIds = [],
   locationSuggestions = [],
+  categories = [],
   canSetRequiredRole = false,
   onSubmit,
   onDirtyChange,
@@ -297,6 +302,28 @@ export function ItemForm({
             )}
           </form.Field>
 
+          {locFieldVisible && (
+            <form.Field name="category">
+              {(field) => (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="item-category">Category</Label>
+                  <Input
+                    id="item-category"
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    placeholder="e.g. Seating, Tables, Lighting"
+                  />
+                  <CategoryChips
+                    categories={categories}
+                    value={field.state.value}
+                    onSelect={(cat) => field.handleChange(cat)}
+                  />
+                </div>
+              )}
+            </form.Field>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <form.Field name="status">
               {(field) => (
@@ -405,13 +432,13 @@ export function ItemForm({
                 id="item-quantity"
                 type="number"
                 inputMode="numeric"
-                min={1}
+                min={0}
                 required
                 value={String(field.state.value)}
                 onChange={(e) => {
                   const n = Math.floor(Number(e.target.value))
-                  if (Number.isFinite(n) && n >= 1) {
-                    field.handleChange(n)
+                  if (e.target.value === "" || Number.isFinite(n)) {
+                    field.handleChange(Math.max(0, n))
                   }
                 }}
               />

@@ -83,6 +83,7 @@ export const items = pgTable(
     // For bulk items: whether individual units wear physical QR tags.
     // True = tagged (every unit has its own QR), false = untagged (rack sheet only).
     tagged: boolean("tagged").notNull().default(true),
+    category: text("category").notNull().default(""),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
