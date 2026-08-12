@@ -1,9 +1,8 @@
 import { createServerFn } from "@tanstack/react-start"
 import { and, asc, eq, ilike, inArray, ne, or, desc, sql } from "drizzle-orm"
 import type { SQL } from "drizzle-orm"
-import { getDb, runInTransaction } from "./db"
-import { drizzle } from "drizzle-orm/neon-http"
-import { items, activityLogs, itemBatches, itemTags, tags } from "./schema"
+import { getDb } from "./db"
+import { items, activityLogs, itemBatches, itemTags, tags, categories } from "./schema"
 import type { ItemCondition, ItemKind, ItemStatus, StockSort, StockStatusFilter } from "./constants"
 import { generateUlid } from "./ids"
 import { logActivity, resolveActor } from "./activity"
@@ -70,6 +69,7 @@ export type GetItemsPageArgs = {
   conditions?: ItemCondition[]
   locations?: string[]
   tagIds?: string[]
+  categoryIds?: string[]
   sort?: StockSort
   kinds?: ItemKind[]
 }
@@ -139,7 +139,6 @@ function buildItemsWhere(
         ilike(items.name, s),
         ilike(items.qrCode, s),
         ilike(items.location, s),
-        ilike(items.category, s),
         sql`${items.status}::text ILIKE ${s}`,
         ilike(items.description, s),
         inArray(items.id, tagMatch),
@@ -203,6 +202,9 @@ function buildItemsWhere(
       )
     conditions.push(inArray(items.id, tagFilter))
   }
+  if (args.categoryIds && args.categoryIds.length > 0) {
+    conditions.push(inArray(items.categoryId, args.categoryIds))
+  }
   if (args.kinds && args.kinds.length > 0) {
     conditions.push(inArray(items.kind, args.kinds))
   }
@@ -237,6 +239,35 @@ export const getItemsPage = createServerFn({ method: "GET" })
   .handler(async ({ data: args, context }): Promise<ItemsPage> => {
     const { orgId } = context
     const db = getDb()
+
+    // Resolve category descendants so filtering by a parent includes its
+    // subcategories. Fetch the full tree for the org and walk it.
+    if (args.categoryIds && args.categoryIds.length > 0) {
+      const allCats = await db
+        .select({ id: categories.id, parentId: categories.parentId })
+        .from(categories)
+        .where(eq(categories.orgId, orgId))
+      const childrenMap = new Map<string | null, string[]>()
+      for (const c of allCats) {
+        const key = c.parentId ?? null
+        if (!childrenMap.has(key)) childrenMap.set(key, [])
+        childrenMap.get(key)!.push(c.id)
+      }
+      const resolved = new Set(args.categoryIds)
+      function collectDescendants(parentIds: Set<string>) {
+        for (const pid of parentIds) {
+          for (const child of childrenMap.get(pid) ?? []) {
+            if (!resolved.has(child)) {
+              resolved.add(child)
+              collectDescendants(new Set([child]))
+            }
+          }
+        }
+      }
+      collectDescendants(new Set(args.categoryIds))
+      args = { ...args, categoryIds: [...resolved] }
+    }
+
     const page = Math.max(1, Math.floor(args.page))
     const pageSize = Math.max(1, Math.min(100, Math.floor(args.pageSize)))
     const where = buildItemsWhere(orgId, args, db)
@@ -356,33 +387,6 @@ export const getMostCommonLocation = createServerFn({ method: "GET" })
       if (count > bestCount) { best = loc; bestCount = count }
     }
     return best || null
-  })
-
-/**
- * Distinct non-empty category values for the org, sorted by frequency
- * (most common first). Pulled from unit items and bulk batch items.
- */
-export const getCategories = createServerFn({ method: "GET" })
-  .middleware([authRequiredMiddleware])
-  .handler(async ({ context }): Promise<string[]> => {
-    const { orgId } = context
-    const db = getDb()
-    const rows = await db
-      .select({
-        category: items.category,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(items)
-      .where(
-        and(
-          eq(items.orgId, orgId),
-          ne(items.category, ""),
-          ne(items.category, "Uncategorized")
-        )
-      )
-      .groupBy(items.category)
-      .orderBy(desc(sql`count(*)`))
-    return rows.map((r) => r.category)
   })
 
 export const getStats = createServerFn({ method: "GET" })
@@ -561,46 +565,41 @@ export const createItem = createServerFn({ method: "POST" })
     const imageKey = item.imageKey ?? null
     const imageUrl = imageKey ? buildImageUrl(imageKey) : ""
 
-    const [inserted] = await runInTransaction(async (tx) => {
-      const txDb = drizzle(tx, { schema: { items, itemBatches } })
-      const [row] = await txDb
-        .insert(items)
-        .values({
-          id,
-          orgId,
-          kind,
-          qrCode: item.qrCode,
-          name: item.name,
-          description: item.description,
-          condition: item.condition,
-          location: item.location,
-          status: item.status,
-          category: item.category ?? "",
-          imageUrl,
-          imageKey,
-          printSize: item.printSize ?? "medium",
-          requiredRole: item.requiredRole ?? null,
-          createdBy: userId,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .returning()
+    const [inserted] = await db
+      .insert(items)
+      .values({
+        id,
+        orgId,
+        kind,
+        qrCode: item.qrCode,
+        name: item.name,
+        description: item.description,
+        condition: item.condition,
+        location: item.location,
+        status: item.status,
+        categoryId: item.categoryId ?? null,
+        imageUrl,
+        imageKey,
+        printSize: item.printSize ?? "medium",
+        requiredRole: item.requiredRole ?? null,
+        createdBy: userId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning()
 
-      // Bulk items get their starting stock as the initial batch.
-      if (kind === "bulk" && quantity !== null) {
-        await txDb.insert(itemBatches).values({
-          id: generateUlid(),
-          orgId,
-          itemId: id,
-          qty: quantity,
-          location: row.location,
-          status: row.status,
-          condition: row.condition,
-        })
-      }
-
-      return [row]
-    })
+    // Bulk items get their starting stock as the initial batch.
+    if (kind === "bulk" && quantity !== null) {
+      await db.insert(itemBatches).values({
+        id: generateUlid(),
+        orgId,
+        itemId: id,
+        qty: quantity,
+        location: inserted.location,
+        status: inserted.status,
+        condition: inserted.condition,
+      })
+    }
 
     const actor = { ...(await resolveActor(userId)), orgId }
     await logActivity(actor, {
@@ -743,23 +742,18 @@ export const deleteItem = createServerFn({ method: "POST" })
     if (currentRows.length === 0) throw new Error("Item not found")
     assertCanEditItem(has, currentRows[0].requiredRole)
 
-    const [deleted] = await runInTransaction(async (tx) => {
-      const txDb = drizzle(tx, { schema: { items, itemBatches, itemTags } })
-      const [row] = await txDb
-        .delete(items)
-        .where(and(eq(items.orgId, orgId), eq(items.id, id)))
-        .returning()
-      if (!row) throw new Error("Item not found")
+    const [deleted] = await db
+      .delete(items)
+      .where(and(eq(items.orgId, orgId), eq(items.id, id)))
+      .returning()
+    if (!deleted) throw new Error("Item not found")
 
-      await txDb
-        .delete(itemBatches)
-        .where(and(eq(itemBatches.orgId, orgId), eq(itemBatches.itemId, id)))
-      await txDb
-        .delete(itemTags)
-        .where(and(eq(itemTags.orgId, orgId), eq(itemTags.itemId, id)))
-
-      return [row]
-    })
+    await db
+      .delete(itemBatches)
+      .where(and(eq(itemBatches.orgId, orgId), eq(itemBatches.itemId, id)))
+    await db
+      .delete(itemTags)
+      .where(and(eq(itemTags.orgId, orgId), eq(itemTags.itemId, id)))
 
     if (deleted.imageKey) {
       await deleteItemImage(orgId, deleted.imageKey)

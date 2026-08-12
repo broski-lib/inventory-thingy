@@ -1,0 +1,2 @@
+-- Baseline migration: all tables and columns already exist in the database. Database was set up before drizzle-kit migrations were configured.
+-- This file exists so drizzle-kit migrate sees it as applied and continues cleanly.

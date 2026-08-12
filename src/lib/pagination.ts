@@ -10,3 +10,12 @@ export function parsePage(value: unknown): number | undefined {
   }
   return undefined
 }
+
+export function parsePageSize(
+  value: unknown,
+  options: readonly number[]
+): number | undefined {
+  const n = Number.parseInt(String(value ?? ""), 10)
+  if (Number.isNaN(n)) return undefined
+  return options.includes(n) ? n : undefined
+}

@@ -26,12 +26,3 @@ export function getDb() {
   cachedDb = drizzle(getSql(), { schema })
   return cachedDb
 }
-
-export function runInTransaction<T>(
-  fn: (
-    tx: NeonQueryFunction<true, false>
-  ) => Promise<T>
-): Promise<T> {
-  const sql = getSql()
-  return sql.transaction(fn as any) as Promise<T>
-}

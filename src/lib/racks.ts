@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start"
 import { and, asc, eq, inArray } from "drizzle-orm"
-import { getDb, runInTransaction } from "./db"
-import { drizzle } from "drizzle-orm/neon-http"
+import { getDb } from "./db"
 import { racks, rackItems, items } from "./schema"
 import { authRequiredMiddleware } from "./auth-middleware"
 import { generateUlid, generateQrCode } from "./ids"
@@ -116,33 +115,31 @@ export const createRack = createServerFn({ method: "POST" })
   .validator((data: CreateRackInput) => data)
   .handler(async ({ data, context }) => {
     const { orgId } = context
+    const db = getDb()
     const id = generateUlid()
     const qrCode = generateQrCode()
     const now = new Date()
 
-    await runInTransaction(async (tx) => {
-      const txDb = drizzle(tx, { schema: { racks, rackItems } })
-      await txDb.insert(racks).values({
-        id,
-        orgId,
-        name: data.name.trim(),
-        location: data.location.trim(),
-        qrCode,
-        createdAt: now,
-        updatedAt: now,
-      })
-
-      if (data.items.length > 0) {
-        await txDb.insert(rackItems).values(
-          data.items.map((it) => ({
-            rackId: id,
-            orgId,
-            itemId: it.itemId,
-            qty: Math.max(1, Math.floor(it.qty)),
-          }))
-        )
-      }
+    await db.insert(racks).values({
+      id,
+      orgId,
+      name: data.name.trim(),
+      location: data.location.trim(),
+      qrCode,
+      createdAt: now,
+      updatedAt: now,
     })
+
+    if (data.items.length > 0) {
+      await db.insert(rackItems).values(
+        data.items.map((it) => ({
+          rackId: id,
+          orgId,
+          itemId: it.itemId,
+          qty: Math.max(1, Math.floor(it.qty)),
+        }))
+      )
+    }
 
     return { id, qrCode }
   })

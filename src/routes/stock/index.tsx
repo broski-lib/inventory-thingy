@@ -17,8 +17,8 @@ import {
 import {
   getItemsPage,
   getLocations,
-  getCategories,
 } from "@/lib/inventory"
+import { getCategoryTree } from "@/lib/categories"
 import type { StockSort, StockStatusFilter } from "@/lib/constants"
 import {
   STOCK_SORTS,
@@ -41,6 +41,7 @@ import { AppHeader } from "@/components/AppHeader"
 import { BottomNav } from "@/components/BottomNav"
 import { SelectionAwareCard } from "@/components/SelectionAwareCard"
 import { TagPicker } from "@/components/TagPicker"
+import { CategoryPicker } from "@/components/CategoryPicker"
 import { useCompactCards } from "@/components/ItemCard"
 import { PlusIcon, TrashIcon } from "@/components/icons"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -71,7 +72,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Pagination } from "@/components/Pagination"
 import { usePageSize } from "@/hooks/use-page-size"
 import { cn } from "@/lib/utils"
-import { parsePage } from "@/lib/pagination"
+import { parsePage, parsePageSize } from "@/lib/pagination"
 import { pluralize } from "@/lib/format"
 
 const PAGE_SIZE_STORAGE_KEY = "stock:pageSize"
@@ -87,14 +88,9 @@ type StockSearch = {
   cond?: ItemCondition[]
   loc?: string[]
   tags?: string[]
+  cat?: string[]
   sort?: StockSort
   kinds?: ItemKind[]
-}
-
-function parsePageSize(value: unknown): number | undefined {
-  const n = Number.parseInt(String(value ?? ""), 10)
-  if (Number.isNaN(n)) return undefined
-  return (PAGE_SIZE_OPTIONS as readonly number[]).includes(n) ? n : undefined
 }
 
 function parseCsv(value: unknown): string[] | undefined {
@@ -151,6 +147,7 @@ function filterSearch(search: {
   cond?: ItemCondition[]
   loc?: string[]
   tags?: string[]
+  cat?: string[]
   sort?: StockSort
   kinds?: ItemKind[]
 }) {
@@ -160,6 +157,7 @@ function filterSearch(search: {
     cond: search.cond && search.cond.length > 0 ? search.cond : undefined,
     loc: search.loc && search.loc.length > 0 ? search.loc : undefined,
     tags: search.tags && search.tags.length > 0 ? search.tags : undefined,
+    cat: search.cat && search.cat.length > 0 ? search.cat : undefined,
     sort:
       search.sort && search.sort !== DEFAULT_STOCK_SORT
         ? search.sort
@@ -173,12 +171,13 @@ export const Route = createFileRoute("/stock/")({
   validateSearch: (search: Record<string, unknown>): StockSearch => ({
     q: typeof search.q === "string" ? search.q : undefined,
     page: parsePage(search.page),
-    ps: parsePageSize(search.ps),
+    ps: parsePageSize(search.ps, PAGE_SIZE_OPTIONS),
     sf: parseStatusFilter(search.sf),
     st: parseEnumCsv(search.st, ITEM_STATUSES),
     cond: parseEnumCsv(search.cond, ITEM_CONDITIONS),
     loc: parseCsv(search.loc),
     tags: parseCsv(search.tags),
+    cat: parseCsv(search.cat),
     sort: parseSort(search.sort),
     kinds: parseEnumCsv(search.kinds, ITEM_KINDS),
   }),
@@ -191,11 +190,12 @@ export const Route = createFileRoute("/stock/")({
     cond: search.cond,
     loc: search.loc,
     tags: search.tags,
+    cat: search.cat,
     sort: search.sort,
     kinds: search.kinds,
   }),
   loader: async ({ deps }) => {
-      const [page, allTags, locations, categories] = await Promise.all([
+      const [page, allTags, locations, categoryTree] = await Promise.all([
         getItemsPage({
           data: {
             page: deps.page ?? 1,
@@ -206,15 +206,16 @@ export const Route = createFileRoute("/stock/")({
             conditions: deps.cond,
             locations: deps.loc,
             tagIds: deps.tags,
+            categoryIds: deps.cat,
             sort: deps.sort,
             kinds: deps.kinds,
           },
         }),
         listTags(),
         getLocations(),
-        getCategories(),
+        getCategoryTree(),
       ])
-      return { page, allTags, locations, categories }
+      return { page, allTags, locations, categoryTree }
   },
   component: StockRoute,
   pendingComponent: StockPending,
@@ -227,6 +228,7 @@ type DraftFilters = {
   cond: ItemCondition[]
   loc: string[]
   tags: string[]
+  cat: string[]
   sort: StockSort
   kinds: ItemKind[]
 }
@@ -234,7 +236,7 @@ type DraftFilters = {
 function StockRoute() {
   const navigate = useNavigate()
   const router = useRouter()
-  const { page: data, allTags, locations } = Route.useLoaderData()
+  const { page: data, allTags, locations, categoryTree } = Route.useLoaderData()
   const search = Route.useSearch()
   const page = search.page ?? 1
   const q = search.q ?? ""
@@ -277,6 +279,7 @@ function StockRoute() {
     cond: [],
     loc: [],
     tags: [],
+    cat: [],
     sort: DEFAULT_STOCK_SORT,
     kinds: [],
   })
@@ -357,6 +360,7 @@ function StockRoute() {
       cond: search.cond ?? [],
       loc: search.loc ?? [],
       tags: search.tags ?? [],
+      cat: search.cat ?? [],
       sort,
       kinds: search.kinds ?? [],
     })
@@ -392,6 +396,7 @@ function StockRoute() {
     (search.cond?.length ?? 0) +
     (search.loc?.length ?? 0) +
     (search.tags?.length ?? 0) +
+    (search.cat?.length ?? 0) +
     (search.kinds?.length ?? 0) +
     (sort !== DEFAULT_STOCK_SORT ? 1 : 0)
 
@@ -841,6 +846,17 @@ function StockRoute() {
               </div>
             </FilterSection>
 
+            <FilterSection label="Category">
+              <CategoryPicker
+                tree={categoryTree}
+                value={draft.cat[0] ?? null}
+                onChange={(id) =>
+                  setDraft((prev) => ({ ...prev, cat: id ? [id] : [] }))
+                }
+                mode="filter"
+              />
+            </FilterSection>
+
             <FilterSection
               label="Tags"
               action={
@@ -860,7 +876,7 @@ function StockRoute() {
               />
             </FilterSection>
           </DrawerBody>
-          <DrawerFooter className="flex-row gap-2 p-4 pb-[max(1.75rem,calc(env(safe-area-inset-bottom)+1rem))]">
+          <DrawerFooter className="flex-row gap-4 p-4 pb-[max(1.75rem,calc(env(safe-area-inset-bottom)+1rem))]">
             <Button
               type="button"
               variant="outline"
@@ -871,6 +887,7 @@ function StockRoute() {
                     cond: [],
                     loc: [],
                     tags: [],
+                    cat: [],
                     sort: DEFAULT_STOCK_SORT,
                     kinds: [],
                   })

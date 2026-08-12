@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { useRef, useState } from "react"
+import { useState } from "react"
 import { useAuth } from "@clerk/tanstack-react-start"
-import { getLocations, getCategories } from "@/lib/inventory"
+import { getLocations } from "@/lib/inventory"
+import { getCategoryTree } from "@/lib/categories"
 import { listTags } from "@/lib/tags"
 import { useCreateItem, useSetItemTags } from "@/lib/queries"
 import { ItemForm, EMPTY_ITEM_FORM } from "@/components/ItemForm"
@@ -17,8 +18,8 @@ export const Route = createFileRoute("/stock/new")({
     qr: typeof search.qr === "string" ? search.qr : undefined,
   }),
   loader: async () => {
-    const [allTags, locations, categories] = await Promise.all([listTags(), getLocations(), getCategories()])
-    return { allTags, locations, categories }
+    const [allTags, locations, categoryTree] = await Promise.all([listTags(), getLocations(), getCategoryTree()])
+    return { allTags, locations, categoryTree }
   },
   component: NewItemPage,
 })
@@ -26,11 +27,9 @@ export const Route = createFileRoute("/stock/new")({
 function NewItemPage() {
   const navigate = useNavigate()
   const search = Route.useSearch()
-  const { allTags, locations, categories } = Route.useLoaderData()
+  const { allTags, locations, categoryTree } = Route.useLoaderData()
   const { has } = useAuth()
-  const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
-  const submittingRef = useRef(false)
   const createItemMutation = useCreateItem()
   const setItemTagsMutation = useSetItemTags()
 
@@ -39,7 +38,6 @@ function NewItemPage() {
       tagIds: string[]
     }
   ) => {
-    submittingRef.current = true
     setBusy(true)
     try {
       const { tagIds, ...item } = data
@@ -49,7 +47,6 @@ function NewItemPage() {
       }
       navigate({ to: "/stock" })
     } catch (err) {
-      submittingRef.current = false
       setBusy(false)
       throw err
     }
@@ -59,8 +56,6 @@ function NewItemPage() {
     <PageChrome
       title="Register New Item"
       backTo="/stock"
-      dirty={dirty}
-      submittingRef={submittingRef}
     >
       <ItemForm
         initial={{
@@ -69,10 +64,9 @@ function NewItemPage() {
         }}
         availableTags={allTags}
         locationSuggestions={locations}
-        categories={categories}
+        categoryTree={categoryTree}
         canSetRequiredRole={has({ role: "org:admin" })}
         onSubmit={handleSubmit}
-        onDirtyChange={setDirty}
         busy={busy}
         submitLabel="Create Item"
       />

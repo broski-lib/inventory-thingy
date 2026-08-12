@@ -4,12 +4,13 @@ import {
   useNavigate,
   Link,
 } from "@tanstack/react-router"
-import { useRef, useState } from "react"
+import { useState } from "react"
 import { useAuth } from "@clerk/tanstack-react-start"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { QrCodeIcon, TransactionHistoryIcon } from "@hugeicons/core-free-icons"
 import { TrashIcon, BoltIcon } from "@/components/icons"
-import { getItemById, getLocations, getCategories } from "@/lib/inventory"
+import { getItemById, getLocations } from "@/lib/inventory"
+import { getCategoryTree } from "@/lib/categories"
 import { listTags } from "@/lib/tags"
 import { useUpdateItem, useDeleteItem, useSetItemTags } from "@/lib/queries"
 import { ItemForm } from "@/components/ItemForm"
@@ -21,25 +22,23 @@ import { cn } from "@/lib/utils"
 export const Route = createFileRoute("/stock/$id/edit")({
   staleTime: 0,
   loader: async ({ params }) => {
-    const [item, allTags, locations, categories] = await Promise.all([
+    const [item, allTags, locations, categoryTree] = await Promise.all([
       getItemById({ data: params.id }),
       listTags(),
       getLocations(),
-      getCategories(),
+      getCategoryTree(),
     ])
     if (!item) throw notFound()
-    return { item, allTags, locations, categories }
+    return { item, allTags, locations, categoryTree }
   },
   component: EditItemPage,
 })
 
 function EditItemPage() {
-  const { item, allTags, locations, categories } = Route.useLoaderData()
+  const { item, allTags, locations, categoryTree } = Route.useLoaderData()
   const navigate = useNavigate()
   const { has } = useAuth()
-  const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
-  const submittingRef = useRef(false)
   const updateItemMutation = useUpdateItem()
   const deleteItemMutation = useDeleteItem()
   const setItemTagsMutation = useSetItemTags()
@@ -49,15 +48,13 @@ function EditItemPage() {
       tagIds: string[]
     }
   ) => {
-    submittingRef.current = true
     setBusy(true)
     try {
       const { tagIds, ...patch } = data
       await updateItemMutation.mutateAsync({ id: item.id, item: patch })
       await setItemTagsMutation.mutateAsync({ itemId: item.id, tagIds })
-      navigate({ to: "/stock" })
+      navigate({ to: "/stock", replace: true })
     } catch (err) {
-      submittingRef.current = false
       setBusy(false)
       throw err
     }
@@ -65,13 +62,11 @@ function EditItemPage() {
 
   const handleDelete = async () => {
     if (!confirm(`Delete "${item.name}"? This cannot be undone.`)) return
-    submittingRef.current = true
     setBusy(true)
     try {
       await deleteItemMutation.mutateAsync(item.id)
       navigate({ to: "/stock" })
     } catch (err) {
-      submittingRef.current = false
       setBusy(false)
       alert(err instanceof Error ? err.message : "Could not delete item.")
     }
@@ -79,7 +74,6 @@ function EditItemPage() {
 
   const handleConvertToBulk = async () => {
     if (!confirm(`Convert "${item.name}" to bulk stock? Its current location, status and condition will become the initial batch. You can manage batches after converting.`)) return
-    submittingRef.current = true
     setBusy(true)
     try {
       await updateItemMutation.mutateAsync({
@@ -88,7 +82,6 @@ function EditItemPage() {
       })
       navigate({ to: "/stock" })
     } catch (err) {
-      submittingRef.current = false
       setBusy(false)
       alert(err instanceof Error ? err.message : "Could not convert item.")
     }
@@ -97,8 +90,7 @@ function EditItemPage() {
   return (
     <PageChrome
       title={item.name}
-      dirty={dirty}
-      submittingRef={submittingRef}
+      backTo={null}
       subtitle={<span className="font-mono tracking-wider">{item.qrCode}</span>}
       aside={
         <div className="flex items-center gap-1">
@@ -155,7 +147,7 @@ function EditItemPage() {
           description: item.description,
           condition: item.condition,
           location: item.location,
-          category: item.category ?? "",
+          categoryId: item.categoryId ?? null,
           status: item.status,
           kind: item.kind,
           quantity: 1,
@@ -166,11 +158,10 @@ function EditItemPage() {
         initialImageKey={item.imageKey}
         availableTags={allTags}
         locationSuggestions={locations}
-        categories={categories}
+        categoryTree={categoryTree}
         initialTagIds={item.tags.map((t) => t.id)}
         canSetRequiredRole={has({ role: "org:admin" })}
         onSubmit={handleSubmit}
-        onDirtyChange={setDirty}
         busy={busy}
         submitLabel="Save Changes"
         hideQrCode

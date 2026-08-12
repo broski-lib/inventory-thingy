@@ -164,10 +164,11 @@ function ScanRoute() {
             </Alert>
           )}
           {scanMessage && (
-            <Alert variant="success">
+            <Alert>
               <AlertDescription className="flex items-center gap-2">
                 <span className="size-2 animate-ping rounded-full bg-success" />
                 {scanMessage}
+
               </AlertDescription>
             </Alert>
           )}

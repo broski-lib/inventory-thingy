@@ -1,4 +1,4 @@
-import { createFileRoute, notFound, useRouter } from "@tanstack/react-router"
+import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import QRCode from "qrcode"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -18,7 +18,7 @@ export const Route = createFileRoute("/stock/$id/print")({
 
 function ItemPrintPage() {
   const { item } = Route.useLoaderData()
-  const router = useRouter()
+  const navigate = useNavigate()
   const [dataUrl, setDataUrl] = useState<string | null>(null)
   const printPx = PRINT_SIZE_PX[item.printSize]
 
@@ -42,7 +42,7 @@ function ItemPrintPage() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => router.history.back()}
+          onClick={() => navigate({ to: "/stock", replace: true })}
         >
           <HugeiconsIcon icon={ArrowLeft01Icon} size={16} />
           Back

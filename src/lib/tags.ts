@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start"
 import { and, asc, eq, inArray } from "drizzle-orm"
-import { getDb, runInTransaction } from "./db"
-import { drizzle } from "drizzle-orm/neon-http"
+import { getDb } from "./db"
 import { items, itemTags, tags } from "./schema"
 import { generateUlid } from "./ids"
 import { assertCanEditItem, authRequiredMiddleware } from "./auth-middleware"
@@ -168,16 +167,13 @@ export const setItemTags = createServerFn({ method: "POST" })
       validIds = rows.map((r) => r.id)
     }
 
-    await runInTransaction(async (tx) => {
-      const txDb = drizzle(tx, { schema: { itemTags } })
-      await txDb
-        .delete(itemTags)
-        .where(and(eq(itemTags.orgId, orgId), eq(itemTags.itemId, itemId)))
-      if (validIds.length > 0) {
-        await txDb
-          .insert(itemTags)
-          .values(validIds.map((tagId) => ({ orgId, itemId, tagId })))
-      }
-    })
+    await db
+      .delete(itemTags)
+      .where(and(eq(itemTags.orgId, orgId), eq(itemTags.itemId, itemId)))
+    if (validIds.length > 0) {
+      await db
+        .insert(itemTags)
+        .values(validIds.map((tagId) => ({ orgId, itemId, tagId })))
+    }
     return { tagIds: validIds }
   })

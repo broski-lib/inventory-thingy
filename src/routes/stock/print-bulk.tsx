@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router"
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import QRCode from "qrcode"
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -31,12 +31,12 @@ type PrintItem = {
 
 function BulkPrintPage() {
   const { items } = Route.useLoaderData()
-  const router = useRouter()
+  const navigate = useNavigate()
   const [printItems, setPrintItems] = useState<PrintItem[]>([])
 
   useEffect(() => {
     if (items.length === 0) {
-      router.history.back()
+      navigate({ to: "/stock", replace: true })
       return
     }
 
@@ -62,7 +62,7 @@ function BulkPrintPage() {
     return () => {
       cancelled = true
     }
-  }, [items, router])
+  }, [items, navigate])
 
   return (
     <div className="min-h-svh bg-white">
@@ -70,7 +70,7 @@ function BulkPrintPage() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => router.history.back()}
+          onClick={() => navigate({ to: "/stock", replace: true })}
         >
           <HugeiconsIcon icon={ArrowLeft01Icon} size={16} />
           Back

@@ -143,11 +143,6 @@ export function ItemCard({
                   Admin only
                 </Badge>
               )}
-              {item.category ? (
-                <Badge variant="outline" className="max-w-[80px] truncate px-1.5 py-0.5 text-[9px] font-semibold">
-                  {item.category}
-                </Badge>
-              ) : null}
             </div>
           </div>
           {item.kind === "bulk" && batches ? (

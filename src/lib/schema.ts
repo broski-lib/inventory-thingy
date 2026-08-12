@@ -83,7 +83,7 @@ export const items = pgTable(
     // For bulk items: whether individual units wear physical QR tags.
     // True = tagged (every unit has its own QR), false = untagged (rack sheet only).
     tagged: boolean("tagged").notNull().default(true),
-    category: text("category").notNull().default(""),
+    categoryId: text("category_id"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -115,6 +115,25 @@ export const tags = pgTable(
   (table) => [
     uniqueIndex("tags_org_name_unique").on(table.orgId, table.name),
     index("idx_tags_org_id").on(table.orgId),
+  ]
+)
+
+export const categories = pgTable(
+  "categories",
+  {
+    id: text("id").primaryKey(),
+    orgId: text("org_id").notNull(),
+    name: text("name").notNull(),
+    parentId: text("parent_id"),
+  },
+  (table) => [
+    index("idx_categories_org_id").on(table.orgId),
+    index("idx_categories_parent_id").on(table.parentId),
+    uniqueIndex("categories_org_parent_name_unique").on(
+      table.orgId,
+      table.parentId,
+      table.name
+    ),
   ]
 )
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useState } from "react"
 import { useForm } from "@tanstack/react-form"
 import { useStore } from "@tanstack/react-store"
 import { Button } from "@/components/ui/button"
@@ -16,9 +16,12 @@ import {
 import { PhotoUpload } from "@/components/PhotoUpload"
 import { TagPicker } from "@/components/TagPicker"
 import { LocationChips } from "@/components/LocationChips"
-import { CategoryChips } from "@/components/CategoryChips"
+import { CategoryPicker, resolveCategoryPath } from "@/components/CategoryPicker"
+import type { CategoryTreeNode } from "@/lib/categories"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useItemPhoto } from "@/hooks/use-item-photo"
+import { createCategory } from "@/lib/categories"
+import { useRouter } from "@tanstack/react-router"
 import { ITEM_CONDITIONS, ITEM_STATUSES } from "@/lib/item-status"
 import type { ItemCondition, ItemKind, ItemStatus } from "@/lib/item-status"
 import { useUploadItemImage, useCreateTag } from "@/lib/queries"
@@ -33,7 +36,7 @@ export type ItemFormValues = {
   description: string
   condition: ItemCondition
   location: string
-  category: string
+  categoryId: string | null
   status: ItemStatus
   kind: ItemKind
   quantity: number
@@ -48,12 +51,11 @@ type ItemFormProps = {
   availableTags?: Tag[]
   initialTagIds?: string[]
   locationSuggestions?: string[]
-  categories?: string[]
+  categoryTree?: CategoryTreeNode[]
   canSetRequiredRole?: boolean
   onSubmit: (
     data: ItemFormValues & { imageKey: string | null; tagIds: string[] }
   ) => Promise<void>
-  onDirtyChange?: (dirty: boolean) => void
   busy?: boolean
   submitLabel: string
   hideQrCode?: boolean
@@ -65,7 +67,7 @@ const EMPTY: ItemFormValues = {
   description: "",
   condition: "Good",
   location: "",
-  category: "",
+  categoryId: null,
   status: "In Storage",
   kind: "unit",
   quantity: 1,
@@ -82,10 +84,9 @@ export function ItemForm({
   availableTags = [],
   initialTagIds = [],
   locationSuggestions = [],
-  categories = [],
+  categoryTree,
   canSetRequiredRole = false,
   onSubmit,
-  onDirtyChange,
   busy = false,
   submitLabel,
   hideQrCode = false,
@@ -95,8 +96,13 @@ export function ItemForm({
   const [imageKeyRemoved, setImageKeyRemoved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showErrors, setShowErrors] = useState(false)
-  const initialTagIdsRef = useRef(initialTagIds)
   const photo = useItemPhoto({ onError: setError })
+  const router = useRouter()
+
+  const onCreateCategory = async (name: string, parentId: string | null) => {
+    await createCategory({ data: { name, parentId } })
+    router.invalidate()
+  }
   const uploadImageMutation = useUploadItemImage()
   const createTagMutation = useCreateTag()
 
@@ -127,23 +133,7 @@ export function ItemForm({
     return !(v.kind === "bulk" && hideQrCode)
   }
 
-  const formDirty = useStore(form.store, (s) => s.isDirty)
   const isSubmitting = useStore(form.store, (s) => s.isSubmitting)
-
-  const isDirty = useMemo(() => {
-    if (imageKeyRemoved) return true
-    if (photo.pendingImage) return true
-    if (formDirty) return true
-    const initialIds = initialTagIdsRef.current
-    return (
-      tagIds.length !== initialIds.length ||
-      tagIds.some((id) => !initialIds.includes(id))
-    )
-  }, [formDirty, tagIds, imageKeyRemoved, photo.pendingImage])
-
-  useEffect(() => {
-    onDirtyChange?.(isDirty)
-  }, [isDirty, onDirtyChange])
 
   const toggleTag = (id: string) => {
     setTagIds((prev) =>
@@ -302,28 +292,6 @@ export function ItemForm({
             )}
           </form.Field>
 
-          {locFieldVisible && (
-            <form.Field name="category">
-              {(field) => (
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="item-category">Category</Label>
-                  <Input
-                    id="item-category"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    placeholder="e.g. Seating, Tables, Lighting"
-                  />
-                  <CategoryChips
-                    categories={categories}
-                    value={field.state.value}
-                    onSelect={(cat) => field.handleChange(cat)}
-                  />
-                </div>
-              )}
-            </form.Field>
-          )}
-
           <div className="grid grid-cols-2 gap-3">
             <form.Field name="status">
               {(field) => (
@@ -373,6 +341,31 @@ export function ItemForm({
             </form.Field>
           </div>
         </>
+      )}
+
+      {locFieldVisible && categoryTree && (
+        <form.Field name="categoryId">
+          {(field) => (
+            <div className="flex flex-col gap-1.5">
+              <Label>Category</Label>
+              {initial.categoryId && field.state.value !== initial.categoryId && categoryTree ? (
+                <p className="-mt-1 text-[11px] text-muted-foreground">
+                  Currently:{" "}
+                  <span className="font-medium">
+                    {resolveCategoryPath(categoryTree, initial.categoryId) || "None"}
+                  </span>
+                </p>
+              ) : null}
+              <CategoryPicker
+                tree={categoryTree}
+                value={field.state.value}
+                initialValue={initial.categoryId}
+                onChange={(id) => field.handleChange(id)}
+                onCreate={onCreateCategory}
+              />
+            </div>
+          )}
+        </form.Field>
       )}
 
       {!hideQrCode && (

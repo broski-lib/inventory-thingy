@@ -1,108 +1,42 @@
-import { useCallback, useEffect, useRef } from "react"
-import type { MutableRefObject, ReactNode } from "react"
-import { useNavigate, useBlocker, useRouter } from "@tanstack/react-router"
+import { useCallback, useRef } from "react"
+import type { ReactNode } from "react"
+import { useNavigate, useRouter } from "@tanstack/react-router"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons"
 import { useEdgeSwipe } from "@/hooks/use-edge-swipe"
 
 type PageChromeProps = {
   title: string
-  /** Route path to navigate to when the back button is tapped.
-   *  Omit or pass `null` to use `history.back()` (recommended for pages
-   *  that should return the user to wherever they came from, preserving
-   *  any filter/page state on the previous route). */
   backTo?: string | null
-  /** Path params for `backTo` when the target is a dynamic route
-   *  (e.g. `/stock/$id/edit` needs `{ id }`). */
   backToParams?: Record<string, string>
-  /** When true, navigation away from this page triggers a confirm dialog
-   *  and the browser beforeunload prompt. */
-  dirty?: boolean
-  /**
-   * Mutable ref the parent sets to `true` while a form is submitting.
-   * When true, the navigation blocker is bypassed so the user isn't
-   * prompted "unsaved changes" after pressing Save. The ref is used
-   * instead of state so the value is updated synchronously before
-   * the parent calls `navigate(...)`.
-   */
-  submittingRef?: MutableRefObject<boolean>
-  /** Optional content rendered below the title (e.g. QR code + status).
-   *  Use for context that disambiguates which entity this page is for. */
   subtitle?: ReactNode
-  /** Optional content rendered on the right side of the header
-   *  (e.g. an Edit link, status badge). Kept distinct from subtitle so
-   *  the title row stays semantically clear. */
   aside?: ReactNode
   children: ReactNode
 }
 
-/**
- * Shared page layout for form-style pages. Renders a sticky header
- * (back arrow + title), a content area that fills the rest of the
- * viewport, and an optional sticky footer inside the form body.
- *
- * Mobile: full-screen, everything below the header is part of the
- * scrolling body. Desktop (>= 768px): content is constrained to
- * max-w-2xl and centered.
- */
 export function PageChrome({
   title,
   backTo,
   backToParams,
-  dirty = false,
-  submittingRef,
   subtitle,
   aside,
   children,
 }: PageChromeProps) {
   const navigate = useNavigate()
   const router = useRouter()
-  const navigatingRef = useRef(false)
-
-  // In-app navigation guard. useBlocker runs the predicate before any
-  // router navigation (Link click, navigate(), back/forward) and
-  // blocks it when the predicate returns true. The submitting ref
-  // lets a form's Save handler bypass the guard so the user isn't
-  // prompted "unsaved changes" after a successful save.
-  useBlocker({
-    shouldBlockFn: () => {
-      if (submittingRef?.current) return false
-      if (!dirty) return false
-      return !window.confirm("You have unsaved changes. Leave anyway?")
-    },
-  })
-
-  // Browser tab close / refresh guard. The beforeunload prompt is
-  // browser-native and can't be styled, but it prevents accidental
-  // data loss.
-  useEffect(() => {
-    if (!dirty) return
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault()
-      e.returnValue = ""
-    }
-    window.addEventListener("beforeunload", handler)
-    return () => window.removeEventListener("beforeunload", handler)
-  }, [dirty])
+  const lastBack = useRef(0)
 
   const handleBack = useCallback(() => {
-    if (navigatingRef.current) return
-    navigatingRef.current = true
+    const now = Date.now()
+    if (now - lastBack.current < 500) return
+    lastBack.current = now
     if (backTo) {
-      navigate({ to: backTo, params: backToParams } as never)
+      navigate({ to: backTo, params: backToParams, replace: true } as never)
     } else {
       router.history.back()
     }
-    // Reset after navigation completes (or fails silently).
-    // Navigate/back are async — the ref prevents double-invoke during
-    // edge-swipe spamming or rapid double-tap.
-    setTimeout(() => {
-      navigatingRef.current = false
-    }, 300)
   }, [navigate, router, backTo, backToParams])
 
-  // Edge-swipe back: swipe right from the left edge, or swipe left
-  // from the right edge, to go back. Reachable by either thumb.
   useEdgeSwipe({ onSwipe: handleBack })
 
   return (
