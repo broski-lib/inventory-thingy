@@ -6,6 +6,7 @@ import {
   BoxIcon,
   Camera01Icon,
   LegalDocument01Icon,
+  LoginMethodIcon,
   PrinterIcon,
   Shield01Icon,
   UserGroupIcon,
@@ -193,7 +194,10 @@ function LegalPage() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-1 p-4 pt-0 text-xs text-muted-foreground">
-                        <p>• Account credentials (email, password hashes).</p>
+                        <p>
+                          • Email and profile info (via SSO providers or
+                          email/password signup).
+                        </p>
                         <p>• Workspace names and co-worker invitations.</p>
                         <p>• User attribution attached to item actions.</p>
                       </CardContent>
@@ -292,6 +296,69 @@ function LegalPage() {
                   <h3 className="flex items-center gap-2 text-base font-semibold text-foreground">
                     <span className="flex size-6 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
                       3
+                    </span>
+                    Single Sign-On (SSO) & Third-Party Login
+                  </h3>
+                  <p className="text-xs text-muted-foreground sm:text-sm">
+                    Inventory Thingy lets you sign in with a third-party
+                    identity provider such as Google (via Clerk) instead of
+                    creating a separate password. SSO is used for one thing
+                    only:{" "}
+                    <strong className="font-semibold text-foreground">
+                      verifying your identity so you can access the Service
+                    </strong>
+                    . We do not use it for tracking, advertising, or any other
+                    purpose.
+                  </p>
+                  <div className="rounded-lg border bg-secondary p-4 text-xs text-muted-foreground">
+                    <span className="mb-2 flex items-center gap-2 font-semibold text-foreground">
+                      <HugeiconsIcon
+                        icon={LoginMethodIcon}
+                        size={16}
+                        strokeWidth={1.8}
+                        className="text-primary"
+                      />
+                      What we receive from the provider
+                    </span>
+                    <ul className="list-disc space-y-1 pl-5">
+                      <li>
+                        <strong className="font-semibold text-foreground">
+                          Email address
+                        </strong>{" "}
+                        — used as your unique account identifier and for
+                        workspace invitations.
+                      </li>
+                      <li>
+                        <strong className="font-semibold text-foreground">
+                          Display name
+                        </strong>{" "}
+                        — shown on your profile and item activity attribution.
+                      </li>
+                      <li>
+                        <strong className="font-semibold text-foreground">
+                          Profile photo (if you allow it)
+                        </strong>{" "}
+                        — displayed alongside your name.
+                      </li>
+                    </ul>
+                  </div>
+                  <p className="text-xs text-muted-foreground sm:text-sm">
+                    We never receive or store your provider password, and we
+                    cannot read, post to, or modify anything else in your Google
+                    (or other provider) account. You may revoke access at any
+                    time from your provider&apos;s account settings, and you can
+                    switch to email/password login or remove the connection in
+                    your Inventory Thingy account settings.
+                  </p>
+                </div>
+
+                <Separator />
+
+                {/* Section 4 */}
+                <div className="space-y-3">
+                  <h3 className="flex items-center gap-2 text-base font-semibold text-foreground">
+                    <span className="flex size-6 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                      4
                     </span>
                     Data Sharing & Privacy Protections
                   </h3>
