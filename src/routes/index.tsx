@@ -151,9 +151,9 @@ function Hero() {
             <span className="text-primary">Inventory Thingy knows.</span>
           </h1>
           <p className="max-w-md text-base text-muted-foreground">
-            A QR-tagged inventory app built for furniture staging teams.
+            Inventory Thingy is a QR-tagged inventory app built for furniture staging teams.
             Register every piece, scan a tag, and know whether it&apos;s in the
-            warehouse, on a truck, or already on set — without spreadsheet
+            warehouse, on a truck, or already on set without spreadsheet
             archaeology.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -182,7 +182,7 @@ function Hero() {
             </Link>
           </div>
           <p className="text-xs text-muted-foreground">
-            Free during the pilot. Bring your own team — invite co-workers from
+            Free during the pilot. Bring your own team, invite co-workers from
             the workspace switcher once you&apos;re in.
           </p>
         </div>
