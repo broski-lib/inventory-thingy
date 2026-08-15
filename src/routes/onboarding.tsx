@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router"
 import { OrganizationList } from "@clerk/tanstack-react-start"
 import { Card, CardContent } from "@/components/ui/card"
 import { requireAuthedNoOrg } from "@/lib/auth-middleware"
+import { shadcn } from '@clerk/ui/themes'
+
 
 export const Route = createFileRoute("/onboarding")({
   server: {
@@ -25,10 +27,13 @@ function OnboardingRoute() {
             </p>
           </div>
           <OrganizationList
-            hidePersonal
+            hidePersonal={true}
             skipInvitationScreen
             afterSelectOrganizationUrl="/home"
             afterCreateOrganizationUrl="/home"
+            appearance={{
+                theme: shadcn,
+              }}
           />
         </CardContent>
       </Card>
