@@ -46,7 +46,7 @@ function LegalPage() {
               aria-hidden
               className="flex size-7 items-center justify-center text-primary-foreground"
             >
-              <img src="/logo.svg" alt="" className="size-4" />
+              <img src="/logo.svg" alt="" className="size-6" />
             </span>
             <span className="text-sm font-semibold tracking-tight">
               Inventory Thingy

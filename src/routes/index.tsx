@@ -78,7 +78,7 @@ function SiteNav() {
             aria-hidden
             className="flex size-7 items-center justify-center text-primary-foreground"
           >
-            <img src="/logo.svg" alt="" className="size-4" />
+            <img src="/logo.svg" alt="" className="size-6" />
           </span>
           Inventory Thingy
         </Link>
