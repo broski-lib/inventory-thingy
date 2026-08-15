@@ -76,7 +76,7 @@ function SiteNav() {
         >
           <span
             aria-hidden
-            className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground"
+            className="flex size-7 items-center justify-center text-primary-foreground"
           >
             <img src="/logo.svg" alt="" className="size-4" />
           </span>

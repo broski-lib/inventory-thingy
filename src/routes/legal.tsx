@@ -44,7 +44,7 @@ function LegalPage() {
           <div className="flex items-center gap-2">
             <span
               aria-hidden
-              className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground"
+              className="flex size-7 items-center justify-center text-primary-foreground"
             >
               <img src="/logo.svg" alt="" className="size-4" />
             </span>
