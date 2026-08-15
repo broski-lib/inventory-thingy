@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as HomeRouteImport } from './routes/home'
+import { Route as LegalRouteImport } from './routes/legal'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as ScanRouteImport } from './routes/scan'
 import { Route as StockRouteImport } from './routes/stock'
@@ -45,6 +46,11 @@ const ActivityRoute = ActivityRouteImport.update({
 const HomeRoute = HomeRouteImport.update({
   id: '/home',
   path: '/home',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalRoute = LegalRouteImport.update({
+  id: '/legal',
+  path: '/legal',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardingRoute = OnboardingRouteImport.update({
@@ -147,6 +153,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
   '/home': typeof HomeRoute
+  '/legal': typeof LegalRoute
   '/onboarding': typeof OnboardingRoute
   '/scan': typeof ScanRouteWithChildren
   '/stock': typeof StockRouteWithChildren
@@ -171,6 +178,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
   '/home': typeof HomeRoute
+  '/legal': typeof LegalRoute
   '/onboarding': typeof OnboardingRoute
   '/login/$': typeof LoginSplatRoute
   '/scan/bulk': typeof ScanBulkRoute
@@ -194,6 +202,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
   '/home': typeof HomeRoute
+  '/legal': typeof LegalRoute
   '/onboarding': typeof OnboardingRoute
   '/scan': typeof ScanRouteWithChildren
   '/stock': typeof StockRouteWithChildren
@@ -220,6 +229,7 @@ export interface FileRouteTypes {
     | '/'
     | '/activity'
     | '/home'
+    | '/legal'
     | '/onboarding'
     | '/scan'
     | '/stock'
@@ -244,6 +254,7 @@ export interface FileRouteTypes {
     | '/'
     | '/activity'
     | '/home'
+    | '/legal'
     | '/onboarding'
     | '/login/$'
     | '/scan/bulk'
@@ -266,6 +277,7 @@ export interface FileRouteTypes {
     | '/'
     | '/activity'
     | '/home'
+    | '/legal'
     | '/onboarding'
     | '/scan'
     | '/stock'
@@ -291,6 +303,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ActivityRoute: typeof ActivityRoute
   HomeRoute: typeof HomeRoute
+  LegalRoute: typeof LegalRoute
   OnboardingRoute: typeof OnboardingRoute
   ScanRoute: typeof ScanRouteWithChildren
   StockRoute: typeof StockRouteWithChildren
@@ -320,6 +333,13 @@ declare module '@tanstack/react-router' {
       path: '/home'
       fullPath: '/home'
       preLoaderRoute: typeof HomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal': {
+      id: '/legal'
+      path: '/legal'
+      fullPath: '/legal'
+      preLoaderRoute: typeof LegalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboarding': {
@@ -504,6 +524,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityRoute: ActivityRoute,
   HomeRoute: HomeRoute,
+  LegalRoute: LegalRoute,
   OnboardingRoute: OnboardingRoute,
   ScanRoute: ScanRouteWithChildren,
   StockRoute: StockRouteWithChildren,
