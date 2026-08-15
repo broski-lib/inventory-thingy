@@ -38,7 +38,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       {
-        title: "Inventory Thingy — Furniture inventory for staging teams",
+        title: "Inventory Thingy",
       },
       {
         name: "description",
