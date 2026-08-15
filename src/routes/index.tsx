@@ -76,7 +76,7 @@ function SiteNav() {
         >
           <span
             aria-hidden
-            className="flex size-7 items-center justify-center text-primary-foreground"
+            className="flex items-center justify-center text-primary-foreground"
           >
             <img src="/logo.svg" alt="" className="size-6" />
           </span>
@@ -548,13 +548,25 @@ function SiteFooter() {
         <div className="flex items-center gap-2">
           <span
             aria-hidden
-            className="flex size-5 items-center justify-center rounded bg-primary text-primary-foreground"
+            className="flex items-center justify-center text-primary-foreground"
           >
-            <HugeiconsIcon icon={Sofa01Icon} size={12} strokeWidth={2} />
+            <img src="/logo.svg" alt="" className="size-6" />
           </span>
           <span>Inventory Thingy · furniture inventory for staging teams</span>
         </div>
         <div className="flex items-center gap-4">
+          <Link
+            to="/legal"
+            className="transition-colors hover:text-foreground"
+          >
+            Privacy Policy
+          </Link>
+          <Link
+            to="/legal"
+            className="transition-colors hover:text-foreground"
+          >
+            Terms of Service
+          </Link>
           <Link
             to="/login/$"
             className="transition-colors hover:text-foreground"
