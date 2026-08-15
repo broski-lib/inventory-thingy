@@ -38,7 +38,7 @@ export const Route = createRootRoute({
         content: "width=device-width, initial-scale=1",
       },
       {
-        title: "Inventory Thingy — Furniture inventory for staging teams",
+        title: "Inventory Thingy",
       },
     ],
     links: [
