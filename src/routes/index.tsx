@@ -143,7 +143,7 @@ function Hero() {
               strokeWidth={2}
               className="text-primary"
             />
-            Furniture inventory · v1
+            inventory thingy · v1
           </span>
           <h1 className="text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
             Where is the camelback sofa?
@@ -182,7 +182,7 @@ function Hero() {
             </Link>
           </div>
           <p className="text-xs text-muted-foreground">
-            Free during the pilot. Bring your own team, invite co-workers from
+            Free during the pilot. Bring your own team; invite co-workers from
             the workspace switcher once you&apos;re in.
           </p>
         </div>
