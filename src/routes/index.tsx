@@ -78,7 +78,7 @@ function SiteNav() {
             aria-hidden
             className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground"
           >
-            <HugeiconsIcon icon={Sofa01Icon} size={16} strokeWidth={1.8} />
+            <img src="/logo.svg" alt="" className="size-4" />
           </span>
           Inventory Thingy
         </Link>

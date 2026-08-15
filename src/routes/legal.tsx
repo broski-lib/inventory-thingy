@@ -8,7 +8,6 @@ import {
   LegalDocument01Icon,
   PrinterIcon,
   Shield01Icon,
-  Sofa01Icon,
   UserGroupIcon,
 } from "@hugeicons/core-free-icons"
 import { Badge } from "@/components/ui/badge"
@@ -47,7 +46,7 @@ function LegalPage() {
               aria-hidden
               className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground"
             >
-              <HugeiconsIcon icon={Sofa01Icon} size={16} strokeWidth={1.8} />
+              <img src="/logo.svg" alt="" className="size-4" />
             </span>
             <span className="text-sm font-semibold tracking-tight">
               Inventory Thingy
