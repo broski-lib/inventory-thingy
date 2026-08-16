@@ -8,6 +8,20 @@
       "when": 1786499296428,
       "tag": "0002_low_aqueduct",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786894327082,
+      "tag": "0003_outstanding_squadron_supreme",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786895042892,
+      "tag": "0004_black_harry_osborn",
+      "breakpoints": true
     }
   ]
 }
