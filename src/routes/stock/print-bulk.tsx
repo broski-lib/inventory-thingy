@@ -4,7 +4,7 @@ import QRCode from "qrcode"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ArrowLeft01Icon, PrinterIcon } from "@hugeicons/core-free-icons"
 import { getItemsByIds } from "@/lib/inventory"
-import { PRINT_SIZE_PX } from "@/lib/print-sheet"
+import { PRINT_SIZE_PX, PRINT_SIZE_ORDER } from "@/lib/print-sheet"
 import type { PrintSize } from "@/lib/schema"
 import { Button } from "@/components/ui/button"
 
@@ -27,6 +27,15 @@ type PrintItem = {
   qrCode: string
   dataUrl: string
   printSize: PrintSize
+}
+
+/** Split into print rows of `size` tags each. */
+function chunkRows<T>(list: T[], size: number): T[][] {
+  const rows: T[][] = []
+  for (let i = 0; i < list.length; i += size) {
+    rows.push(list.slice(i, i + size))
+  }
+  return rows
 }
 
 function BulkPrintPage() {
@@ -53,7 +62,15 @@ function BulkPrintPage() {
       }))
     )
       .then((encoded) => {
-        if (!cancelled) setPrintItems(encoded)
+        if (cancelled) return
+        // Group same-sized tags together so every page of the sheet is
+        // uniform — mixed tag sizes are what caused pages to overrun.
+        const sorted = [...encoded].sort(
+          (a, b) =>
+            PRINT_SIZE_ORDER[a.printSize] - PRINT_SIZE_ORDER[b.printSize] ||
+            a.qrCode.localeCompare(b.qrCode)
+        )
+        setPrintItems(sorted)
       })
       .catch(() => {
         if (!cancelled) setPrintItems([])
@@ -86,46 +103,53 @@ function BulkPrintPage() {
       </div>
 
       <div className="px-4 py-6 print:p-0">
-        <style>{`@media print { .print-tag { break-inside: avoid; page-break-inside: avoid; } .print-tag:nth-child(12n) { page-break-after: always; } .print-tag:last-child { page-break-after: auto; } }`}</style>
-        <h1 className="mb-4 text-center text-sm font-semibold uppercase tracking-wider text-foreground print:hidden">
-          QR Tag Sheet — {printItems.length} item{printItems.length === 1 ? "" : "s"}
+        <style>{`@media print { .print-tag-row { break-inside: avoid; page-break-inside: avoid; } }`}</style>
+        <h1 className="mb-4 text-center text-sm font-semibold tracking-wider text-foreground uppercase print:hidden">
+          QR Tag Sheet — {printItems.length} item
+          {printItems.length === 1 ? "" : "s"}
         </h1>
 
         {printItems.length === 0 ? (
-          <p className="text-center text-muted-foreground">Generating QR codes...</p>
+          <p className="text-center text-muted-foreground">
+            Generating QR codes...
+          </p>
         ) : (
-          <div className="grid grid-cols-3 gap-0 print:grid-cols-3">
-            {printItems.map((item) => {
-              const printPx = PRINT_SIZE_PX[item.printSize]
-              return (
-                <div
-                  key={item.qrCode}
-                  className="print-tag flex flex-col items-center border border-dashed border-border p-2 print:border-black"
-                >
-                  <img
-                    src={item.dataUrl}
-                    alt={`QR for ${item.qrCode}`}
-                    loading="lazy"
-                    decoding="async"
-                    className="aspect-square w-full print:hidden"
-                  />
-                  <img
-                    src={item.dataUrl}
-                    alt={`QR for ${item.qrCode}`}
-                    style={{ width: printPx, height: printPx }}
-                    loading="lazy"
-                    decoding="async"
-                    className="hidden print:block"
-                  />
-                  <p className="mt-1 max-w-full truncate text-center font-mono text-[8px] font-bold tracking-wide">
-                    {item.qrCode}
-                  </p>
-                  <p className="mt-0.5 max-w-full truncate text-center text-[7px] text-muted-foreground">
-                    {item.name}
-                  </p>
-                </div>
-              )
-            })}
+          <div className="flex flex-col gap-0">
+            {chunkRows(printItems, 3).map((row, i) => (
+              <div key={i} className="print-tag-row grid grid-cols-3">
+                {row.map((item) => {
+                  const printPx = PRINT_SIZE_PX[item.printSize]
+                  return (
+                    <div
+                      key={item.qrCode}
+                      className="flex flex-col items-center border border-dashed border-border p-2 print:border-black"
+                    >
+                      <img
+                        src={item.dataUrl}
+                        alt={`QR for ${item.qrCode}`}
+                        loading="lazy"
+                        decoding="async"
+                        className="aspect-square w-full print:hidden"
+                      />
+                      <img
+                        src={item.dataUrl}
+                        alt={`QR for ${item.qrCode}`}
+                        style={{ width: printPx, height: printPx }}
+                        loading="lazy"
+                        decoding="async"
+                        className="hidden print:block"
+                      />
+                      <p className="mt-1 max-w-full truncate text-center font-mono text-[8px] font-bold tracking-wide">
+                        {item.qrCode}
+                      </p>
+                      <p className="mt-0.5 max-w-full truncate text-center text-[7px] text-muted-foreground">
+                        {item.name}
+                      </p>
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
           </div>
         )}
       </div>

@@ -72,7 +72,10 @@ function ScanRoute() {
     }
     if (newStatus === "Repair") updates.condition = "Repair"
     try {
-      const updated = await updateItemMutation.mutateAsync({ id: item.id, item: updates })
+      const updated = await updateItemMutation.mutateAsync({
+        id: item.id,
+        item: updates,
+      })
       setScanMessage(`Status set to ${newStatus}`)
       navigate({
         to: "/scan",
@@ -168,7 +171,6 @@ function ScanRoute() {
               <AlertDescription className="flex items-center gap-2">
                 <span className="size-2 animate-ping rounded-full bg-success" />
                 {scanMessage}
-
               </AlertDescription>
             </Alert>
           )}
@@ -179,7 +181,10 @@ function ScanRoute() {
                 <div className="flex gap-3">
                   <button
                     type="button"
-                    onClick={() => scannedItem.imageUrl && setPreviewImage(scannedItem.imageUrl)}
+                    onClick={() =>
+                      scannedItem.imageUrl &&
+                      setPreviewImage(scannedItem.imageUrl)
+                    }
                     className="size-20 shrink-0 overflow-hidden rounded-lg border border-border bg-accent"
                     aria-label="View full image"
                   >
@@ -206,12 +211,15 @@ function ScanRoute() {
                       </h3>
                       {isBulk ? (
                         <div className="flex shrink-0 items-center gap-1">
-                          <Badge variant={scannedItem.tagged ? "available" : "neutral"}>
+                          <Badge
+                            variant={
+                              scannedItem.tagged ? "available" : "neutral"
+                            }
+                          >
                             {scannedItem.tagged ? "Tagged" : "Untagged"}
                           </Badge>
                           <Badge variant="neutral">
-                            ×
-                            {scannedBatches.reduce((sum, b) => sum + b.qty, 0)}
+                            ×{scannedBatches.reduce((sum, b) => sum + b.qty, 0)}
                           </Badge>
                         </div>
                       ) : (
@@ -237,13 +245,17 @@ function ScanRoute() {
                       <span className="block text-[10px] font-bold text-muted-foreground uppercase">
                         Location
                       </span>
-                      <span className="font-medium">{scannedItem.location}</span>
+                      <span className="font-medium">
+                        {scannedItem.location}
+                      </span>
                     </div>
                     <div>
                       <span className="block text-[10px] font-bold text-muted-foreground uppercase">
                         Condition
                       </span>
-                      <span className="font-medium">{scannedItem.condition}</span>
+                      <span className="font-medium">
+                        {scannedItem.condition}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -317,56 +329,59 @@ function ScanRoute() {
               </CardContent>
 
               {isBulk && (
-                <BatchManager itemId={scannedItem.id} batches={scannedBatches} />
+                <BatchManager
+                  itemId={scannedItem.id}
+                  batches={scannedBatches}
+                />
               )}
 
               {!isBulk && (
-              <div className="sticky bottom-0 -mx-4 mt-4 border-t border-border bg-secondary px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-                {scannedItem.status === "Pending Tag" ? (
-                  <Button
-                    onClick={() =>
-                      handleQuickStatus(
-                        scannedItem,
-                        "In Storage",
-                        fallbackLocation
-                      )
-                    }
-                    className="h-12 w-full px-6"
-                  >
-                    <BoltIcon />
-                    Mark Tag Added
-                  </Button>
-                ) : scannedItem.status !== "Reserved" &&
-                  scannedItem.status !== "Staged" ? (
-                  <Button
-                    onClick={() =>
-                      handleQuickStatus(
-                        scannedItem,
-                        "Reserved",
-                        "Staging Staged"
-                      )
-                    }
-                    className="h-12 w-full px-6"
-                  >
-                    <BoltIcon />
-                    Check Out
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={() =>
-                      handleQuickStatus(
-                        scannedItem,
-                        "In Storage",
-                        fallbackLocation
-                      )
-                    }
-                    className="h-12 w-full px-6 bg-success hover:bg-success/90"
-                  >
-                    <BoltIcon />
-                    Check In
-                  </Button>
-                )}
-              </div>
+                <div className="sticky bottom-24 -mx-4 mt-4 border-t border-border bg-secondary px-4 pt-3 pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.5rem))]">
+                  {scannedItem.status === "Pending Tag" ? (
+                    <Button
+                      onClick={() =>
+                        handleQuickStatus(
+                          scannedItem,
+                          "In Storage",
+                          fallbackLocation
+                        )
+                      }
+                      className="h-12 w-full px-6"
+                    >
+                      <BoltIcon />
+                      Mark Tag Added
+                    </Button>
+                  ) : scannedItem.status !== "Reserved" &&
+                    scannedItem.status !== "Staged" ? (
+                    <Button
+                      onClick={() =>
+                        handleQuickStatus(
+                          scannedItem,
+                          "Reserved",
+                          "Staging Staged"
+                        )
+                      }
+                      className="h-12 w-full px-6"
+                    >
+                      <BoltIcon />
+                      Check Out
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() =>
+                        handleQuickStatus(
+                          scannedItem,
+                          "In Storage",
+                          fallbackLocation
+                        )
+                      }
+                      className="h-12 w-full bg-success px-6 hover:bg-success/90"
+                    >
+                      <BoltIcon />
+                      Check In
+                    </Button>
+                  )}
+                </div>
               )}
             </Card>
           ) : failedCode ? (

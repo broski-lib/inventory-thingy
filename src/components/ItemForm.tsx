@@ -16,7 +16,10 @@ import {
 import { PhotoUpload } from "@/components/PhotoUpload"
 import { TagPicker } from "@/components/TagPicker"
 import { LocationChips } from "@/components/LocationChips"
-import { CategoryPicker, resolveCategoryPath } from "@/components/CategoryPicker"
+import {
+  CategoryPicker,
+  resolveCategoryPath,
+} from "@/components/CategoryPicker"
 import type { CategoryTreeNode } from "@/lib/categories"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useItemPhoto } from "@/hooks/use-item-photo"
@@ -109,7 +112,11 @@ export function ItemForm({
   const form = useForm({
     defaultValues: initial,
     onSubmit: async ({ value }) => {
-      if (!value.name.trim() || (locationFieldVisible(value) && !value.location.trim())) {
+      if (
+        !value.name.trim() ||
+        (locationFieldVisible(value) && !value.location.trim()) ||
+        (categoryTree && !value.categoryId)
+      ) {
         setShowErrors(true)
         setError("Fill in the required fields highlighted below.")
         return
@@ -172,6 +179,8 @@ export function ItemForm({
   const locFieldVisible = locationFieldVisible(form.state.values)
   const nameError = showErrors && !name.trim()
   const locationError = showErrors && locFieldVisible && !location.trim()
+  const categoryError =
+    showErrors && !!categoryTree && !form.state.values.categoryId
 
   return (
     <form
@@ -244,8 +253,8 @@ export function ItemForm({
 
       {kind === "bulk" && hideQrCode ? (
         <p className="rounded-lg border border-border bg-muted px-3 py-2 text-[11px] text-muted-foreground">
-          Location, status and condition are tracked per batch — manage them
-          in the batches section below.
+          Location, status and condition are tracked per batch — manage them in
+          the batches section below.
         </p>
       ) : (
         <>
@@ -343,16 +352,21 @@ export function ItemForm({
         </>
       )}
 
-      {locFieldVisible && categoryTree && (
+      {categoryTree && (
         <form.Field name="categoryId">
           {(field) => (
             <div className="flex flex-col gap-1.5">
-              <Label>Category</Label>
-              {initial.categoryId && field.state.value !== initial.categoryId && categoryTree ? (
+              <Label>
+                Category <span className="text-destructive">*</span>
+              </Label>
+              {initial.categoryId &&
+              field.state.value !== initial.categoryId &&
+              categoryTree ? (
                 <p className="-mt-1 text-[11px] text-muted-foreground">
                   Currently:{" "}
                   <span className="font-medium">
-                    {resolveCategoryPath(categoryTree, initial.categoryId) || "None"}
+                    {resolveCategoryPath(categoryTree, initial.categoryId) ||
+                      "None"}
                   </span>
                 </p>
               ) : null}
@@ -363,6 +377,11 @@ export function ItemForm({
                 onChange={(id) => field.handleChange(id)}
                 onCreate={onCreateCategory}
               />
+              {categoryError && (
+                <p className="text-[11px] font-medium text-destructive">
+                  Category is required.
+                </p>
+              )}
             </div>
           )}
         </form.Field>
@@ -519,31 +538,31 @@ export function ItemForm({
 
       {(kind !== "bulk" || tagged) && (
         <form.Field name="printSize">
-        {(field) => (
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="item-print-size">QR print size</Label>
-            <Select
-              value={field.state.value}
-              onValueChange={(v) => field.handleChange(v as PrintSize)}
-            >
-              <SelectTrigger id="item-print-size">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PRINT_SIZES.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s.charAt(0).toUpperCase() + s.slice(1)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-[11px] text-muted-foreground">
-              Small for tiny items (plants, jewelry), large for oversized items
-              (paintings, rugs).
-            </p>
-          </div>
-        )}
-      </form.Field>
+          {(field) => (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="item-print-size">QR print size</Label>
+              <Select
+                value={field.state.value}
+                onValueChange={(v) => field.handleChange(v as PrintSize)}
+              >
+                <SelectTrigger id="item-print-size">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRINT_SIZES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s.charAt(0).toUpperCase() + s.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Small for tiny items (plants, jewelry), large for oversized
+                items (paintings, rugs).
+              </p>
+            </div>
+          )}
+        </form.Field>
       )}
 
       {canSetRequiredRole && (

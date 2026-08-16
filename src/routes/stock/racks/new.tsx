@@ -1,50 +1,37 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router"
-import { useState, useMemo } from "react"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { BoxIcon } from "@hugeicons/core-free-icons"
+import { useState } from "react"
 import { createRack } from "@/lib/racks"
-import { getItemsPage, getLocations } from "@/lib/inventory"
+import { getLocations } from "@/lib/inventory"
+import { getCategoryTree } from "@/lib/categories"
+import { listTags } from "@/lib/tags"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LocationChips } from "@/components/LocationChips"
+import { RackItemPicker } from "@/components/RackItemPicker"
 import { PageChrome } from "@/components/PageChrome"
-import { Checkbox } from "@/components/ui/checkbox"
-import { SearchInput } from "@/components/SearchInput"
 
 export const Route = createFileRoute("/stock/racks/new")({
   loader: async () => {
-    const [locations, itemsPage] = await Promise.all([
+    const [locations, categoryTree, allTags] = await Promise.all([
       getLocations(),
-      getItemsPage({
-        data: { page: 1, pageSize: 200, kinds: ["bulk"], sort: "updated_desc" },
-      }),
+      getCategoryTree(),
+      listTags(),
     ])
-    return { locations, bulkItems: itemsPage.items }
+    return { locations, categoryTree, allTags }
   },
   component: NewRackPage,
 })
 
 function NewRackPage() {
-  const { locations, bulkItems } = Route.useLoaderData()
+  const { locations, categoryTree, allTags } = Route.useLoaderData()
   const navigate = useNavigate()
   const router = useRouter()
   const [name, setName] = useState("")
   const [location, setLocation] = useState("")
-  const [search, setSearch] = useState("")
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim()
-    if (!q) return bulkItems
-    return bulkItems.filter(
-      (it) =>
-        it.name.toLowerCase().includes(q) ||
-        it.qrCode.toLowerCase().includes(q)
-    )
-  }, [bulkItems, search])
 
   const toggleItem = (id: string) => {
     setSelected((prev) => {
@@ -118,57 +105,21 @@ function NewRackPage() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label>Items on this rack</Label>
-          <SearchInput
-            value={search}
-            onChange={setSearch}
-            placeholder="Search bulk items..."
+          <Label>
+            Items on this rack{" "}
+            {selected.size > 0 && (
+              <span className="font-normal text-muted-foreground">
+                ({selected.size} selected)
+              </span>
+            )}
+          </Label>
+          <RackItemPicker
+            selectedIds={selected}
+            onToggle={toggleItem}
+            locations={locations}
+            categoryTree={categoryTree}
+            allTags={allTags}
           />
-          {filtered.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-border bg-card p-6 text-center text-xs text-muted-foreground">
-              No bulk items found. Create bulk items first.
-            </p>
-          ) : (
-            <div className="max-h-80 space-y-1 overflow-y-auto rounded-lg border border-border bg-card">
-              {filtered.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center gap-3 border-b border-border px-3 py-2.5 last:border-0"
-                >
-                  <Checkbox
-                    checked={selected.has(item.id)}
-                    onCheckedChange={() => toggleItem(item.id)}
-                    className="size-4 shrink-0 rounded"
-                  />
-                  <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-accent">
-                    {item.imageUrl ? (
-                      <img
-                        src={item.imageUrl}
-                        alt={item.name}
-                        className="size-full object-cover"
-                      />
-                    ) : (
-                      <HugeiconsIcon
-                        icon={BoxIcon}
-                        size={18}
-                        strokeWidth={1.5}
-                        className="text-primary"
-                      />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-semibold">
-                      {item.name}
-                    </p>
-                    <p className="truncate text-[10px] text-muted-foreground">
-                      {item.qrCode}
-                      {item.tagged ? " · Tagged" : " · Untagged"}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
         <div className="sticky bottom-0 -mx-4 mt-2 border-t border-border bg-secondary px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
@@ -178,7 +129,9 @@ function NewRackPage() {
             disabled={busy || !name.trim()}
             className="h-12 w-full"
           >
-            {busy ? "Creating..." : `Create rack${selected.size > 0 ? ` (${selected.size} items)` : ""}`}
+            {busy
+              ? "Creating..."
+              : `Create rack${selected.size > 0 ? ` (${selected.size} items)` : ""}`}
           </Button>
         </div>
       </div>

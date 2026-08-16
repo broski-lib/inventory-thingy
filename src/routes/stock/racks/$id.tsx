@@ -1,7 +1,18 @@
-import { createFileRoute, useNavigate, useRouter, notFound } from "@tanstack/react-router"
+import {
+  createFileRoute,
+  useNavigate,
+  useRouter,
+  useMatch,
+  Outlet,
+  notFound,
+} from "@tanstack/react-router"
 import { useState, useEffect } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowLeft01Icon, BoxIcon, PrinterIcon } from "@hugeicons/core-free-icons"
+import {
+  ArrowLeft01Icon,
+  BoxIcon,
+  PrinterIcon,
+} from "@hugeicons/core-free-icons"
 import { getRack } from "@/lib/racks"
 import { getLocations } from "@/lib/inventory"
 import { useUpdateRack, useDeleteRack } from "@/lib/queries"
@@ -36,12 +47,24 @@ function RackViewPage() {
   const { rack, locations } = Route.useLoaderData()
   const { view } = Route.useSearch()
   const navigate = useNavigate()
+  // `/stock/racks/$id/items` is a child route — render it in place of the
+  // detail view when it matches (this layout has no outlet of its own).
+  const onItemsRoute = useMatch({
+    from: "/stock/racks/$id/items",
+    shouldThrow: false,
+  })
 
   if (view === "print") {
     return <RackPrintView rack={rack} />
   }
 
-  return <RackDetailView rack={rack} locations={locations} navigate={navigate} />
+  if (onItemsRoute) {
+    return <Outlet />
+  }
+
+  return (
+    <RackDetailView rack={rack} locations={locations} navigate={navigate} />
+  )
 }
 
 function RackDetailView({
@@ -98,17 +121,65 @@ function RackDetailView({
         <div className="flex items-center gap-1">
           {editing ? (
             <>
-              <Button type="button" variant="default" size="sm" onClick={handleSave} disabled={busy || !name.trim()} className="h-8">Save</Button>
-              <Button type="button" variant="ghost" size="sm" onClick={() => { setName(rack.name); setLocation(rack.location); setEditing(false) }} disabled={busy} className="h-8 text-muted-foreground">Cancel</Button>
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                onClick={handleSave}
+                disabled={busy || !name.trim()}
+                className="h-8"
+              >
+                Save
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setName(rack.name)
+                  setLocation(rack.location)
+                  setEditing(false)
+                }}
+                disabled={busy}
+                className="h-8 text-muted-foreground"
+              >
+                Cancel
+              </Button>
             </>
           ) : (
             <>
-              <Button type="button" variant="outline" size="sm" onClick={() => navigate({ to: "/stock/racks/$id", params: { id: rack.id }, search: { view: "print" } })} className="h-8">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  navigate({
+                    to: "/stock/racks/$id",
+                    params: { id: rack.id },
+                    search: { view: "print" },
+                  })
+                }
+                className="h-8"
+              >
                 <HugeiconsIcon icon={PrinterIcon} size={14} strokeWidth={1.8} />
                 Print
               </Button>
-              <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(true)} className="h-8">Edit</Button>
-              <button type="button" onClick={handleDelete} disabled={busy} aria-label="Delete rack" className="inline-flex size-8 items-center justify-center rounded-lg text-destructive hover:bg-destructive/10 disabled:opacity-50">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditing(true)}
+                className="h-8"
+              >
+                Edit
+              </Button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={busy}
+                aria-label="Delete rack"
+                className="inline-flex size-8 items-center justify-center rounded-lg text-destructive hover:bg-destructive/10 disabled:opacity-50"
+              >
                 <TrashIcon className="size-3.5" />
               </button>
             </>
@@ -123,37 +194,75 @@ function RackDetailView({
               <div className="flex flex-col gap-2">
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="rack-name">Name</Label>
-                  <Input id="rack-name" value={name} onChange={(e) => setName(e.target.value)} className="text-base sm:text-sm" />
+                  <Input
+                    id="rack-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="text-base sm:text-sm"
+                  />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="rack-location">Location</Label>
-                  <Input id="rack-location" value={location} onChange={(e) => setLocation(e.target.value)} className="text-base sm:text-sm" />
-                  <LocationChips locations={locations} value={location} onSelect={setLocation} />
+                  <Input
+                    id="rack-location"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="text-base sm:text-sm"
+                  />
+                  <LocationChips
+                    locations={locations}
+                    value={location}
+                    onSelect={setLocation}
+                  />
                 </div>
               </div>
             ) : (
               <>
                 <h2 className="text-base font-bold">{rack.name}</h2>
                 {rack.location && (
-                  <p className="mt-1 text-[10px] font-bold tracking-wider text-muted-foreground uppercase">{rack.location}</p>
+                  <p className="mt-1 text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                    {rack.location}
+                  </p>
                 )}
               </>
             )}
           </div>
           <div className="flex items-center gap-4 px-4 py-3">
             <div className="min-w-0 flex-1">
-              <span className="font-mono text-xs text-muted-foreground">{rack.qrCode}</span>
-              <p className="mt-1 text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                {rack.items.length} {rack.items.length === 1 ? "item" : "items"} &middot;{" "}{totalQty} total units
-              </p>
+              <span className="font-mono text-xs text-muted-foreground">
+                {rack.qrCode}
+              </span>
             </div>
             <RackQr code={rack.qrCode} />
           </div>
         </div>
 
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+            {rack.items.length} {rack.items.length === 1 ? "item" : "items"}{" "}
+            &middot; {totalQty} total units
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              navigate({
+                to: "/stock/racks/$id/items",
+                params: { id: rack.id },
+              })
+            }
+            className="h-8 shrink-0"
+          >
+            Edit items
+          </Button>
+        </div>
+
         {rack.items.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center">
-            <p className="text-xs text-muted-foreground">No items on this rack. Edit to add items.</p>
+            <p className="text-xs text-muted-foreground">
+              No items on this rack yet. Use "Edit items" to add some.
+            </p>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
@@ -161,25 +270,54 @@ function RackDetailView({
               <button
                 key={item.id}
                 type="button"
-                onClick={() => navigate({ to: "/stock/$id/edit", params: { id: item.id } })}
+                onClick={() =>
+                  navigate({ to: "/stock/$id/edit", params: { id: item.id } })
+                }
                 className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-card p-3 text-left transition-all hover:border-primary"
               >
                 <div className="flex size-12 shrink-0 items-center justify-center rounded-lg border border-border bg-accent">
                   {item.imageUrl ? (
-                    <img src={item.imageUrl} alt={item.name} className="size-full rounded-lg object-cover" />
+                    <img
+                      src={item.imageUrl}
+                      alt={item.name}
+                      className="size-full rounded-lg object-cover"
+                    />
                   ) : (
-                    <HugeiconsIcon icon={BoxIcon} size={22} strokeWidth={1.5} className="text-primary" />
+                    <HugeiconsIcon
+                      icon={BoxIcon}
+                      size={22}
+                      strokeWidth={1.5}
+                      className="text-primary"
+                    />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <h3 className="truncate text-sm font-semibold">{item.name}</h3>
-                    <span className="shrink-0 text-sm font-bold">&times;{item.rackQty}</span>
+                    <h3 className="truncate text-sm font-semibold">
+                      {item.name}
+                    </h3>
+                    {item.kind === "bulk" && (
+                      <span className="shrink-0 text-sm font-bold">
+                        &times;{item.rackQty}
+                      </span>
+                    )}
                   </div>
-                  <p className="font-mono text-[10px] text-muted-foreground">{item.qrCode}</p>
+                  <p className="font-mono text-[10px] text-muted-foreground">
+                    {item.qrCode}
+                  </p>
                   <div className="mt-1 flex flex-wrap items-center gap-1">
-                    <Badge variant={item.tagged ? "available" : "neutral"} className="text-[9px]">{item.tagged ? "Tagged" : "Untagged"}</Badge>
-                    <Badge variant={getStatusBadgeVariant(item.status)} className="text-[9px]">{item.status}</Badge>
+                    <Badge
+                      variant={item.tagged ? "available" : "neutral"}
+                      className="text-[9px]"
+                    >
+                      {item.tagged ? "Tagged" : "Untagged"}
+                    </Badge>
+                    <Badge
+                      variant={getStatusBadgeVariant(item.status)}
+                      className="text-[9px]"
+                    >
+                      {item.status}
+                    </Badge>
                   </div>
                 </div>
               </button>
@@ -203,19 +341,34 @@ function RackPrintView({
   useEffect(() => {
     let cancelled = false
     QRCode.toDataURL(rack.qrCode, { width: 200, margin: 1 })
-      .then((url) => { if (!cancelled) setRackQr(url) })
-      .catch(() => { if (!cancelled) setRackQr(null) })
+      .then((url) => {
+        if (!cancelled) setRackQr(url)
+      })
+      .catch(() => {
+        if (!cancelled) setRackQr(null)
+      })
     Promise.all(
       rack.items.map(async (item) => {
-        const url = await QRCode.toDataURL(item.qrCode, { width: 120, margin: 0 }).catch(() => null)
+        const url = await QRCode.toDataURL(item.qrCode, {
+          width: 120,
+          margin: 0,
+        }).catch(() => null)
         return { id: item.id, url }
       })
     ).then((results) => {
       if (!cancelled) {
-        setItemQrs(new Map(results.filter((r): r is { id: string; url: string } => r.url !== null).map((r) => [r.id, r.url])))
+        setItemQrs(
+          new Map(
+            results
+              .filter((r): r is { id: string; url: string } => r.url !== null)
+              .map((r) => [r.id, r.url])
+          )
+        )
       }
     })
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [rack])
 
   return (
@@ -232,7 +385,9 @@ function RackPrintView({
           <HugeiconsIcon icon={ArrowLeft01Icon} size={16} />
           Back
         </Button>
-        <h1 className="text-xs font-semibold tracking-wider uppercase text-muted-foreground">Print Rack Sheet</h1>
+        <h1 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+          Print Rack Sheet
+        </h1>
         <Button size="sm" onClick={() => window.print()} disabled={!rackQr}>
           <HugeiconsIcon icon={PrinterIcon} size={16} />
           Print
@@ -240,31 +395,60 @@ function RackPrintView({
       </div>
 
       <div className="flex justify-center px-4 py-8 print:p-0">
-        <div className="w-full max-w-md rounded-xl border-2 border-border bg-white p-5 print-sheet print:max-w-full print:rounded-none print:border print:border-black print:p-4">
+        <div className="print-sheet w-full max-w-md rounded-xl border-2 border-border bg-white p-5 print:max-w-full print:rounded-none print:border print:border-black print:p-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
-              <h2 className="text-lg font-bold tracking-wider uppercase">{rack.name}</h2>
-              <p className="mt-1 font-mono text-[10px] font-bold tracking-wider text-muted-foreground">{rack.qrCode}</p>
+              <h2 className="text-lg font-bold tracking-wider uppercase">
+                {rack.name}
+              </h2>
+              <p className="mt-1 font-mono text-[10px] font-bold tracking-wider text-muted-foreground">
+                {rack.qrCode}
+              </p>
               {rack.location && (
-                <p className="mt-0.5 text-[10px] font-bold tracking-wider text-muted-foreground uppercase">{rack.location}</p>
+                <p className="mt-0.5 text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                  {rack.location}
+                </p>
               )}
             </div>
-            {rackQr ? <img src={rackQr} alt={`QR: ${rack.qrCode}`} className="size-28 shrink-0 print:size-28" /> : <div className="size-28 shrink-0 rounded border border-border bg-muted" />}
+            {rackQr ? (
+              <img
+                src={rackQr}
+                alt={`QR: ${rack.qrCode}`}
+                className="size-28 shrink-0 print:size-28"
+              />
+            ) : (
+              <div className="size-28 shrink-0 rounded border border-border bg-muted" />
+            )}
           </div>
 
           <hr className="my-4 border-border print:border-black" />
 
           {rack.items.length === 0 ? (
-            <div className="py-8 text-center text-xs text-muted-foreground">No items</div>
+            <div className="py-8 text-center text-xs text-muted-foreground">
+              No items
+            </div>
           ) : (
             <div className="flex flex-col">
               {rack.items.map((item, i) => (
-                <div key={item.id} className={`flex items-start justify-between gap-4 py-3 ${i < rack.items.length - 1 ? "border-dashed border-border print-row" : ""}`}>
+                <div
+                  key={item.id}
+                  className={`flex items-start justify-between gap-4 py-3 ${i < rack.items.length - 1 ? "print-row border-dashed border-border" : ""}`}
+                >
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold">{item.name}</p>
-                    <p className="font-mono text-[10px] tracking-wider text-muted-foreground">{item.qrCode}</p>
+                    <p className="font-mono text-[10px] tracking-wider text-muted-foreground">
+                      {item.qrCode}
+                    </p>
                   </div>
-                  {itemQrs.get(item.id) ? <img src={itemQrs.get(item.id)} alt={`QR: ${item.qrCode}`} className="size-16 shrink-0 print:size-16" /> : <div className="size-16 shrink-0 rounded border border-border bg-muted" />}
+                  {itemQrs.get(item.id) ? (
+                    <img
+                      src={itemQrs.get(item.id)}
+                      alt={`QR: ${item.qrCode}`}
+                      className="size-16 shrink-0 print:size-16"
+                    />
+                  ) : (
+                    <div className="size-16 shrink-0 rounded border border-border bg-muted" />
+                  )}
                 </div>
               ))}
             </div>
@@ -280,10 +464,20 @@ function RackPrintView({
 function RackQr({ code }: { code: string }) {
   const [dataUrl, setDataUrl] = useState<string | null>(null)
   useEffect(() => {
-    QRCode.toDataURL(code, { width: 160, margin: 1, color: { dark: "#000", light: "#fff" } })
+    QRCode.toDataURL(code, {
+      width: 160,
+      margin: 1,
+      color: { dark: "#000", light: "#fff" },
+    })
       .then(setDataUrl)
       .catch(() => setDataUrl(null))
   }, [code])
   if (!dataUrl) return null
-  return <img src={dataUrl} alt={`QR: ${code}`} className="size-20 shrink-0 rounded-lg" />
+  return (
+    <img
+      src={dataUrl}
+      alt={`QR: ${code}`}
+      className="size-20 shrink-0 rounded-lg"
+    />
+  )
 }

@@ -2,8 +2,21 @@ import { createServerFn } from "@tanstack/react-start"
 import { and, asc, eq, ilike, inArray, ne, or, desc, sql } from "drizzle-orm"
 import type { SQL } from "drizzle-orm"
 import { getDb } from "./db"
-import { items, activityLogs, itemBatches, itemTags, tags, categories } from "./schema"
-import type { ItemCondition, ItemKind, ItemStatus, StockSort, StockStatusFilter } from "./constants"
+import {
+  items,
+  activityLogs,
+  itemBatches,
+  itemTags,
+  tags,
+  categories,
+} from "./schema"
+import type {
+  ItemCondition,
+  ItemKind,
+  ItemStatus,
+  StockSort,
+  StockStatusFilter,
+} from "./constants"
 import { generateUlid } from "./ids"
 import { logActivity, resolveActor } from "./activity"
 import type { ActivityActor, ActivityLog } from "./activity"
@@ -97,12 +110,7 @@ function stateFilter(
   const batchMatch = db
     .select({ itemId: itemBatches.itemId })
     .from(itemBatches)
-    .where(
-      and(
-        eq(itemBatches.orgId, orgId),
-        inArray(itemBatches[col], values)
-      )
-    )
+    .where(and(eq(itemBatches.orgId, orgId), inArray(itemBatches[col], values)))
   return or(
     and(ne(items.kind, "bulk"), unitCondition),
     inArray(items.id, batchMatch)
@@ -123,10 +131,7 @@ function buildItemsWhere(
     const tagMatch = db
       .select({ itemId: itemTags.itemId })
       .from(itemTags)
-      .innerJoin(
-        tags,
-        and(eq(itemTags.tagId, tags.id), eq(tags.orgId, orgId))
-      )
+      .innerJoin(tags, and(eq(itemTags.tagId, tags.id), eq(tags.orgId, orgId)))
       .where(and(eq(itemTags.orgId, orgId), ilike(tags.name, s)))
     // Bulk items with a batch in a matching location.
     const batchLocationMatch = db
@@ -150,13 +155,7 @@ function buildItemsWhere(
   if (args.statusFilter && args.statusFilter !== "All") {
     const list = statusGroupList(args.statusFilter)
     conditions.push(
-      stateFilter(
-        orgId,
-        db,
-        "status",
-        inArray(items.status, list),
-        list
-      )
+      stateFilter(orgId, db, "status", inArray(items.status, list), list)
     )
   }
   if (args.statuses && args.statuses.length > 0) {
@@ -384,7 +383,10 @@ export const getMostCommonLocation = createServerFn({ method: "GET" })
     let best = ""
     let bestCount = 0
     for (const [loc, count] of totals) {
-      if (count > bestCount) { best = loc; bestCount = count }
+      if (count > bestCount) {
+        best = loc
+        bestCount = count
+      }
     }
     return best || null
   })
@@ -517,6 +519,20 @@ export const getItemByQrCode = createServerFn({ method: "GET" })
     }
   )
 
+/** Throw unless the category exists in the caller's org. */
+async function assertValidCategory(
+  db: ReturnType<typeof getDb>,
+  orgId: string,
+  categoryId: string
+): Promise<void> {
+  const [cat] = await db
+    .select({ id: categories.id })
+    .from(categories)
+    .where(and(eq(categories.orgId, orgId), eq(categories.id, categoryId)))
+    .limit(1)
+  if (!cat) throw new Error("Category not found")
+}
+
 /** Validate a requiredRole change. Only org admins may restrict items. */
 function assertValidRequiredRole(
   has: HasFn,
@@ -554,7 +570,11 @@ export const createItem = createServerFn({ method: "POST" })
         id = generateUlid()
       }
     }
-    if (idCollision) throw new Error("Failed to generate a unique ID — please try again")
+    if (idCollision)
+      throw new Error("Failed to generate a unique ID — please try again")
+
+    if (!item.categoryId) throw new Error("Category is required")
+    await assertValidCategory(db, orgId, item.categoryId)
 
     assertValidRequiredRole(has, item.requiredRole)
 
@@ -578,6 +598,7 @@ export const createItem = createServerFn({ method: "POST" })
         location: item.location,
         status: item.status,
         categoryId: item.categoryId ?? null,
+        tagged: item.tagged ?? true,
         imageUrl,
         imageKey,
         printSize: item.printSize ?? "medium",
@@ -634,6 +655,15 @@ export const updateItem = createServerFn({ method: "POST" })
 
     assertCanEditItem(has, current.requiredRole)
     assertValidRequiredRole(has, item.requiredRole)
+
+    // Categories are required on every item: clearing one is not allowed,
+    // and a replacement must exist in the caller's org.
+    if (item.categoryId === null) {
+      throw new Error("Category is required")
+    }
+    if (item.categoryId !== undefined) {
+      await assertValidCategory(db, orgId, item.categoryId)
+    }
 
     const patch: Partial<typeof items.$inferInsert> = {
       qrCode: item.qrCode,
@@ -833,19 +863,14 @@ export const getItemById = createServerFn({ method: "GET" })
 export const getItemsByIds = createServerFn({ method: "GET" })
   .middleware([authRequiredMiddleware])
   .validator((ids: string[]) => ids)
-  .handler(
-    async ({
-      data: ids,
-      context,
-    }): Promise<InventoryItem[]> => {
-      const { orgId } = context
-      const db = getDb()
-      return db
-        .select()
-        .from(items)
-        .where(and(eq(items.orgId, orgId), inArray(items.id, ids)))
-    }
-  )
+  .handler(async ({ data: ids, context }): Promise<InventoryItem[]> => {
+    const { orgId } = context
+    const db = getDb()
+    return db
+      .select()
+      .from(items)
+      .where(and(eq(items.orgId, orgId), inArray(items.id, ids)))
+  })
 
 /**
  * Fetch a single item + its full activity log in one round-trip.
@@ -910,9 +935,7 @@ export const bulkDeleteItems = createServerFn({ method: "POST" })
         .where(and(eq(items.orgId, orgId), inArray(items.id, ids)))
 
       // Items the caller's role can't touch are skipped, not deleted.
-      const toDelete = found.filter((row) =>
-        canEditItem(has, row.requiredRole)
-      )
+      const toDelete = found.filter((row) => canEditItem(has, row.requiredRole))
       const skipped = found.length - toDelete.length
       if (toDelete.length === 0) return { deleted: 0, skipped }
       const allowedIds = toDelete.map((row) => row.id)
