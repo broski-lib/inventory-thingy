@@ -13,7 +13,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as LegalRouteImport } from './routes/legal'
-import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as ScanRouteImport } from './routes/scan'
 import { Route as StockRouteImport } from './routes/stock'
 import { Route as LoginSplatRouteImport } from './routes/login.$'
@@ -51,11 +50,6 @@ const HomeRoute = HomeRouteImport.update({
 const LegalRoute = LegalRouteImport.update({
   id: '/legal',
   path: '/legal',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OnboardingRoute = OnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ScanRoute = ScanRouteImport.update({
@@ -154,7 +148,6 @@ export interface FileRoutesByFullPath {
   '/activity': typeof ActivityRoute
   '/home': typeof HomeRoute
   '/legal': typeof LegalRoute
-  '/onboarding': typeof OnboardingRoute
   '/scan': typeof ScanRouteWithChildren
   '/stock': typeof StockRouteWithChildren
   '/login/$': typeof LoginSplatRoute
@@ -179,7 +172,6 @@ export interface FileRoutesByTo {
   '/activity': typeof ActivityRoute
   '/home': typeof HomeRoute
   '/legal': typeof LegalRoute
-  '/onboarding': typeof OnboardingRoute
   '/login/$': typeof LoginSplatRoute
   '/scan/bulk': typeof ScanBulkRoute
   '/scan/camera': typeof ScanCameraRoute
@@ -203,7 +195,6 @@ export interface FileRoutesById {
   '/activity': typeof ActivityRoute
   '/home': typeof HomeRoute
   '/legal': typeof LegalRoute
-  '/onboarding': typeof OnboardingRoute
   '/scan': typeof ScanRouteWithChildren
   '/stock': typeof StockRouteWithChildren
   '/login/$': typeof LoginSplatRoute
@@ -230,7 +221,6 @@ export interface FileRouteTypes {
     | '/activity'
     | '/home'
     | '/legal'
-    | '/onboarding'
     | '/scan'
     | '/stock'
     | '/login/$'
@@ -255,7 +245,6 @@ export interface FileRouteTypes {
     | '/activity'
     | '/home'
     | '/legal'
-    | '/onboarding'
     | '/login/$'
     | '/scan/bulk'
     | '/scan/camera'
@@ -278,7 +267,6 @@ export interface FileRouteTypes {
     | '/activity'
     | '/home'
     | '/legal'
-    | '/onboarding'
     | '/scan'
     | '/stock'
     | '/login/$'
@@ -304,7 +292,6 @@ export interface RootRouteChildren {
   ActivityRoute: typeof ActivityRoute
   HomeRoute: typeof HomeRoute
   LegalRoute: typeof LegalRoute
-  OnboardingRoute: typeof OnboardingRoute
   ScanRoute: typeof ScanRouteWithChildren
   StockRoute: typeof StockRouteWithChildren
   LoginSplatRoute: typeof LoginSplatRoute
@@ -340,13 +327,6 @@ declare module '@tanstack/react-router' {
       path: '/legal'
       fullPath: '/legal'
       preLoaderRoute: typeof LegalRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/onboarding': {
-      id: '/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/scan': {
@@ -525,7 +505,6 @@ const rootRouteChildren: RootRouteChildren = {
   ActivityRoute: ActivityRoute,
   HomeRoute: HomeRoute,
   LegalRoute: LegalRoute,
-  OnboardingRoute: OnboardingRoute,
   ScanRoute: ScanRouteWithChildren,
   StockRoute: StockRouteWithChildren,
   LoginSplatRoute: LoginSplatRoute,

@@ -14,7 +14,7 @@ function Page() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-secondary p-4">
       <SignUp
-        forceRedirectUrl="/onboarding"
+        forceRedirectUrl="/home"
       appearance={{
         theme: shadcn,
         }}

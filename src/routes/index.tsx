@@ -21,14 +21,11 @@ import { cn } from "@/lib/utils"
 
 const loadLanding = createServerFn({ method: "GET" }).handler(async () => {
   // landing must be reachable for signed-out users, but if a user is
-  // already authenticated (and has an org), push them straight to /home
-  // so the marketing page doesn't get in the way of the app.
-  const { isAuthenticated, orgId } = await auth()
-  if (isAuthenticated && orgId) {
-    throw redirect({ to: "/home" })
-  }
+  // already authenticated, push them straight to /home so the marketing
+  // page doesn't get in the way of the app.
+  const { isAuthenticated } = await auth()
   if (isAuthenticated) {
-    throw redirect({ to: "/onboarding" })
+    throw redirect({ to: "/home" })
   }
   return { ok: true as const }
 })
