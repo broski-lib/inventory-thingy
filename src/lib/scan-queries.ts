@@ -5,6 +5,7 @@ import { items } from "./schema"
 import { authRequiredMiddleware } from "./auth-middleware"
 import { getItemByQrCode } from "./inventory"
 import { getBatchesForItems } from "./batches"
+import { getRackByQrCode } from "./racks"
 
 export const loadScan = createServerFn({ method: "GET" })
   .middleware([authRequiredMiddleware])
@@ -31,8 +32,11 @@ export const lookupItem = createServerFn({ method: "GET" })
   .validator((code: string) => code)
   .handler(async ({ data: code, context }) => {
     const found = await getItemByQrCode({ data: code })
-    if (!found || found.kind !== "bulk")
-      return { code, item: found, batches: [] }
+    if (!found) {
+      const rack = await getRackByQrCode({ data: code })
+      return { code, item: null, batches: [], rack }
+    }
+    if (found.kind !== "bulk") return { code, item: found, batches: [] }
     const batchesByItem = await getBatchesForItems(context.orgId, [found.id])
     return { code, item: found, batches: batchesByItem.get(found.id) ?? [] }
   })

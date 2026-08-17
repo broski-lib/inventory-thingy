@@ -18,12 +18,13 @@ import type { LiveScannerStatus } from "@/components/LiveScanner"
 import { PageChrome } from "@/components/PageChrome"
 import { LocationChips } from "@/components/LocationChips"
 import {
+  getItemById,
   getItemByQrCode,
   getMostCommonLocation,
   getLocations,
 } from "@/lib/inventory"
 import { loadScan } from "@/lib/scan-queries"
-import { useUpdateItem } from "@/lib/queries"
+import { useMoveBatchQty, useUpdateItem } from "@/lib/queries"
 import { ITEM_STATUSES } from "@/lib/item-status"
 import type { ItemStatus } from "@/lib/item-status"
 
@@ -83,6 +84,7 @@ function BulkScanPage() {
   const [editingSettings, setEditingSettings] = useState(false)
   const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const updateItemMutation = useUpdateItem()
+  const moveBatchMutation = useMoveBatchQty()
 
   useEffect(() => {
     if (!editingSettings) persistLocation(location)
@@ -113,10 +115,36 @@ function BulkScanPage() {
         }
       }
       if (found.kind === "bulk") {
+        const fullItem = await getItemById({ data: found.id })
+        if (!fullItem) {
+          return {
+            qrCode,
+            ok: false,
+            message: "Item could not be loaded",
+            itemName: found.name,
+          }
+        }
+        const source = fullItem.batches.find((batch) => batch.qty > 0)
+        if (!source) {
+          return {
+            qrCode,
+            ok: false,
+            message: "Bulk item has no available stock",
+            itemName: found.name,
+          }
+        }
+        await moveBatchMutation.mutateAsync({
+          itemId: found.id,
+          fromBatchId: source.id,
+          qty: 1,
+          location: nextLocation,
+          status: nextStatus,
+          condition: nextStatus === "Repair" ? "Repair" : source.condition,
+        })
         return {
           qrCode,
-          ok: false,
-          message: "Bulk item — use single scan to adjust batches",
+          ok: true,
+          message: `1 unit · ${nextStatus} · ${nextLocation}`,
           itemName: found.name,
         }
       }
@@ -151,10 +179,13 @@ function BulkScanPage() {
     setResults((prev) => [result, ...prev].slice(0, 50))
     setLastResult(result)
     if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current)
-    resumeTimerRef.current = setTimeout(() => {
-      setPaused(false)
-      setLastResult(null)
-    }, 1400)
+    resumeTimerRef.current = setTimeout(
+      () => {
+        setPaused(false)
+        setLastResult(null)
+      },
+      result.ok ? 1400 : 4000
+    )
   }
 
   useEffect(() => {
@@ -262,10 +293,11 @@ function BulkScanPage() {
 
         {lastResult && (
           <div
+            role="alert"
             className={
               lastResult.ok
                 ? "rounded-xl border border-success/20 bg-success/10 p-3 text-xs text-success"
-                : "rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive"
+                : "rounded-xl border-2 border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
             }
           >
             <p className="font-semibold">

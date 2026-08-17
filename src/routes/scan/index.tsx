@@ -10,7 +10,7 @@ import { BatchManager } from "@/components/BatchManager"
 import { AppHeader } from "@/components/AppHeader"
 import { BottomNav } from "@/components/BottomNav"
 import { BoltIcon, EditIcon } from "@/components/icons"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -50,22 +50,26 @@ function ScanRoute() {
   const { recent, lookup, defaultLocation } = Route.useLoaderData()
   const navigate = useNavigate()
   const [scanMessage, setScanMessage] = useState("")
+  const [scanError, setScanError] = useState("")
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const updateItemMutation = useUpdateItem()
 
   const fallbackLocation = defaultLocation ?? "Warehouse A, Bay 1"
 
   const scannedItem = lookup?.item ?? null
+  const scannedRack = lookup?.rack ?? null
   const scannedBatches = lookup?.batches ?? []
   const isBulk = scannedItem?.kind === "bulk"
-  const failedCode = lookup && !lookup.item ? lookup.code : null
-  const showResult = scannedItem || failedCode
+  const failedCode = lookup && !lookup.item && !lookup.rack ? lookup.code : null
+  const showResult = Boolean(scannedItem || scannedRack || failedCode)
 
   const handleQuickStatus = async (
     item: InventoryItem,
     newStatus: ItemStatus,
     newLocation: string
   ) => {
+    setScanMessage("")
+    setScanError("")
     const updates: Partial<InventoryItem> = {
       status: newStatus,
       location: newLocation,
@@ -83,7 +87,7 @@ function ScanRoute() {
         replace: true,
       })
     } catch (err) {
-      setScanMessage(
+      setScanError(
         err instanceof Error ? err.message : "Failed to update status"
       )
     }
@@ -91,6 +95,7 @@ function ScanRoute() {
 
   const scanAnother = () => {
     setScanMessage("")
+    setScanError("")
     navigate({ to: "/scan/camera" })
   }
 
@@ -159,23 +164,71 @@ function ScanRoute() {
           )}
 
           {failedCode && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="gap-2 border-2">
+              <AlertTitle className="text-base">Scan failed</AlertTitle>
               <AlertDescription>
-                Tag &ldquo;{failedCode}&rdquo; not found. You can register it to
-                your inventory.
+                No item or rack was found for tag &ldquo;{failedCode}&rdquo;.
+                Register it or scan another code.
               </AlertDescription>
             </Alert>
           )}
           {scanMessage && (
-            <Alert>
+            <Alert variant="success">
               <AlertDescription className="flex items-center gap-2">
                 <span className="size-2 animate-ping rounded-full bg-success" />
                 {scanMessage}
               </AlertDescription>
             </Alert>
           )}
+          {scanError && (
+            <Alert variant="destructive" className="gap-2 border-2">
+              <AlertTitle>Update failed</AlertTitle>
+              <AlertDescription>{scanError}</AlertDescription>
+            </Alert>
+          )}
 
-          {scannedItem ? (
+          {scannedRack ? (
+            <Card>
+              <CardContent className="gap-3">
+                <div>
+                  <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                    Rack recognized
+                  </p>
+                  <h3 className="mt-1 text-lg font-semibold">
+                    {scannedRack.name}
+                  </h3>
+                  {scannedRack.location && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {scannedRack.location}
+                    </p>
+                  )}
+                  <p className="mt-1 font-mono text-xs text-muted-foreground">
+                    {scannedRack.qrCode}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    className="h-11"
+                    onClick={() =>
+                      navigate({
+                        to: "/stock/racks/$id",
+                        params: { id: scannedRack.id },
+                      })
+                    }
+                  >
+                    Open rack
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-11"
+                    onClick={scanAnother}
+                  >
+                    Scan another
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : scannedItem ? (
             <Card>
               <CardContent className="gap-3">
                 <div className="flex gap-3">
@@ -336,7 +389,7 @@ function ScanRoute() {
               )}
 
               {!isBulk && (
-                <div className="sticky bottom-24 -mx-4 mt-4 border-t border-border bg-secondary px-4 pt-3 pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.5rem))]">
+                <div className="mt-4 border-t border-border bg-secondary px-4 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
                   {scannedItem.status === "Pending Tag" ? (
                     <Button
                       onClick={() =>

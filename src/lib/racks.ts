@@ -11,6 +11,20 @@ export type RackWithItems = Rack & {
   items: (typeof items.$inferSelect & { rackQty: number })[]
 }
 
+export const getRackByQrCode = createServerFn({ method: "GET" })
+  .middleware([authRequiredMiddleware])
+  .validator((qrCode: string) => qrCode)
+  .handler(async ({ data: qrCode, context }): Promise<Rack | null> => {
+    const db = getDb()
+    const [rack] = await db
+      .select()
+      .from(racks)
+      .where(and(eq(racks.orgId, context.orgId), eq(racks.qrCode, qrCode)))
+      .limit(1)
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    return rack ?? null
+  })
+
 export const listRacks = createServerFn({ method: "GET" })
   .middleware([authRequiredMiddleware])
   .handler(async ({ context }): Promise<RackWithItems[]> => {
@@ -28,7 +42,9 @@ export const listRacks = createServerFn({ method: "GET" })
     const riRows = await db
       .select()
       .from(rackItems)
-      .where(and(eq(rackItems.orgId, orgId), inArray(rackItems.rackId, rackIds)))
+      .where(
+        and(eq(rackItems.orgId, orgId), inArray(rackItems.rackId, rackIds))
+      )
 
     if (riRows.length === 0) {
       return rackRows.map((r) => ({ ...r, items: [] }))
@@ -199,7 +215,5 @@ export const deleteRack = createServerFn({ method: "POST" })
     await db
       .delete(rackItems)
       .where(and(eq(rackItems.orgId, orgId), eq(rackItems.rackId, id)))
-    await db
-      .delete(racks)
-      .where(and(eq(racks.orgId, orgId), eq(racks.id, id)))
+    await db.delete(racks).where(and(eq(racks.orgId, orgId), eq(racks.id, id)))
   })
