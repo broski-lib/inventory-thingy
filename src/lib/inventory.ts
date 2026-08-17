@@ -7,6 +7,7 @@ import {
   activityLogs,
   itemBatches,
   itemTags,
+  rackItems,
   tags,
   categories,
 } from "./schema"
@@ -83,6 +84,7 @@ export type GetItemsPageArgs = {
   locations?: string[]
   tagIds?: string[]
   categoryIds?: string[]
+  rackIds?: string[]
   sort?: StockSort
   kinds?: ItemKind[]
 }
@@ -203,6 +205,16 @@ function buildItemsWhere(
   }
   if (args.categoryIds && args.categoryIds.length > 0) {
     conditions.push(inArray(items.categoryId, args.categoryIds))
+  }
+  if (args.rackIds && args.rackIds.length > 0) {
+    // Match items that sit on ANY of the selected racks.
+    const rackMatch = db
+      .select({ itemId: rackItems.itemId })
+      .from(rackItems)
+      .where(
+        and(eq(rackItems.orgId, orgId), inArray(rackItems.rackId, args.rackIds))
+      )
+    conditions.push(inArray(items.id, rackMatch))
   }
   if (args.kinds && args.kinds.length > 0) {
     conditions.push(inArray(items.kind, args.kinds))

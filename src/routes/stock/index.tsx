@@ -14,11 +14,9 @@ import {
   PrinterIcon,
   Tick02Icon,
 } from "@hugeicons/core-free-icons"
-import {
-  getItemsPage,
-  getLocations,
-} from "@/lib/inventory"
+import { getItemsPage, getLocations } from "@/lib/inventory"
 import { getCategoryTree } from "@/lib/categories"
+import { listRacks } from "@/lib/racks"
 import type { StockSort, StockStatusFilter } from "@/lib/constants"
 import {
   STOCK_SORTS,
@@ -79,7 +77,7 @@ const PAGE_SIZE_STORAGE_KEY = "stock:pageSize"
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const
 const DEFAULT_PAGE_SIZE = 20
 
-type StockSearch = {
+export type StockSearch = {
   q?: string
   page?: number
   ps?: number
@@ -89,6 +87,7 @@ type StockSearch = {
   loc?: string[]
   tags?: string[]
   cat?: string[]
+  rack?: string[]
   sort?: StockSort
   kinds?: ItemKind[]
 }
@@ -148,6 +147,7 @@ function filterSearch(search: {
   loc?: string[]
   tags?: string[]
   cat?: string[]
+  rack?: string[]
   sort?: StockSort
   kinds?: ItemKind[]
 }) {
@@ -158,6 +158,7 @@ function filterSearch(search: {
     loc: search.loc && search.loc.length > 0 ? search.loc : undefined,
     tags: search.tags && search.tags.length > 0 ? search.tags : undefined,
     cat: search.cat && search.cat.length > 0 ? search.cat : undefined,
+    rack: search.rack && search.rack.length > 0 ? search.rack : undefined,
     sort:
       search.sort && search.sort !== DEFAULT_STOCK_SORT
         ? search.sort
@@ -178,6 +179,7 @@ export const Route = createFileRoute("/stock/")({
     loc: parseCsv(search.loc),
     tags: parseCsv(search.tags),
     cat: parseCsv(search.cat),
+    rack: parseCsv(search.rack),
     sort: parseSort(search.sort),
     kinds: parseEnumCsv(search.kinds, ITEM_KINDS),
   }),
@@ -191,31 +193,34 @@ export const Route = createFileRoute("/stock/")({
     loc: search.loc,
     tags: search.tags,
     cat: search.cat,
+    rack: search.rack,
     sort: search.sort,
     kinds: search.kinds,
   }),
   loader: async ({ deps }) => {
-      const [page, allTags, locations, categoryTree] = await Promise.all([
-        getItemsPage({
-          data: {
-            page: deps.page ?? 1,
-            pageSize: deps.ps ?? DEFAULT_PAGE_SIZE,
-            search: deps.q,
-            statusFilter: deps.sf,
-            statuses: deps.st,
-            conditions: deps.cond,
-            locations: deps.loc,
-            tagIds: deps.tags,
-            categoryIds: deps.cat,
-            sort: deps.sort,
-            kinds: deps.kinds,
-          },
-        }),
-        listTags(),
-        getLocations(),
-        getCategoryTree(),
-      ])
-      return { page, allTags, locations, categoryTree }
+    const [page, allTags, locations, categoryTree, racks] = await Promise.all([
+      getItemsPage({
+        data: {
+          page: deps.page ?? 1,
+          pageSize: deps.ps ?? DEFAULT_PAGE_SIZE,
+          search: deps.q,
+          statusFilter: deps.sf,
+          statuses: deps.st,
+          conditions: deps.cond,
+          locations: deps.loc,
+          tagIds: deps.tags,
+          categoryIds: deps.cat,
+          rackIds: deps.rack,
+          sort: deps.sort,
+          kinds: deps.kinds,
+        },
+      }),
+      listTags(),
+      getLocations(),
+      getCategoryTree(),
+      listRacks(),
+    ])
+    return { page, allTags, locations, categoryTree, racks }
   },
   component: StockRoute,
   pendingComponent: StockPending,
@@ -229,6 +234,7 @@ type DraftFilters = {
   loc: string[]
   tags: string[]
   cat: string[]
+  rack: string[]
   sort: StockSort
   kinds: ItemKind[]
 }
@@ -236,7 +242,13 @@ type DraftFilters = {
 function StockRoute() {
   const navigate = useNavigate()
   const router = useRouter()
-  const { page: data, allTags, locations, categoryTree } = Route.useLoaderData()
+  const {
+    page: data,
+    allTags,
+    locations,
+    categoryTree,
+    racks,
+  } = Route.useLoaderData()
   const search = Route.useSearch()
   const page = search.page ?? 1
   const q = search.q ?? ""
@@ -280,6 +292,7 @@ function StockRoute() {
     loc: [],
     tags: [],
     cat: [],
+    rack: [],
     sort: DEFAULT_STOCK_SORT,
     kinds: [],
   })
@@ -361,6 +374,7 @@ function StockRoute() {
       loc: search.loc ?? [],
       tags: search.tags ?? [],
       cat: search.cat ?? [],
+      rack: search.rack ?? [],
       sort,
       kinds: search.kinds ?? [],
     })
@@ -377,7 +391,7 @@ function StockRoute() {
   }
 
   const toggleDraftValue = (
-    key: "st" | "cond" | "loc" | "tags" | "kinds",
+    key: "st" | "cond" | "loc" | "tags" | "rack" | "kinds",
     value: string
   ) => {
     setDraft((prev) => {
@@ -397,6 +411,7 @@ function StockRoute() {
     (search.loc?.length ?? 0) +
     (search.tags?.length ?? 0) +
     (search.cat?.length ?? 0) +
+    (search.rack?.length ?? 0) +
     (search.kinds?.length ?? 0) +
     (sort !== DEFAULT_STOCK_SORT ? 1 : 0)
 
@@ -563,7 +578,9 @@ function StockRoute() {
             </div>
           )}
 
-          <div className={selectionMode ? "pointer-events-none opacity-40" : ""}>
+          <div
+            className={selectionMode ? "pointer-events-none opacity-40" : ""}
+          >
             <div className="flex items-center gap-2">
               <SearchInput
                 value={searchInput}
@@ -624,11 +641,7 @@ function StockRoute() {
                 disabled={data.items.length === 0}
                 className="h-9 shrink-0 text-xs"
               >
-                <HugeiconsIcon
-                  icon={Tick02Icon}
-                  size={14}
-                  strokeWidth={1.8}
-                />
+                <HugeiconsIcon icon={Tick02Icon} size={14} strokeWidth={1.8} />
                 Select
               </Button>
               <Button
@@ -656,23 +669,23 @@ function StockRoute() {
                   Rack sheet
                 </Link>
                 <label className="flex items-center gap-2 text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                <span>Per page</span>
-                <select
-                  value={pageSize}
-                  onChange={(e) =>
-                    handlePageSizeChange(Number.parseInt(e.target.value, 10))
-                  }
-                  className="h-7 cursor-pointer rounded-md border border-border bg-card px-2 text-[11px] font-semibold tracking-wider text-foreground uppercase"
-                >
-                  {PAGE_SIZE_OPTIONS.map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  <span>Per page</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) =>
+                      handlePageSizeChange(Number.parseInt(e.target.value, 10))
+                    }
+                    className="h-7 cursor-pointer rounded-md border border-border bg-card px-2 text-[11px] font-semibold tracking-wider text-foreground uppercase"
+                  >
+                    {PAGE_SIZE_OPTIONS.map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
             </div>
-          </div>
           </div>
 
           {selectionMode && data.items.length > 0 && (
@@ -735,6 +748,9 @@ function StockRoute() {
                       navigate({
                         to: "/stock/$id/edit",
                         params: { id: item.id },
+                        // Carry the current search along so "Save Changes"
+                        // can land back on the same filtered page.
+                        search: { back: JSON.stringify(search) },
                       })
                     }
                     onToggle={() => toggleSelected(item.id)}
@@ -846,6 +862,23 @@ function StockRoute() {
               </div>
             </FilterSection>
 
+            <FilterSection label="Rack">
+              {racks.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No racks yet.</p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {racks.map((rack) => (
+                    <FilterPill
+                      key={rack.id}
+                      label={rack.name}
+                      selected={draft.rack.includes(rack.id)}
+                      onClick={() => toggleDraftValue("rack", rack.id)}
+                    />
+                  ))}
+                </div>
+              )}
+            </FilterSection>
+
             <FilterSection label="Category">
               <CategoryPicker
                 tree={categoryTree}
@@ -882,15 +915,16 @@ function StockRoute() {
               variant="outline"
               className="flex-1"
               onClick={() => {
-                  setDraft({
-                    st: [],
-                    cond: [],
-                    loc: [],
-                    tags: [],
-                    cat: [],
-                    sort: DEFAULT_STOCK_SORT,
-                    kinds: [],
-                  })
+                setDraft({
+                  st: [],
+                  cond: [],
+                  loc: [],
+                  tags: [],
+                  cat: [],
+                  rack: [],
+                  sort: DEFAULT_STOCK_SORT,
+                  kinds: [],
+                })
               }}
             >
               Clear
@@ -1011,13 +1045,7 @@ function ManageTagsDialog({
   )
 }
 
-function ManageTagRow({
-  tag,
-  onChanged,
-}: {
-  tag: Tag
-  onChanged: () => void
-}) {
+function ManageTagRow({ tag, onChanged }: { tag: Tag; onChanged: () => void }) {
   const [name, setName] = useState(tag.name)
   const [color, setColor] = useState(tag.color)
   const [busy, setBusy] = useState(false)
