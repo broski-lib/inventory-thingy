@@ -7,12 +7,14 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import type { IconSvgElement } from "@hugeicons/react"
+import { Combobox as ComboboxPrimitive } from "@base-ui/react"
 import {
   CheckmarkCircle02Icon,
   FilterIcon,
   Location01Icon,
   PrinterIcon,
   Tick02Icon,
+  UnfoldMoreIcon,
 } from "@hugeicons/core-free-icons"
 import { getItemsPage, getLocations } from "@/lib/inventory"
 import { getCategoryTree } from "@/lib/categories"
@@ -863,20 +865,13 @@ function StockRoute() {
             </FilterSection>
 
             <FilterSection label="Rack">
-              {racks.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No racks yet.</p>
-              ) : (
-                <div className="flex flex-wrap gap-1.5">
-                  {racks.map((rack) => (
-                    <FilterPill
-                      key={rack.id}
-                      label={rack.name}
-                      selected={draft.rack.includes(rack.id)}
-                      onClick={() => toggleDraftValue("rack", rack.id)}
-                    />
-                  ))}
-                </div>
-              )}
+              <RackFilterCombobox
+                racks={racks}
+                value={draft.rack}
+                onChange={(rackIds) =>
+                  setDraft((prev) => ({ ...prev, rack: rackIds }))
+                }
+              />
             </FilterSection>
 
             <FilterSection label="Category">
@@ -962,6 +957,75 @@ function StockRoute() {
         />
       )}
     </main>
+  )
+}
+
+function RackFilterCombobox({
+  racks,
+  value,
+  onChange,
+}: {
+  racks: { id: string; name: string }[]
+  value: string[]
+  onChange: (value: string[]) => void
+}) {
+  if (racks.length === 0) {
+    return <p className="text-xs text-muted-foreground">No racks yet.</p>
+  }
+
+  return (
+    <ComboboxPrimitive.Root<string, true>
+      multiple
+      value={value}
+      onValueChange={(next) => onChange(next)}
+      itemToStringLabel={(id) =>
+        racks.find((rack) => rack.id === id)?.name ?? id
+      }
+    >
+      <div className="relative">
+        <ComboboxPrimitive.Input
+          placeholder={
+            value.length > 0
+              ? `${value.length} rack${value.length === 1 ? "" : "s"} selected`
+              : "Search and select racks..."
+          }
+          className="h-11 w-full rounded-lg border border-input bg-background px-3 pr-10 text-sm transition-colors outline-none placeholder:text-muted-foreground focus:border-ring"
+        />
+        <ComboboxPrimitive.Trigger
+          aria-label="Open rack filter"
+          className="absolute top-1/2 right-2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <HugeiconsIcon icon={UnfoldMoreIcon} size={15} strokeWidth={2} />
+        </ComboboxPrimitive.Trigger>
+      </div>
+      <ComboboxPrimitive.Portal>
+        <ComboboxPrimitive.Positioner sideOffset={6} className="isolate z-50">
+          <ComboboxPrimitive.Popup className="w-(--anchor-width) min-w-56 overflow-hidden rounded-lg border border-border bg-popover p-1.5 text-popover-foreground shadow-md">
+            <ComboboxPrimitive.List className="max-h-56 overflow-y-auto">
+              {racks.map((rack) => (
+                <ComboboxPrimitive.Item
+                  key={rack.id}
+                  value={rack.id}
+                  className="relative flex w-full cursor-default items-center rounded-md py-2 pr-8 pl-3 text-sm outline-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
+                >
+                  {rack.name}
+                  <ComboboxPrimitive.ItemIndicator className="absolute right-3">
+                    <HugeiconsIcon
+                      icon={Tick02Icon}
+                      size={14}
+                      strokeWidth={2.5}
+                    />
+                  </ComboboxPrimitive.ItemIndicator>
+                </ComboboxPrimitive.Item>
+              ))}
+            </ComboboxPrimitive.List>
+            <ComboboxPrimitive.Empty className="px-3 py-2 text-center text-xs text-muted-foreground">
+              No matching racks.
+            </ComboboxPrimitive.Empty>
+          </ComboboxPrimitive.Popup>
+        </ComboboxPrimitive.Positioner>
+      </ComboboxPrimitive.Portal>
+    </ComboboxPrimitive.Root>
   )
 }
 
