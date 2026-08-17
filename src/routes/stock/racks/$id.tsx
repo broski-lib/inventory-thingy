@@ -6,7 +6,7 @@ import {
   Outlet,
   notFound,
 } from "@tanstack/react-router"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   ArrowLeft01Icon,
@@ -15,6 +15,7 @@ import {
 } from "@hugeicons/core-free-icons"
 import { getRack } from "@/lib/racks"
 import { getLocations } from "@/lib/inventory"
+import { RACK_ROWS_PER_PAGE, chunkByPage } from "@/lib/print-sheet"
 import { useUpdateRack, useDeleteRack } from "@/lib/queries"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -24,6 +25,7 @@ import { getStatusBadgeVariant } from "@/components/ItemCard"
 import { PageChrome } from "@/components/PageChrome"
 import { LocationChips } from "@/components/LocationChips"
 import { TrashIcon } from "@/components/icons"
+import { cn } from "@/lib/utils"
 import QRCode from "qrcode"
 
 type RackSearch = { view?: string }
@@ -337,6 +339,13 @@ function RackPrintView({
   const router = useRouter()
   const [rackQr, setRackQr] = useState<string | null>(null)
   const [itemQrs, setItemQrs] = useState<Map<string, string>>(new Map())
+  const pages = useMemo(
+    () =>
+      rack.items.length === 0
+        ? [[]]
+        : chunkByPage(rack.items, RACK_ROWS_PER_PAGE),
+    [rack.items]
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -376,7 +385,7 @@ function RackPrintView({
       <style>{`
         @media print {
           .print-sheet { border: 1px solid #000 !important; border-radius: 0 !important; }
-          .print-row { border-bottom: 1px solid #000 !important; }
+          .print-row { border-bottom: 1px solid #000 !important; break-inside: avoid; page-break-inside: avoid; }
         }
       `}</style>
 
@@ -386,76 +395,97 @@ function RackPrintView({
           Back
         </Button>
         <h1 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-          Print Rack Sheet
+          Print Rack Sheet{pages.length > 1 ? ` — ${pages.length} pages` : ""}
         </h1>
         <Button size="sm" onClick={() => window.print()} disabled={!rackQr}>
           <HugeiconsIcon icon={PrinterIcon} size={16} />
-          Print
+          {pages.length > 1 ? `Print (${pages.length} pages)` : "Print"}
         </Button>
       </div>
 
-      <div className="flex justify-center px-4 py-8 print:p-0">
-        <div className="print-sheet w-full max-w-md rounded-xl border-2 border-border bg-white p-5 print:max-w-full print:rounded-none print:border print:border-black print:p-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <h2 className="text-lg font-bold tracking-wider uppercase">
-                {rack.name}
-              </h2>
-              <p className="mt-1 font-mono text-[10px] font-bold tracking-wider text-muted-foreground">
-                {rack.qrCode}
-              </p>
-              {rack.location && (
-                <p className="mt-0.5 text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                  {rack.location}
+      <div className="flex flex-col items-center gap-6 px-4 py-8 print:gap-0 print:p-0">
+        {pages.map((pageItems, pi) => (
+          <div key={pi} className="flex w-full flex-col items-center gap-3">
+            <div
+              className={cn(
+                "print-sheet w-full max-w-md rounded-xl border-2 border-border bg-white p-5 print:max-w-full print:rounded-none print:border print:border-black print:p-4",
+                pi < pages.length - 1 && "print:break-after-page"
+              )}
+            >
+              {pages.length > 1 && (
+                <p className="mb-3 text-center text-[10px] font-bold tracking-wider text-muted-foreground uppercase print:hidden">
+                  Page {pi + 1} of {pages.length}
                 </p>
               )}
-            </div>
-            {rackQr ? (
-              <img
-                src={rackQr}
-                alt={`QR: ${rack.qrCode}`}
-                className="size-28 shrink-0 print:size-28"
-              />
-            ) : (
-              <div className="size-28 shrink-0 rounded border border-border bg-muted" />
-            )}
-          </div>
-
-          <hr className="my-4 border-border print:border-black" />
-
-          {rack.items.length === 0 ? (
-            <div className="py-8 text-center text-xs text-muted-foreground">
-              No items
-            </div>
-          ) : (
-            <div className="flex flex-col">
-              {rack.items.map((item, i) => (
-                <div
-                  key={item.id}
-                  className={`flex items-start justify-between gap-4 py-3 ${i < rack.items.length - 1 ? "print-row border-dashed border-border" : ""}`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">{item.name}</p>
-                    <p className="font-mono text-[10px] tracking-wider text-muted-foreground">
-                      {item.qrCode}
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-lg font-bold tracking-wider uppercase">
+                    {rack.name}
+                  </h2>
+                  <p className="mt-1 font-mono text-[10px] font-bold tracking-wider text-muted-foreground">
+                    {rack.qrCode}
+                  </p>
+                  {rack.location && (
+                    <p className="mt-0.5 text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                      {rack.location}
                     </p>
-                  </div>
-                  {itemQrs.get(item.id) ? (
-                    <img
-                      src={itemQrs.get(item.id)}
-                      alt={`QR: ${item.qrCode}`}
-                      className="size-16 shrink-0 print:size-16"
-                    />
-                  ) : (
-                    <div className="size-16 shrink-0 rounded border border-border bg-muted" />
                   )}
                 </div>
-              ))}
-            </div>
-          )}
+                {rackQr ? (
+                  <img
+                    src={rackQr}
+                    alt={`QR: ${rack.qrCode}`}
+                    className="size-28 shrink-0 print:size-28"
+                  />
+                ) : (
+                  <div className="size-28 shrink-0 rounded border border-border bg-muted" />
+                )}
+              </div>
 
-          <div className="min-h-[30vh] print:min-h-[40vh]" />
-        </div>
+              <hr className="my-4 border-border print:border-black" />
+
+              {pageItems.length === 0 ? (
+                <div className="py-8 text-center text-xs text-muted-foreground">
+                  No items
+                </div>
+              ) : (
+                <div className="flex flex-col">
+                  {pageItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="print-row flex items-start justify-between gap-4 border-b border-dashed border-border py-3"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold">{item.name}</p>
+                        <p className="font-mono text-[10px] tracking-wider text-muted-foreground">
+                          {item.qrCode}
+                        </p>
+                      </div>
+                      {itemQrs.get(item.id) ? (
+                        <img
+                          src={itemQrs.get(item.id)}
+                          alt={`QR: ${item.qrCode}`}
+                          className="size-16 shrink-0 print:size-16"
+                        />
+                      ) : (
+                        <div className="size-16 shrink-0 rounded border border-border bg-muted" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            {pages.length > 1 && pi < pages.length - 1 && (
+              <div className="flex w-full max-w-md items-center gap-2 print:hidden">
+                <span className="h-px flex-1 border-t border-dashed border-border" />
+                <span className="text-[9px] font-bold tracking-wider text-muted-foreground uppercase">
+                  Page break
+                </span>
+                <span className="h-px flex-1 border-t border-dashed border-border" />
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   )
