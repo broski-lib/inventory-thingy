@@ -3,7 +3,7 @@ import { canEditItem, assertCanEditItem } from "@/lib/auth-middleware"
 import type { HasFn } from "@/lib/auth-middleware"
 
 function makeHas(result: boolean): HasFn {
-  return vi.fn().mockReturnValue(result) as unknown as HasFn
+  return vi.fn().mockReturnValue(result)
 }
 
 describe("canEditItem", () => {

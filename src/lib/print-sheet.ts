@@ -52,7 +52,7 @@ export function chunkTagsByPage<T extends { printSize: PrintSize }>(
 ): T[][] {
   const pages: T[][] = []
   for (const tag of tags) {
-    const last = pages[pages.length - 1]
+    const last = pages.at(-1)
     if (
       !last ||
       last[0].printSize !== tag.printSize ||

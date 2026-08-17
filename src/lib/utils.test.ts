@@ -7,7 +7,10 @@ describe("cn", () => {
   })
 
   it("filters out falsy values", () => {
-    expect(cn("foo", false && "bar", undefined, null, "", 0 && "baz")).toBe(
+    // Widened past literal types so the falsy branches stay live code.
+    const maybe = Boolean(false)
+    const zero = Number(0)
+    expect(cn("foo", maybe && "bar", undefined, null, "", zero && "baz")).toBe(
       "foo"
     )
   })
@@ -18,8 +21,8 @@ describe("cn", () => {
   })
 
   it("handles conditional classes", () => {
-    const active = true
-    const disabled = false
+    const active = Boolean(true)
+    const disabled = Boolean(false)
     expect(cn("base", active && "active", disabled && "disabled")).toBe(
       "base active"
     )

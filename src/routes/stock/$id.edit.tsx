@@ -1,3 +1,6 @@
+import { useAuth } from "@clerk/tanstack-react-start"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { QrCodeIcon, TransactionHistoryIcon } from "@hugeicons/core-free-icons"
 import {
   createFileRoute,
   notFound,
@@ -5,15 +8,6 @@ import {
   Link,
 } from "@tanstack/react-router"
 import { useMemo, useState } from "react"
-import type { StockSearch } from "./index"
-
-type EditSearch = {
-  /** JSON-serialized stock list search to restore on return. */
-  back?: string
-}
-import { useAuth } from "@clerk/tanstack-react-start"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { QrCodeIcon, TransactionHistoryIcon } from "@hugeicons/core-free-icons"
 import { TrashIcon, BoltIcon } from "@/components/icons"
 import { getItemById, getLocations } from "@/lib/inventory"
 import { getCategoryTree } from "@/lib/categories"
@@ -24,6 +18,12 @@ import { BatchManager } from "@/components/BatchManager"
 import { PageChrome } from "@/components/PageChrome"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import type { StockSearch } from "./index"
+
+type EditSearch = {
+  /** JSON-serialized stock list search to restore on return. */
+  back?: string
+}
 
 export const Route = createFileRoute("/stock/$id/edit")({
   staleTime: 0,

@@ -360,8 +360,7 @@ export function ItemForm({
                 Category <span className="text-destructive">*</span>
               </Label>
               {initial.categoryId &&
-              field.state.value !== initial.categoryId &&
-              categoryTree ? (
+              field.state.value !== initial.categoryId ? (
                 <p className="-mt-1 text-[11px] text-muted-foreground">
                   Currently:{" "}
                   <span className="font-medium">

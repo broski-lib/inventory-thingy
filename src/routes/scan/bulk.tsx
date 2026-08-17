@@ -16,14 +16,22 @@ import { Badge } from "@/components/ui/badge"
 import { LiveScanner } from "@/components/LiveScanner"
 import type { LiveScannerStatus } from "@/components/LiveScanner"
 import { PageChrome } from "@/components/PageChrome"
-import { getItemByQrCode, getMostCommonLocation } from "@/lib/inventory"
+import { LocationChips } from "@/components/LocationChips"
+import {
+  getItemByQrCode,
+  getMostCommonLocation,
+  getLocations,
+} from "@/lib/inventory"
 import { loadScan } from "@/lib/scan-queries"
 import { useUpdateItem } from "@/lib/queries"
 import { ITEM_STATUSES } from "@/lib/item-status"
 import type { ItemStatus } from "@/lib/item-status"
 
 export const Route = createFileRoute("/scan/bulk")({
-  loader: async () => loadScan(),
+  loader: async () => {
+    const [scan, locations] = await Promise.all([loadScan(), getLocations()])
+    return { recent: scan.recent, locations }
+  },
   component: BulkScanPage,
 })
 
@@ -64,7 +72,7 @@ async function resolveDefaultLocation(): Promise<string> {
 }
 
 function BulkScanPage() {
-  const { recent } = Route.useLoaderData()
+  const { recent, locations } = Route.useLoaderData()
   const navigate = useNavigate()
   const [status, setStatus] = useState<ItemStatus>("Reserved")
   const [location, setLocation] = useState("")
@@ -204,6 +212,11 @@ function BulkScanPage() {
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="e.g. Warehouse B, Aisle 3"
                 />
+                <LocationChips
+                  locations={locations}
+                  value={location}
+                  onSelect={setLocation}
+                />
               </div>
             </div>
           ) : (
@@ -233,7 +246,7 @@ function BulkScanPage() {
                     strokeWidth={1.5}
                     className="shrink-0 text-muted-foreground"
                   />
-                  <span className="truncate max-w-[120px]">{item.name}</span>
+                  <span className="max-w-[120px] truncate">{item.name}</span>
                 </span>
               ))}
             </div>

@@ -542,6 +542,7 @@ async function assertValidCategory(
     .from(categories)
     .where(and(eq(categories.orgId, orgId), eq(categories.id, categoryId)))
     .limit(1)
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (!cat) throw new Error("Category not found")
 }
 
@@ -788,6 +789,7 @@ export const deleteItem = createServerFn({ method: "POST" })
       .delete(items)
       .where(and(eq(items.orgId, orgId), eq(items.id, id)))
       .returning()
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!deleted) throw new Error("Item not found")
 
     await db

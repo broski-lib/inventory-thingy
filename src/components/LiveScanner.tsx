@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import type { Html5Qrcode } from "html5-qrcode"
 import type {
+  Html5Qrcode,
   QrcodeErrorCallback,
   QrcodeSuccessCallback,
 } from "html5-qrcode"
@@ -69,13 +69,16 @@ export function LiveScanner({
     updateStatus("starting")
     setErrorMessage(null)
 
-    let scanner: Html5Qrcode
+    // Assigned asynchronously; the cleanup below may run before the
+    // scanner module resolves, so it can still be undefined there.
+    let scanner: Html5Qrcode | undefined
 
     loadScanner().then(({ Html5Qrcode }) => {
       if (cancelled) return
 
       scanner = new Html5Qrcode(ELEMENT_ID, false)
       scannerRef.current = scanner
+      const sc = scanner
 
       const onSuccess: QrcodeSuccessCallback = (decodedText) => {
         if (busyRef.current) return
@@ -93,16 +96,15 @@ export function LiveScanner({
 
       const onFailure: QrcodeErrorCallback = () => {}
 
-      scanner
-        .start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 240, height: 240 } },
-          onSuccess,
-          onFailure
-        )
+      sc.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 240, height: 240 } },
+        onSuccess,
+        onFailure
+      )
         .then(() => {
           if (cancelled) {
-            void scanner.stop().catch(() => {})
+            void sc.stop().catch(() => {})
             return
           }
           updateStatus("scanning")
@@ -129,22 +131,23 @@ export function LiveScanner({
       busyRef.current = false
       scannerRef.current = null
       if (scanner) {
+        const sc = scanner
         try {
           loadScanner().then(({ Html5QrcodeScannerState }) => {
-            const state = scanner.getState()
+            const state = sc.getState()
             if (
               state === Html5QrcodeScannerState.SCANNING ||
               state === Html5QrcodeScannerState.PAUSED
             ) {
-              void scanner.stop().catch(() => {})
+              void sc.stop().catch(() => {})
             } else {
-              scanner.clear()
+              sc.clear()
             }
           }).catch(() => {
-            try { scanner.clear() } catch { /* noop */ }
+            try { sc.clear() } catch { /* noop */ }
           })
         } catch {
-          try { scanner.clear() } catch { /* noop */ }
+          try { sc.clear() } catch { /* noop */ }
         }
       }
       updateStatus("stopped")
