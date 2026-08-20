@@ -10,7 +10,6 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { BoxIcon, PrinterIcon } from "@hugeicons/core-free-icons"
 import type { getRack } from "@/lib/racks"
 import { getQrImage } from "@/lib/qr"
-import { printRackSheet } from "@/lib/print"
 import { useUpdateRack, useDeleteRack } from "@/lib/queries"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -91,15 +90,8 @@ function RackDetailView({
     }
   }
 
-  const handlePrint = async () => {
-    try {
-      await printRackSheet(
-        { name: rack.name, qrCode: rack.qrCode, location: rack.location },
-        rack.items.map((it) => ({ name: it.name, qrCode: it.qrCode }))
-      )
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Print failed")
-    }
+  const handlePrint = () => {
+    navigate({ to: "/print", search: { kind: "rack", rackId: rack.id } })
   }
 
   return (

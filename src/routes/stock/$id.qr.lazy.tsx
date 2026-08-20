@@ -33,7 +33,7 @@ function ItemQRPage() {
       <QRTag
         qrCode={item.qrCode}
         itemName={item.name}
-        printSize={item.printSize}
+        itemId={item.id}
       />
     </PageChrome>
   )

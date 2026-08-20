@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as LegalRouteImport } from './routes/legal'
+import { Route as PrintRouteImport } from './routes/print'
 import { Route as ScanRouteImport } from './routes/scan'
 import { Route as StockRouteImport } from './routes/stock'
 import { Route as LoginSplatRouteImport } from './routes/login.$'
@@ -51,6 +52,11 @@ const LegalRoute = LegalRouteImport.update({
   path: '/legal',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/legal.lazy').then((d) => d.Route))
+const PrintRoute = PrintRouteImport.update({
+  id: '/print',
+  path: '/print',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/print.lazy').then((d) => d.Route))
 const ScanRoute = ScanRouteImport.update({
   id: '/scan',
   path: '/scan',
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/activity': typeof ActivityRoute
   '/home': typeof HomeRoute
   '/legal': typeof LegalRoute
+  '/print': typeof PrintRoute
   '/scan': typeof ScanRouteWithChildren
   '/stock': typeof StockRouteWithChildren
   '/login/$': typeof LoginSplatRoute
@@ -177,6 +184,7 @@ export interface FileRoutesByTo {
   '/activity': typeof ActivityRoute
   '/home': typeof HomeRoute
   '/legal': typeof LegalRoute
+  '/print': typeof PrintRoute
   '/login/$': typeof LoginSplatRoute
   '/scan/bulk': typeof ScanBulkRoute
   '/scan/camera': typeof ScanCameraRoute
@@ -199,6 +207,7 @@ export interface FileRoutesById {
   '/activity': typeof ActivityRoute
   '/home': typeof HomeRoute
   '/legal': typeof LegalRoute
+  '/print': typeof PrintRoute
   '/scan': typeof ScanRouteWithChildren
   '/stock': typeof StockRouteWithChildren
   '/login/$': typeof LoginSplatRoute
@@ -224,6 +233,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/home'
     | '/legal'
+    | '/print'
     | '/scan'
     | '/stock'
     | '/login/$'
@@ -247,6 +257,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/home'
     | '/legal'
+    | '/print'
     | '/login/$'
     | '/scan/bulk'
     | '/scan/camera'
@@ -268,6 +279,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/home'
     | '/legal'
+    | '/print'
     | '/scan'
     | '/stock'
     | '/login/$'
@@ -292,6 +304,7 @@ export interface RootRouteChildren {
   ActivityRoute: typeof ActivityRoute
   HomeRoute: typeof HomeRoute
   LegalRoute: typeof LegalRoute
+  PrintRoute: typeof PrintRoute
   ScanRoute: typeof ScanRouteWithChildren
   StockRoute: typeof StockRouteWithChildren
   LoginSplatRoute: typeof LoginSplatRoute
@@ -327,6 +340,13 @@ declare module '@tanstack/react-router' {
       path: '/legal'
       fullPath: '/legal'
       preLoaderRoute: typeof LegalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/print': {
+      id: '/print'
+      path: '/print'
+      fullPath: '/print'
+      preLoaderRoute: typeof PrintRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/scan': {
@@ -506,6 +526,7 @@ const rootRouteChildren: RootRouteChildren = {
   ActivityRoute: ActivityRoute,
   HomeRoute: HomeRoute,
   LegalRoute: LegalRoute,
+  PrintRoute: PrintRoute,
   ScanRoute: ScanRouteWithChildren,
   StockRoute: StockRouteWithChildren,
   LoginSplatRoute: LoginSplatRoute,

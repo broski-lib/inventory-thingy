@@ -14,7 +14,6 @@ import { BatchManager } from "@/components/BatchManager"
 import { PageChrome } from "@/components/PageChrome"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { printSingleTag } from "@/lib/print"
 import type { StockSearch } from "./index"
 
 export const Route = createLazyFileRoute("/stock/$id/edit")({
@@ -90,16 +89,8 @@ function EditItemPage() {
     }
   }
 
-  const handlePrintTag = async () => {
-    try {
-      await printSingleTag({
-        name: item.name,
-        qrCode: item.qrCode,
-        printSize: item.printSize,
-      })
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Print failed")
-    }
+  const handlePrintTag = () => {
+    navigate({ to: "/print", search: { kind: "single", id: item.id } })
   }
 
   return (

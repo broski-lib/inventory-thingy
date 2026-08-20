@@ -16,7 +16,6 @@ import {
   Tick02Icon,
   UnfoldMoreIcon,
 } from "@hugeicons/core-free-icons"
-import { getItemsByIds } from "@/lib/inventory"
 import type { StockSort, StockStatusFilter } from "@/lib/constants"
 import {
   STOCK_SORTS,
@@ -68,7 +67,6 @@ import { SearchInput } from "@/components/SearchInput"
 import { Pagination } from "@/components/Pagination"
 import { usePageSize } from "@/hooks/use-page-size"
 import { cn } from "@/lib/utils"
-import { printTagSheet } from "@/lib/print"
 import { pluralize } from "@/lib/format"
 
 export const Route = createLazyFileRoute("/stock/")({
@@ -414,18 +412,12 @@ function StockRoute() {
     }
   }
 
-  const handleBulkPrint = async () => {
+  const handleBulkPrint = () => {
     if (selectedArray.length === 0) return
-    setBulkBusy(true)
-    try {
-      const items = await getItemsByIds({ data: selectedArray })
-      await printTagSheet(items)
-      finishAction(`Printed ${items.length} ${pluralize(items.length, "tag")}`)
-    } catch (err) {
-      setBulkMessage(err instanceof Error ? err.message : "Print failed")
-    } finally {
-      setBulkBusy(false)
-    }
+    navigate({
+      to: "/print",
+      search: { kind: "tags", ids: selectedArray.join(",") },
+    })
   }
 
   const selectedCount = selectedIds.size
