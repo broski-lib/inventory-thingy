@@ -19,10 +19,10 @@ export const getStockPageData = createServerFn({ method: "GET" })
       { buildTree },
       { fetchRackOptions },
     ] = await Promise.all([
-      import("./inventory"),
-      import("./tags"),
-      import("./categories"),
-      import("./racks"),
+      import("./inventory.server"),
+      import("./tags.server"),
+      import("./categories.server"),
+      import("./racks.server"),
     ])
     const [page, allTags, locations, categoryTree, racks] = await Promise.all([
       queryItemsPage(orgId, args),

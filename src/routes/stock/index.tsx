@@ -13,6 +13,18 @@ import { parsePage, parsePageSize } from "@/lib/pagination"
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const
 const DEFAULT_PAGE_SIZE = 20
 
+// Preload fetches the page shell only — the loader returns an empty but
+// type-correct shape so the expensive stock query never runs in the
+// background. Navigation discards it (preloadStaleTime 0) and loads real
+// data.
+const EMPTY_STOCK_DATA: Awaited<ReturnType<typeof getStockPageData>> = {
+  page: { items: [], total: 0, page: 1, pageSize: DEFAULT_PAGE_SIZE, totalPages: 1 },
+  allTags: [],
+  locations: [],
+  categoryTree: [],
+  racks: [],
+}
+
 export type StockSearch = {
   q?: string
   page?: number
@@ -77,6 +89,7 @@ function parseStatusFilter(value: unknown): StockStatusFilter | undefined {
 
 export const Route = createFileRoute("/stock/")({
   staleTime: 0,
+  preloadStaleTime: 0,
   validateSearch: (search: Record<string, unknown>): StockSearch => ({
     q: typeof search.q === "string" ? search.q : undefined,
     page: parsePage(search.page),
@@ -105,7 +118,9 @@ export const Route = createFileRoute("/stock/")({
     sort: search.sort,
     kinds: search.kinds,
   }),
-  loader: async ({ deps }) => {
+  loader: async (ctx) => {
+    if (ctx.preload) return EMPTY_STOCK_DATA
+    const { deps } = ctx
     return getStockPageData({
       data: {
         page: deps.page ?? 1,

@@ -97,6 +97,10 @@ export const items = pgTable(
     index("idx_items_qr_code").on(table.qrCode),
     index("idx_items_status").on(table.status),
     index("idx_items_name").on(table.name),
+    // Trigram GIN indexes power the `ILIKE '%…%'` search on name and QR
+    // code. Requires the `pg_trgm` extension (created by the migration).
+    index("idx_items_name_trgm").using("gin", table.name.op("gin_trgm_ops")),
+    index("idx_items_qr_code_trgm").using("gin", table.qrCode.op("gin_trgm_ops")),
   ]
 )
 

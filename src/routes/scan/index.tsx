@@ -11,6 +11,8 @@ export const Route = createFileRoute("/scan/")({
     code: typeof search.code === "string" ? search.code : undefined,
   }),
   loaderDeps: ({ search }) => ({ code: search.code }),
+  // Scan data is cheap; preloaded data can be reused for a few minutes.
+  preloadStaleTime: 300_000,
   loader: async ({ deps }) => {
     const [{ recent }, lookup, defaultLocation] = await Promise.all([
       loadScan(),

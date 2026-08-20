@@ -8,11 +8,14 @@ import { BottomNav } from "@/components/BottomNav"
 const loadHome = createServerFn({ method: "GET" })
   .middleware([authRequiredMiddleware])
   .handler(async ({ context }) => {
-    const { queryHomeData } = await import("@/lib/inventory")
+    const { queryHomeData } = await import("@/lib/inventory.server")
     return queryHomeData(context.orgId)
   })
 
 export const Route = createFileRoute("/home")({
+  // Home data is cheap; preloaded data can be reused for a few minutes
+  // without being super fresh.
+  preloadStaleTime: 300_000,
   loader: async () => loadHome(),
   pendingComponent: HomeSkeleton,
 })

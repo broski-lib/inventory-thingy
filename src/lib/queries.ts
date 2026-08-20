@@ -10,7 +10,7 @@ import {
   uploadItemImage,
 } from "./inventory"
 import type { CreateItemInput, UpdateItemInput } from "./inventory"
-import type { ItemCondition, ItemStatus } from "./schema"
+import type { ItemCondition, ItemStatus } from "./constants"
 import { createTag, updateTag, deleteTag, setItemTags } from "./tags"
 import { addBatch, moveBatchQty, setBatchQty, deleteBatch } from "./batches"
 import { createRack, updateRack, deleteRack } from "./racks"

@@ -6,7 +6,10 @@ export function getRouter() {
     routeTree,
 
     scrollRestoration: true,
-    defaultPreload: "intent",
+    // `intent` (hover/focus) never fires on touch devices — a mobile-first
+    // app needs `viewport` so lazy route chunks + loader data are fetched
+    // as links scroll into view, making navigation feel instant.
+    defaultPreload: "viewport",
   })
 
   return router

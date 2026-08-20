@@ -10,6 +10,7 @@ type EditSearch = {
 
 export const Route = createFileRoute("/stock/$id/edit")({
   staleTime: 0,
+  preload: false,
   validateSearch: (search: Record<string, unknown>): EditSearch => ({
     back: typeof search.back === "string" ? search.back : undefined,
   }),

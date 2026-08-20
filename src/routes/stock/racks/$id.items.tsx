@@ -5,6 +5,7 @@ import { getCategoryTree } from "@/lib/categories"
 import { listTags } from "@/lib/tags"
 
 export const Route = createFileRoute("/stock/racks/$id/items")({
+  preload: false,
   loader: async ({ params }) => {
     const [rack, locations, categoryTree, allTags] = await Promise.all([
       getRack({ data: params.id }),

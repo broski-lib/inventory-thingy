@@ -1,0 +1,7 @@
+# Hashed build assets (route chunks, CSS, fonts) never change between
+# deploys — a version update mints new content hashes. Cache them
+# immutably at the edge and in the browser so repeat visits don't
+# re-download page structure. The SSR HTML, server-fn RPC responses, and
+# item images are NOT static assets and stay uncached/private.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

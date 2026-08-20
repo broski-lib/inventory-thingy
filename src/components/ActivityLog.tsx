@@ -1,5 +1,5 @@
 import type { ActivityLog } from "@/lib/activity"
-import type { ActivityAction } from "@/lib/schema"
+import type { ActivityAction } from "@/lib/constants"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Add01Icon,

@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { resolveActor, logActivity } from "@/lib/activity"
+import { resolveActor, logActivity } from "@/lib/activity.server"
 import type { ActivityActor, ActivityLogInput } from "@/lib/activity"
 
 const mockInsert = vi.fn().mockReturnValue({ values: vi.fn() })
 const mockDb = { insert: mockInsert }
 
-vi.mock("@/lib/db", () => ({
+vi.mock("@/lib/db.server", () => ({
   getDb: () => mockDb,
 }))
 
