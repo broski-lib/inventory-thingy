@@ -9,7 +9,11 @@ type ColorPickerProps = {
   size?: "sm" | "md"
 }
 
-export function ColorPicker({ value, onChange, size = "md" }: ColorPickerProps) {
+export function ColorPicker({
+  value,
+  onChange,
+  size = "md",
+}: ColorPickerProps) {
   const buttonSize = size === "sm" ? "size-5" : "size-6"
   const iconSize = size === "sm" ? 2.5 : 3
 

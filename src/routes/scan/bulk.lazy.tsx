@@ -17,7 +17,11 @@ import { LiveScanner } from "@/components/LiveScanner"
 import type { LiveScannerStatus } from "@/components/LiveScanner"
 import { PageChrome } from "@/components/PageChrome"
 import { LocationChips } from "@/components/LocationChips"
-import { getItemById, getItemByQrCode, getMostCommonLocation } from "@/lib/inventory"
+import {
+  getItemById,
+  getItemByQrCode,
+  getMostCommonLocation,
+} from "@/lib/inventory"
 import { useMoveBatchQty, useUpdateItem } from "@/lib/queries"
 import { ITEM_STATUSES } from "@/lib/item-status"
 import type { ItemStatus } from "@/lib/item-status"

@@ -12,7 +12,11 @@ export const Route = createFileRoute("/stock/new")({
     qr: typeof search.qr === "string" ? search.qr : undefined,
   }),
   loader: async () => {
-    const [allTags, locations, categoryTree] = await Promise.all([listTags(), getLocations(), getCategoryTree()])
+    const [allTags, locations, categoryTree] = await Promise.all([
+      listTags(),
+      getLocations(),
+      getCategoryTree(),
+    ])
     return { allTags, locations, categoryTree }
   },
 })

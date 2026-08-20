@@ -24,10 +24,7 @@ export async function getTagsForItems(
   const rows = await db
     .select({ itemId: itemTags.itemId, tag: tags })
     .from(itemTags)
-    .innerJoin(
-      tags,
-      and(eq(itemTags.tagId, tags.id), eq(tags.orgId, orgId))
-    )
+    .innerJoin(tags, and(eq(itemTags.tagId, tags.id), eq(tags.orgId, orgId)))
     .where(and(eq(itemTags.orgId, orgId), inArray(itemTags.itemId, itemIds)))
     .orderBy(asc(tags.name))
   for (const row of rows) {

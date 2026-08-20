@@ -11,6 +11,7 @@ export default [
       "sort-imports": "off",
       "@typescript-eslint/array-type": "off",
       "@typescript-eslint/require-await": "off",
+      "@typescript-eslint/no-deprecated": "error",
       "pnpm/json-enforce-catalog": "off",
     },
   },

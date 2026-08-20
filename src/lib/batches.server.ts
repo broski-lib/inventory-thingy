@@ -37,7 +37,13 @@ export async function getBatchesForItems(
 function batchAction(
   from: { location: string; status: ItemStatus; condition: ItemCondition },
   to: { location: string; status: ItemStatus; condition: ItemCondition }
-): "checked_out" | "checked_in" | "reported_damaged" | "moved" | "condition_changed" | "updated" {
+):
+  | "checked_out"
+  | "checked_in"
+  | "reported_damaged"
+  | "moved"
+  | "condition_changed"
+  | "updated" {
   if (to.status !== from.status) {
     if (to.status === "Reserved" || to.status === "Staged") return "checked_out"
     if (to.status === "In Storage" || to.status === "Available")
@@ -71,7 +77,8 @@ async function requireBulkItem(
 
 function validateQty(qty: number): number {
   const n = Math.floor(qty)
-  if (!Number.isFinite(n) || n < 1) throw new Error("Quantity must be at least 1")
+  if (!Number.isFinite(n) || n < 1)
+    throw new Error("Quantity must be at least 1")
   if (n > 1_000_000) throw new Error("Quantity too large")
   return n
 }

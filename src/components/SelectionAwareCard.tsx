@@ -38,16 +38,16 @@ export function SelectionAwareCard({
       >
         <SelectionCheckbox selected={selected} />
         <div className="min-w-0 flex-1">
-            <ItemCard
-              item={item}
-              tags={item.tags}
-              batches={item.batches}
-              size="md"
-              onEdit={onEdit}
-              disabled
-              compact={compact}
-              priority={priority}
-            />
+          <ItemCard
+            item={item}
+            tags={item.tags}
+            batches={item.batches}
+            size="md"
+            onEdit={onEdit}
+            disabled
+            compact={compact}
+            priority={priority}
+          />
         </div>
       </button>
     )

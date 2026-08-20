@@ -10,7 +10,7 @@ export async function loadScanImpl(orgId: string): Promise<{
     qrCode: string
     name: string
     imageUrl: string
-    status: typeof items.$inferSelect["status"]
+    status: (typeof items.$inferSelect)["status"]
   }[]
 }> {
   const db = getDb()
@@ -46,7 +46,8 @@ export async function lookupItemImpl(
     const rack = await fetchRackByQrCode(orgId, code)
     return { code, item: null, batches: [], rack }
   }
-  if (found.kind !== "bulk") return { code, item: found, batches: [], rack: null }
+  if (found.kind !== "bulk")
+    return { code, item: found, batches: [], rack: null }
   const batchesByItem = await getBatchesForItems(orgId, [found.id])
   return {
     code,

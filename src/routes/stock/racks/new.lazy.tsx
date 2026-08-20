@@ -1,4 +1,8 @@
-import { createLazyFileRoute, useNavigate, useRouter } from "@tanstack/react-router"
+import {
+  createLazyFileRoute,
+  useNavigate,
+  useRouter,
+} from "@tanstack/react-router"
 import { useState } from "react"
 import { createRack } from "@/lib/racks"
 import { Button } from "@/components/ui/button"

@@ -1,11 +1,7 @@
 import { createLazyFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useEffect, useRef, useState } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
-import {
-  BoxIcon,
-  Camera01Icon,
-  PackageIcon,
-} from "@hugeicons/core-free-icons"
+import { BoxIcon, Camera01Icon, PackageIcon } from "@hugeicons/core-free-icons"
 import type { ActivityLog } from "@/lib/activity"
 import { AppHeader } from "@/components/AppHeader"
 import { BottomNav } from "@/components/BottomNav"
@@ -29,10 +25,7 @@ function HomeRoute() {
     }
   }, [])
 
-  const totalItems = stats.statusCounts.reduce(
-    (sum, sc) => sum + sc.count,
-    0
-  )
+  const totalItems = stats.statusCounts.reduce((sum, sc) => sum + sc.count, 0)
 
   const handleActivityItemClick = (log: ActivityLog) => {
     if (!log.itemId) return
@@ -102,7 +95,7 @@ function HomeRoute() {
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               placeholder="Search inventory..."
-              className="h-10 w-full rounded-lg border border-border bg-card pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground outline-none transition focus:border-primary"
+              className="h-10 w-full rounded-lg border border-border bg-card pr-3 pl-9 text-sm text-foreground transition outline-none placeholder:text-muted-foreground focus:border-primary"
             />
           </div>
 
@@ -111,9 +104,7 @@ function HomeRoute() {
               <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                 Inventory
               </p>
-              <p className="mt-0.5 text-xl font-semibold">
-                {totalItems} items
-              </p>
+              <p className="mt-0.5 text-xl font-semibold">{totalItems} items</p>
             </div>
             <div className="h-8 w-px bg-border" />
             <div className="flex-1">

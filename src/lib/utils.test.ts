@@ -49,8 +49,8 @@ describe("cn", () => {
   })
 
   it("handles complex class value combinations", () => {
-    expect(cn("p-4", { "m-2": true, "m-4": false }, ["text-sm", "font-bold"])).toBe(
-      "p-4 m-2 text-sm font-bold"
-    )
+    expect(
+      cn("p-4", { "m-2": true, "m-4": false }, ["text-sm", "font-bold"])
+    ).toBe("p-4 m-2 text-sm font-bold")
   })
 })

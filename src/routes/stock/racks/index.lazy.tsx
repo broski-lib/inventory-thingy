@@ -54,7 +54,8 @@ function RacksListPage() {
           <Card>
             <CardContent className="text-center">
               <p className="text-xs text-muted-foreground">
-                No racks yet. Create one to start building rack sheets for your bulk items.
+                No racks yet. Create one to start building rack sheets for your
+                bulk items.
               </p>
             </CardContent>
           </Card>
@@ -105,7 +106,8 @@ function RacksListPage() {
                       {totalQty} {totalQty === 1 ? "unit" : "units"}
                     </Badge>
                     <Badge variant="outline" className="text-[9px]">
-                      {rack.items.length} {rack.items.length === 1 ? "item" : "items"}
+                      {rack.items.length}{" "}
+                      {rack.items.length === 1 ? "item" : "items"}
                     </Badge>
                   </div>
                 </button>

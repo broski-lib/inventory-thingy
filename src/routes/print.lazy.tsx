@@ -78,14 +78,13 @@ function useAutoPrint(ready: boolean) {
       // Wait for every QR <img> to decode so the sheet prints complete.
       const imgs = Array.from(document.images)
       await Promise.all(
-        imgs.map(
-          (img) =>
-            img.complete
-              ? Promise.resolve()
-              : new Promise<void>((resolve) => {
-                  img.addEventListener("load", () => resolve(), { once: true })
-                  img.addEventListener("error", () => resolve(), { once: true })
-                })
+        imgs.map((img) =>
+          img.complete
+            ? Promise.resolve()
+            : new Promise<void>((resolve) => {
+                img.addEventListener("load", () => resolve(), { once: true })
+                img.addEventListener("error", () => resolve(), { once: true })
+              })
         )
       )
       if (disposed) return
@@ -116,7 +115,7 @@ function PrintView() {
         <button
           type="button"
           onClick={goBack}
-          className="print:hidden inline-flex h-9 items-center rounded-lg border border-border bg-card px-4 text-sm font-medium text-foreground hover:bg-accent"
+          className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-4 text-sm font-medium text-foreground hover:bg-accent print:hidden"
         >
           Done
         </button>
@@ -212,7 +211,9 @@ function RackSheetPrint({ rack }: { rack: RackWithItems }) {
 
   const pages = useMemo(
     () =>
-      rack.items.length === 0 ? [[]] : chunkByPage(rack.items, RACK_ROWS_PER_PAGE),
+      rack.items.length === 0
+        ? [[]]
+        : chunkByPage(rack.items, RACK_ROWS_PER_PAGE),
     [rack]
   )
 

@@ -30,7 +30,11 @@ export const moveBatchQty = createServerFn({ method: "POST" })
   .middleware([authRequiredMiddleware])
   .validator(
     (
-      input: { itemId: string; fromBatchId: string; qty: number } & BatchStateInput
+      input: {
+        itemId: string
+        fromBatchId: string
+        qty: number
+      } & BatchStateInput
     ) => input
   )
   .handler(async ({ data: input, context }): Promise<{ moved: number }> => {

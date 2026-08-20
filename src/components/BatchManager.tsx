@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useRouter } from "@tanstack/react-router"
 import { useForm } from "@tanstack/react-form"
-import { useStore } from "@tanstack/react-store"
+import { useSelector } from "@tanstack/react-store"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Tick02Icon } from "@hugeicons/core-free-icons"
 import {
@@ -110,9 +110,7 @@ export function BatchManager({
 
   const handleDelete = (batch: ItemBatch) => {
     if (
-      !confirm(
-        `Delete this batch of ${batch.qty}? The units are written off.`
-      )
+      !confirm(`Delete this batch of ${batch.qty}? The units are written off.`)
     ) {
       return
     }
@@ -160,7 +158,11 @@ export function BatchManager({
               onDelete={() => handleDelete(batch)}
               onSetQty={(qty) =>
                 run(() =>
-                  setBatchQtyMutation.mutateAsync({ batchId: batch.id, itemId, qty })
+                  setBatchQtyMutation.mutateAsync({
+                    batchId: batch.id,
+                    itemId,
+                    qty,
+                  })
                 )
               }
             />
@@ -244,99 +246,99 @@ function BatchRow({
   return (
     <Card className="flex flex-col gap-2 rounded-xl">
       <CardContent className="flex flex-col gap-2 p-3">
-      <div className="flex items-center justify-between gap-2">
-        {editingQty ? (
-          <span className="flex items-center gap-1.5">
-            <Input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              value={qtyInput}
-              onChange={(e) => setQtyInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault()
-                  saveQty()
-                }
-              }}
-              className="h-8 w-20 text-base sm:text-sm"
-              autoFocus
-            />
+        <div className="flex items-center justify-between gap-2">
+          {editingQty ? (
+            <span className="flex items-center gap-1.5">
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={qtyInput}
+                onChange={(e) => setQtyInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    saveQty()
+                  }
+                }}
+                className="h-8 w-20 text-base sm:text-sm"
+                autoFocus
+              />
+              <Button
+                type="button"
+                variant="default"
+                size="icon"
+                onClick={saveQty}
+                aria-label="Save quantity"
+                className="size-8"
+              >
+                <HugeiconsIcon icon={Tick02Icon} size={14} strokeWidth={2.5} />
+              </Button>
+            </span>
+          ) : (
+            <span className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => void onSetQty(batch.qty - 1)}
+                disabled={busy || batch.qty <= 1}
+                aria-label="Remove one unit"
+                className="inline-flex size-7 cursor-pointer items-center justify-center rounded-md border border-border text-base font-bold text-muted-foreground hover:text-foreground disabled:opacity-40"
+              >
+                −
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setQtyInput(String(batch.qty))
+                  setEditingQty(true)
+                }}
+                className="min-w-8 cursor-pointer px-1 text-sm font-bold text-foreground hover:text-primary"
+                title="Tap to correct quantity"
+              >
+                ×{batch.qty}
+              </button>
+              <button
+                type="button"
+                onClick={() => void onSetQty(batch.qty + 1)}
+                disabled={busy}
+                aria-label="Add one unit"
+                className="inline-flex size-7 cursor-pointer items-center justify-center rounded-md border border-border text-base font-bold text-muted-foreground hover:text-foreground disabled:opacity-40"
+              >
+                +
+              </button>
+            </span>
+          )}
+          <span className="flex items-center gap-1">
             <Button
               type="button"
-              variant="default"
-              size="icon"
-              onClick={saveQty}
-              aria-label="Save quantity"
-              className="size-8"
+              variant="outline"
+              size="sm"
+              onClick={onMove}
+              disabled={busy}
+              className="h-8"
             >
-              <HugeiconsIcon icon={Tick02Icon} size={14} strokeWidth={2.5} />
+              Move
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onDelete}
+              disabled={busy}
+              aria-label="Delete batch"
+              className="size-8 text-destructive hover:bg-destructive/10"
+            >
+              <TrashIcon className="size-3.5" />
             </Button>
           </span>
-        ) : (
-          <span className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => void onSetQty(batch.qty - 1)}
-              disabled={busy || batch.qty <= 1}
-              aria-label="Remove one unit"
-              className="inline-flex size-7 cursor-pointer items-center justify-center rounded-md border border-border text-base font-bold text-muted-foreground hover:text-foreground disabled:opacity-40"
-            >
-              −
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setQtyInput(String(batch.qty))
-                setEditingQty(true)
-              }}
-              className="min-w-8 cursor-pointer px-1 text-sm font-bold text-foreground hover:text-primary"
-              title="Tap to correct quantity"
-            >
-              ×{batch.qty}
-            </button>
-            <button
-              type="button"
-              onClick={() => void onSetQty(batch.qty + 1)}
-              disabled={busy}
-              aria-label="Add one unit"
-              className="inline-flex size-7 cursor-pointer items-center justify-center rounded-md border border-border text-base font-bold text-muted-foreground hover:text-foreground disabled:opacity-40"
-            >
-              +
-            </button>
-          </span>
-        )}
-        <span className="flex items-center gap-1">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onMove}
-            disabled={busy}
-            className="h-8"
-          >
-            Move
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={onDelete}
-            disabled={busy}
-            aria-label="Delete batch"
-            className="size-8 text-destructive hover:bg-destructive/10"
-          >
-            <TrashIcon className="size-3.5" />
-          </Button>
-        </span>
-      </div>
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span className="truncate">{batch.location}</span>
-        <Badge variant={getStatusBadgeVariant(batch.status)}>
-          {batch.status}
-        </Badge>
-        <span>{batch.condition}</span>
-      </div>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="truncate">{batch.location}</span>
+          <Badge variant={getStatusBadgeVariant(batch.status)}>
+            {batch.status}
+          </Badge>
+          <span>{batch.condition}</span>
+        </div>
       </CardContent>
     </Card>
   )
@@ -388,10 +390,10 @@ function BatchFormDrawer({
     }
   }
 
-  const isSubmitting = useStore(form.store, (s) => s.isSubmitting)
+  const isSubmitting = useSelector(form.store, (s) => s.isSubmitting)
   const formBusy = isSubmitting || busy
-  const qty = useStore(form.store, (s) => s.values.qty)
-  const location = useStore(form.store, (s) => s.values.location)
+  const qty = useSelector(form.store, (s) => s.values.qty)
+  const location = useSelector(form.store, (s) => s.values.location)
 
   const valid =
     qty >= 1 &&
@@ -421,7 +423,9 @@ function BatchFormDrawer({
                   onChange={(e) => {
                     const n = Math.floor(Number(e.target.value))
                     if (e.target.value === "" || Number.isFinite(n)) {
-                      field.handleChange(Math.max(0, Math.min(n, maxQty ?? Infinity)))
+                      field.handleChange(
+                        Math.max(0, Math.min(n, maxQty ?? Infinity))
+                      )
                     }
                   }}
                   className="text-base sm:text-sm"

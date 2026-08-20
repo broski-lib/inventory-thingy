@@ -14,25 +14,23 @@ type LiveScannerProps = {
 }
 
 export type LiveScannerStatus =
-  | "idle"
-  | "starting"
-  | "scanning"
-  | "paused"
-  | "denied"
-  | "error"
-  | "stopped"
+  "idle" | "starting" | "scanning" | "paused" | "denied" | "error" | "stopped"
 
 const ELEMENT_ID = "live-qr-reader"
 const DEBOUNCE_MS = 1200
 
 let ScannerClass: typeof Html5Qrcode | null = null
-let ScannerState: { SCANNING: number; PAUSED: number; } | null = null
+let ScannerState: { SCANNING: number; PAUSED: number } | null = null
 
 async function loadScanner() {
-  if (ScannerClass && ScannerState) return { Html5Qrcode: ScannerClass, Html5QrcodeScannerState: ScannerState }
+  if (ScannerClass && ScannerState)
+    return { Html5Qrcode: ScannerClass, Html5QrcodeScannerState: ScannerState }
   const mod = await import("html5-qrcode")
   ScannerClass = mod.Html5Qrcode
-  ScannerState = { SCANNING: mod.Html5QrcodeScannerState.SCANNING, PAUSED: mod.Html5QrcodeScannerState.PAUSED }
+  ScannerState = {
+    SCANNING: mod.Html5QrcodeScannerState.SCANNING,
+    PAUSED: mod.Html5QrcodeScannerState.PAUSED,
+  }
   return { Html5Qrcode: ScannerClass, Html5QrcodeScannerState: ScannerState }
 }
 
@@ -133,21 +131,31 @@ export function LiveScanner({
       if (scanner) {
         const sc = scanner
         try {
-          loadScanner().then(({ Html5QrcodeScannerState }) => {
-            const state = sc.getState()
-            if (
-              state === Html5QrcodeScannerState.SCANNING ||
-              state === Html5QrcodeScannerState.PAUSED
-            ) {
-              void sc.stop().catch(() => {})
-            } else {
-              sc.clear()
-            }
-          }).catch(() => {
-            try { sc.clear() } catch { /* noop */ }
-          })
+          loadScanner()
+            .then(({ Html5QrcodeScannerState }) => {
+              const state = sc.getState()
+              if (
+                state === Html5QrcodeScannerState.SCANNING ||
+                state === Html5QrcodeScannerState.PAUSED
+              ) {
+                void sc.stop().catch(() => {})
+              } else {
+                sc.clear()
+              }
+            })
+            .catch(() => {
+              try {
+                sc.clear()
+              } catch {
+                /* noop */
+              }
+            })
         } catch {
-          try { sc.clear() } catch { /* noop */ }
+          try {
+            sc.clear()
+          } catch {
+            /* noop */
+          }
         }
       }
       updateStatus("stopped")

@@ -1,11 +1,7 @@
 import type { ReactNode } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ClerkProvider } from "@clerk/tanstack-react-start"
-import {
-  HeadContent,
-  Scripts,
-  createRootRoute,
-} from "@tanstack/react-router"
+import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
 import type { ErrorComponentProps } from "@tanstack/react-router"
 
 import appCss from "../styles.css?url"
@@ -15,9 +11,13 @@ function ErrorFallback({ error, reset }: ErrorComponentProps) {
   return (
     <main className="flex min-h-svh items-center justify-center bg-secondary p-4">
       <div className="max-w-sm space-y-4 rounded-xl border border-destructive/30 bg-card p-6 text-center">
-        <h1 className="text-lg font-semibold text-destructive">Something went wrong</h1>
+        <h1 className="text-lg font-semibold text-destructive">
+          Something went wrong
+        </h1>
         <p className="text-sm text-muted-foreground">
-          {error instanceof Error ? error.message : "An unexpected error occurred."}
+          {error instanceof Error
+            ? error.message
+            : "An unexpected error occurred."}
         </p>
         <Button onClick={reset} variant="outline" size="sm">
           Try again
@@ -99,9 +99,7 @@ function RootDocument({ children }: { children: ReactNode }) {
       </head>
       <body className="min-h-svh bg-secondary antialiased">
         <QueryClientProvider client={queryClient}>
-          <ClerkProvider>
-            {children}
-          </ClerkProvider>
+          <ClerkProvider>{children}</ClerkProvider>
         </QueryClientProvider>
         <Scripts />
       </body>

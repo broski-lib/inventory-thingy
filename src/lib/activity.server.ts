@@ -63,9 +63,7 @@ export async function fetchItemActivity(
   return await db
     .select()
     .from(activityLogs)
-    .where(
-      and(eq(activityLogs.orgId, orgId), eq(activityLogs.itemId, itemId))
-    )
+    .where(and(eq(activityLogs.orgId, orgId), eq(activityLogs.itemId, itemId)))
     .orderBy(desc(activityLogs.createdAt))
     .limit(50)
 }

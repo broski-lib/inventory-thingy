@@ -23,7 +23,9 @@ function parseCsvIds(value: unknown): string[] | undefined {
 export const Route = createFileRoute("/print")({
   validateSearch: (search: Record<string, unknown>): PrintSearch => ({
     kind:
-      search.kind === "tags" || search.kind === "single" || search.kind === "rack"
+      search.kind === "tags" ||
+      search.kind === "single" ||
+      search.kind === "rack"
         ? search.kind
         : undefined,
     ids: typeof search.ids === "string" ? search.ids : undefined,

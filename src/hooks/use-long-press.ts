@@ -1,5 +1,8 @@
 import { useCallback, useRef } from "react"
-import type { TouchEvent as ReactTouchEvent, MouseEvent as ReactMouseEvent } from "react"
+import type {
+  TouchEvent as ReactTouchEvent,
+  MouseEvent as ReactMouseEvent,
+} from "react"
 
 type LongPressOptions = {
   onLongPress: () => void

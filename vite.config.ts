@@ -14,13 +14,7 @@ const config = defineConfig({
     modulePreload: {
       polyfill: false,
       resolveDependencies: (_filename, deps, _context) => {
-        const skipPatterns = [
-          /select-/,
-          /drawer-/,
-          /db-/,
-          /esm-/,
-          /cler[kK]/i,
-        ]
+        const skipPatterns = [/select-/, /drawer-/, /db-/, /esm-/, /cler[kK]/i]
         for (const dep of deps) {
           if (skipPatterns.some((p) => p.test(dep))) {
             return []
@@ -34,7 +28,8 @@ const config = defineConfig({
         manualChunks(id) {
           if (id.includes("node_modules/@clerk")) return "vendor-clerk"
           if (id.includes("node_modules/drizzle-orm")) return "vendor-drizzle"
-          if (id.includes("node_modules/@tanstack/react-query")) return "vendor-query"
+          if (id.includes("node_modules/@tanstack/react-query"))
+            return "vendor-query"
           if (id.includes("node_modules/qrcode")) return "vendor-qrcode"
         },
       },

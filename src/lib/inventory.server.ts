@@ -21,11 +21,7 @@ import {
   tags,
   categories,
 } from "./schema.server"
-import type {
-  ItemStatus,
-  StockSort,
-  StockStatusFilter,
-} from "./constants"
+import type { ItemStatus, StockSort, StockStatusFilter } from "./constants"
 import { generateUlid } from "./ids"
 import { logActivity, resolveActor } from "./activity.server"
 import type { ActivityActor, ActivityLog } from "./activity"
@@ -891,9 +887,7 @@ export async function fetchItemWithHistory(
     db
       .select()
       .from(activityLogs)
-      .where(
-        and(eq(activityLogs.orgId, orgId), eq(activityLogs.itemId, id))
-      )
+      .where(and(eq(activityLogs.orgId, orgId), eq(activityLogs.itemId, id)))
       .orderBy(desc(activityLogs.createdAt))
       .limit(50),
   ])
@@ -935,16 +929,11 @@ export async function bulkDeleteItemsImpl(
   await db
     .delete(itemBatches)
     .where(
-      and(
-        eq(itemBatches.orgId, orgId),
-        inArray(itemBatches.itemId, allowedIds)
-      )
+      and(eq(itemBatches.orgId, orgId), inArray(itemBatches.itemId, allowedIds))
     )
   await db
     .delete(itemTags)
-    .where(
-      and(eq(itemTags.orgId, orgId), inArray(itemTags.itemId, allowedIds))
-    )
+    .where(and(eq(itemTags.orgId, orgId), inArray(itemTags.itemId, allowedIds)))
 
   await Promise.all(
     toDelete
@@ -1003,9 +992,7 @@ export async function bulkUpdateStatusImpl(
       status,
       // Checked-out items get a fresh takenOutAt; returned items clear it.
       takenOutAt:
-        status === "In Storage" || status === "Available"
-          ? null
-          : new Date(),
+        status === "In Storage" || status === "Available" ? null : new Date(),
       updatedAt,
     })
     .where(and(eq(items.orgId, orgId), inArray(items.id, allowedIds)))

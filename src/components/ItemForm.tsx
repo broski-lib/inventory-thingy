@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useForm } from "@tanstack/react-form"
-import { useStore } from "@tanstack/react-store"
+import { useSelector } from "@tanstack/react-store"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -140,7 +140,7 @@ export function ItemForm({
     return !(v.kind === "bulk" && hideQrCode)
   }
 
-  const isSubmitting = useStore(form.store, (s) => s.isSubmitting)
+  const isSubmitting = useSelector(form.store, (s) => s.isSubmitting)
 
   const toggleTag = (id: string) => {
     setTagIds((prev) =>
@@ -172,10 +172,10 @@ export function ItemForm({
 
   const formBusy = isSubmitting || busy
 
-  const kind = useStore(form.store, (s) => s.values.kind)
-  const tagged = useStore(form.store, (s) => s.values.tagged)
-  const name = useStore(form.store, (s) => s.values.name)
-  const location = useStore(form.store, (s) => s.values.location)
+  const kind = useSelector(form.store, (s) => s.values.kind)
+  const tagged = useSelector(form.store, (s) => s.values.tagged)
+  const name = useSelector(form.store, (s) => s.values.name)
+  const location = useSelector(form.store, (s) => s.values.location)
   const locFieldVisible = locationFieldVisible(form.state.values)
   const nameError = showErrors && !name.trim()
   const locationError = showErrors && locFieldVisible && !location.trim()

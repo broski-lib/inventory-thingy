@@ -11,7 +11,11 @@ type LocationChipsProps = {
  * so existing org locations are offered as chips under the free-text input —
  * tap to fill, or keep typing a new one.
  */
-export function LocationChips({ locations, value, onSelect }: LocationChipsProps) {
+export function LocationChips({
+  locations,
+  value,
+  onSelect,
+}: LocationChipsProps) {
   if (locations.length === 0) return null
   return (
     <div className="flex gap-1.5 overflow-x-auto pb-0.5">

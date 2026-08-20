@@ -22,7 +22,8 @@ const badgeVariants = cva(
         available: "border-success/20 bg-success/10 text-success",
         staged: "border-warning/30 bg-warning/10 text-warning-foreground",
         repair: "border-destructive/20 bg-destructive/10 text-destructive",
-        pending: "border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400",
+        pending:
+          "border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400",
       },
     },
     defaultVariants: {

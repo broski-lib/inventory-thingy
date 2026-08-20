@@ -6,23 +6,17 @@ import { AlertDialog as AlertDialogPrimitive } from "@base-ui/react/alert-dialog
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 
-function AlertDialog({
-  ...props
-}: AlertDialogPrimitive.Root.Props) {
+function AlertDialog({ ...props }: AlertDialogPrimitive.Root.Props) {
   return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />
 }
 
-function AlertDialogTrigger({
-  ...props
-}: AlertDialogPrimitive.Trigger.Props) {
+function AlertDialogTrigger({ ...props }: AlertDialogPrimitive.Trigger.Props) {
   return (
     <AlertDialogPrimitive.Trigger data-slot="alert-dialog-trigger" {...props} />
   )
 }
 
-function AlertDialogPortal({
-  ...props
-}: AlertDialogPrimitive.Portal.Props) {
+function AlertDialogPortal({ ...props }: AlertDialogPrimitive.Portal.Props) {
   return (
     <AlertDialogPrimitive.Portal data-slot="alert-dialog-portal" {...props} />
   )
@@ -36,7 +30,7 @@ function AlertDialogOverlay({
     <AlertDialogPrimitive.Backdrop
       data-slot="alert-dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/80 data-closed:animate-out data-enter:animate-in data-enter:fade-in-0 data-closed:fade-out-0",
+        "fixed inset-0 z-50 bg-black/80 data-enter:animate-in data-enter:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
         className
       )}
       {...props}
@@ -54,7 +48,7 @@ function AlertDialogContent({
       <AlertDialogPrimitive.Popup
         data-slot="alert-dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl border border-border bg-background p-6 shadow-lg duration-200 data-closed:animate-out data-enter:animate-in data-enter:fade-in-0 data-enter:zoom-in-95 data-closed:fade-out-0 data-closed:zoom-out-95 sm:max-w-lg",
+          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl border border-border bg-background p-6 shadow-lg duration-200 data-enter:animate-in data-enter:fade-in-0 data-enter:zoom-in-95 sm:max-w-lg data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
         {...props}
@@ -63,7 +57,10 @@ function AlertDialogContent({
   )
 }
 
-function AlertDialogHeader({ className, ...props }: React.ComponentProps<"div">) {
+function AlertDialogHeader({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="alert-dialog-header"
@@ -73,7 +70,10 @@ function AlertDialogHeader({ className, ...props }: React.ComponentProps<"div">)
   )
 }
 
-function AlertDialogFooter({ className, ...props }: React.ComponentProps<"div">) {
+function AlertDialogFooter({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="alert-dialog-footer"

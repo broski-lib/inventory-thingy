@@ -1,9 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 import type { StockSort, StockStatusFilter } from "@/lib/constants"
-import {
-  STOCK_SORTS,
-  STOCK_STATUS_FILTERS,
-} from "@/lib/constants"
+import { STOCK_SORTS, STOCK_STATUS_FILTERS } from "@/lib/constants"
 import { ITEM_CONDITIONS, ITEM_KINDS, ITEM_STATUSES } from "@/lib/item-status"
 import type { ItemCondition, ItemKind, ItemStatus } from "@/lib/item-status"
 import { getStockPageData } from "@/lib/stock-page"
@@ -20,7 +17,13 @@ const DEFAULT_PAGE_SIZE = 20
 // background. Navigation discards it (preloadStaleTime 0) and loads real
 // data.
 const EMPTY_STOCK_DATA: Awaited<ReturnType<typeof getStockPageData>> = {
-  page: { items: [], total: 0, page: 1, pageSize: DEFAULT_PAGE_SIZE, totalPages: 1 },
+  page: {
+    items: [],
+    total: 0,
+    page: 1,
+    pageSize: DEFAULT_PAGE_SIZE,
+    totalPages: 1,
+  },
   allTags: [],
   locations: [],
   categoryTree: [],

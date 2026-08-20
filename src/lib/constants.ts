@@ -72,4 +72,3 @@ export const STOCK_SORTS = [
 ] as const
 export type StockSort = (typeof STOCK_SORTS)[number]["id"]
 export const DEFAULT_STOCK_SORT: StockSort = "updated_desc"
-

@@ -1,11 +1,7 @@
 import { useAuth } from "@clerk/tanstack-react-start"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { PrinterIcon, TransactionHistoryIcon } from "@hugeicons/core-free-icons"
-import {
-  createLazyFileRoute,
-  useNavigate,
-  Link,
-} from "@tanstack/react-router"
+import { createLazyFileRoute, useNavigate, Link } from "@tanstack/react-router"
 import { useMemo, useState } from "react"
 import { TrashIcon, BoltIcon } from "@/components/icons"
 import { useUpdateItem, useDeleteItem, useSetItemTags } from "@/lib/queries"

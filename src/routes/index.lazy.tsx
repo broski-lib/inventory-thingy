@@ -39,8 +39,8 @@ function LandingRoute() {
 function SiteNav() {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur">
-        <div className="mx-auto h-[env(safe-area-inset-top)]" />
-        <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-2 px-4">
+      <div className="mx-auto h-[env(safe-area-inset-top)]" />
+      <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-2 px-4">
         <Link
           to="/"
           className="flex items-center gap-2 text-sm font-semibold tracking-tight"
@@ -122,10 +122,10 @@ function Hero() {
             <span className="text-primary">Inventory Thingy knows.</span>
           </h1>
           <p className="max-w-md text-base text-muted-foreground">
-            Inventory Thingy is a QR-tagged inventory app built for furniture staging teams.
-            Register every piece, scan a tag, and know whether it&apos;s in the
-            warehouse, on a truck, or already on set without spreadsheet
-            archaeology.
+            Inventory Thingy is a QR-tagged inventory app built for furniture
+            staging teams. Register every piece, scan a tag, and know whether
+            it&apos;s in the warehouse, on a truck, or already on set without
+            spreadsheet archaeology.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Link
@@ -526,16 +526,10 @@ function SiteFooter() {
           <span>Inventory Thingy · furniture inventory for staging teams</span>
         </div>
         <div className="flex items-center gap-4">
-          <Link
-            to="/legal"
-            className="transition-colors hover:text-foreground"
-          >
+          <Link to="/legal" className="transition-colors hover:text-foreground">
             Privacy Policy
           </Link>
-          <Link
-            to="/legal"
-            className="transition-colors hover:text-foreground"
-          >
+          <Link to="/legal" className="transition-colors hover:text-foreground">
             Terms of Service
           </Link>
           <Link

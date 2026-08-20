@@ -39,10 +39,7 @@ function NewItemPage() {
   }
 
   return (
-    <PageChrome
-      title="Register New Item"
-      backTo="/stock"
-    >
+    <PageChrome title="Register New Item" backTo="/stock">
       <ItemForm
         initial={{
           ...EMPTY_ITEM_FORM,

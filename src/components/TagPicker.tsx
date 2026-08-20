@@ -101,7 +101,7 @@ export function TagPicker({
       </div>
 
       {creating && onCreate && (
-          <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-2.5">
+        <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-2.5">
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}

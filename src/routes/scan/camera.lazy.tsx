@@ -62,7 +62,11 @@ function ScanCameraPage() {
         const decoded = await scanner.scanFile(file, true)
         submitCode(decoded)
       } finally {
-        try { await scanner.clear() } catch { /* ok */ }
+        try {
+          await scanner.clear()
+        } catch {
+          /* ok */
+        }
       }
     } catch {
       setFileError(

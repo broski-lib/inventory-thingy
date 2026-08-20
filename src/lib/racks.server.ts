@@ -2,7 +2,12 @@ import { and, asc, eq, inArray } from "drizzle-orm"
 import { getDb } from "./db.server"
 import { racks, rackItems, items } from "./schema.server"
 import { generateUlid, generateQrCode } from "./ids"
-import type { Rack, RackWithItems, CreateRackInput, UpdateRackInput } from "./racks"
+import type {
+  Rack,
+  RackWithItems,
+  CreateRackInput,
+  UpdateRackInput,
+} from "./racks"
 
 /** Lightweight rack summary for filter pickers — id + name only. */
 export async function fetchRackOptions(
@@ -30,9 +35,7 @@ export async function fetchRacks(orgId: string): Promise<RackWithItems[]> {
   const riRows = await db
     .select()
     .from(rackItems)
-    .where(
-      and(eq(rackItems.orgId, orgId), inArray(rackItems.rackId, rackIds))
-    )
+    .where(and(eq(rackItems.orgId, orgId), inArray(rackItems.rackId, rackIds)))
 
   if (riRows.length === 0) {
     return rackRows.map((r) => ({ ...r, items: [] }))
@@ -197,7 +200,5 @@ export async function deleteRackRow(orgId: string, id: string): Promise<void> {
   await db
     .delete(rackItems)
     .where(and(eq(rackItems.orgId, orgId), eq(rackItems.rackId, id)))
-  await db
-    .delete(racks)
-    .where(and(eq(racks.orgId, orgId), eq(racks.id, id)))
+  await db.delete(racks).where(and(eq(racks.orgId, orgId), eq(racks.id, id)))
 }

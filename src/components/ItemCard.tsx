@@ -121,7 +121,10 @@ export function ItemCard({
                 </Badge>
               )}
               {item.requiredRole && (
-                <Badge variant="warning" className="gap-1 px-1.5 py-0.5 text-[9px]">
+                <Badge
+                  variant="warning"
+                  className="gap-1 px-1.5 py-0.5 text-[9px]"
+                >
                   <HugeiconsIcon icon={LockIcon} size={9} strokeWidth={2.5} />
                   Admin only
                 </Badge>
@@ -142,7 +145,9 @@ export function ItemCard({
                       className="max-w-full gap-1 px-1.5 py-0.5 text-[9px]"
                     >
                       ×{b.qty} {b.status}
-                      <span className="truncate opacity-70">@ {b.location}</span>
+                      <span className="truncate opacity-70">
+                        @ {b.location}
+                      </span>
                     </Badge>
                   ))}
                 </div>
@@ -238,7 +243,10 @@ export function ItemCard({
               </Badge>
             )}
             {item.requiredRole && (
-              <Badge variant="warning" className="gap-1 px-1.5 py-0.5 text-[9px]">
+              <Badge
+                variant="warning"
+                className="gap-1 px-1.5 py-0.5 text-[9px]"
+              >
                 <HugeiconsIcon icon={LockIcon} size={9} strokeWidth={2.5} />
                 Admin only
               </Badge>

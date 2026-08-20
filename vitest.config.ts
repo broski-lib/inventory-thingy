@@ -13,11 +13,7 @@ export default defineConfig({
   define: {
     global: "globalThis",
   },
-  plugins: [
-    devtools(),
-    tailwindcss(),
-    viteReact(),
-  ],
+  plugins: [devtools(), tailwindcss(), viteReact()],
   test: {
     environment: "jsdom",
     coverage: {
