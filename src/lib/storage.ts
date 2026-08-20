@@ -75,7 +75,7 @@ export async function putItemImage(
   const key = buildImageKey(orgId, itemId, contentType)
   const b = bucket()
   await b.put(key, body, {
-    httpMetadata: { contentType, cacheControl: "private, max-age=86400" },
+    httpMetadata: { contentType, cacheControl: "private, max-age=31536000, immutable" },
   })
   return { key, contentType, size }
 }

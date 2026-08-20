@@ -50,16 +50,20 @@ export async function getTagsForItems(
   return map
 }
 
+/** Plain query for all tags in an org (ordered by name). */
+export async function fetchTags(orgId: string): Promise<Tag[]> {
+  const db = getDb()
+  return db
+    .select()
+    .from(tags)
+    .where(eq(tags.orgId, orgId))
+    .orderBy(asc(tags.name))
+}
+
 export const listTags = createServerFn({ method: "GET" })
   .middleware([authRequiredMiddleware])
   .handler(async ({ context }): Promise<Tag[]> => {
-    const { orgId } = context
-    const db = getDb()
-    return db
-      .select()
-      .from(tags)
-      .where(eq(tags.orgId, orgId))
-      .orderBy(asc(tags.name))
+    return fetchTags(context.orgId)
   })
 
 export const createTag = createServerFn({ method: "POST" })

@@ -11,7 +11,7 @@ export type CategoryTreeNode = Category & {
   children: CategoryTreeNode[]
 }
 
-async function buildTree(orgId: string): Promise<CategoryTreeNode[]> {
+export async function buildTree(orgId: string): Promise<CategoryTreeNode[]> {
   const db = getDb()
   const rows = await db
     .select()

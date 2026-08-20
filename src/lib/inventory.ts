@@ -1,5 +1,16 @@
 import { createServerFn } from "@tanstack/react-start"
-import { and, asc, eq, ilike, inArray, ne, or, desc, sql } from "drizzle-orm"
+import {
+  and,
+  asc,
+  eq,
+  ilike,
+  inArray,
+  ne,
+  or,
+  desc,
+  sql,
+  getTableColumns,
+} from "drizzle-orm"
 import type { SQL } from "drizzle-orm"
 import { getDb } from "./db"
 import {
@@ -247,117 +258,130 @@ function buildItemsOrderBy(sort: StockSort | undefined) {
 export const getItemsPage = createServerFn({ method: "GET" })
   .middleware([authRequiredMiddleware])
   .validator((args: GetItemsPageArgs) => args)
-  .handler(async ({ data: args, context }): Promise<ItemsPage> => {
-    const { orgId } = context
-    const db = getDb()
+  .handler(async ({ data: args, context }) => {
+    return queryItemsPage(context.orgId, args)
+  })
 
-    // Resolve category descendants so filtering by a parent includes its
-    // subcategories. Fetch the full tree for the org and walk it.
-    if (args.categoryIds && args.categoryIds.length > 0) {
-      const allCats = await db
-        .select({ id: categories.id, parentId: categories.parentId })
-        .from(categories)
-        .where(eq(categories.orgId, orgId))
-      const childrenMap = new Map<string | null, string[]>()
-      for (const c of allCats) {
-        const key = c.parentId ?? null
-        if (!childrenMap.has(key)) childrenMap.set(key, [])
-        childrenMap.get(key)!.push(c.id)
-      }
-      const resolved = new Set(args.categoryIds)
-      function collectDescendants(parentIds: Set<string>) {
-        for (const pid of parentIds) {
-          for (const child of childrenMap.get(pid) ?? []) {
-            if (!resolved.has(child)) {
-              resolved.add(child)
-              collectDescendants(new Set([child]))
-            }
+/**
+ * Plain query for one page of items. Extracted from the `getItemsPage`
+ * server fn so other server fns can reuse it without a second auth pass.
+ * The total is computed in the same round trip via a window function,
+ * avoiding a separate COUNT query over the full filter.
+ */
+export async function queryItemsPage(
+  orgId: string,
+  args: GetItemsPageArgs
+): Promise<ItemsPage> {
+  const db = getDb()
+
+  // Resolve category descendants so filtering by a parent includes its
+  // subcategories. Fetch the full tree for the org and walk it.
+  if (args.categoryIds && args.categoryIds.length > 0) {
+    const allCats = await db
+      .select({ id: categories.id, parentId: categories.parentId })
+      .from(categories)
+      .where(eq(categories.orgId, orgId))
+    const childrenMap = new Map<string | null, string[]>()
+    for (const c of allCats) {
+      const key = c.parentId ?? null
+      if (!childrenMap.has(key)) childrenMap.set(key, [])
+      childrenMap.get(key)!.push(c.id)
+    }
+    const resolved = new Set(args.categoryIds)
+    function collectDescendants(parentIds: Set<string>) {
+      for (const pid of parentIds) {
+        for (const child of childrenMap.get(pid) ?? []) {
+          if (!resolved.has(child)) {
+            resolved.add(child)
+            collectDescendants(new Set([child]))
           }
         }
       }
-      collectDescendants(new Set(args.categoryIds))
-      args = { ...args, categoryIds: [...resolved] }
     }
+    collectDescendants(new Set(args.categoryIds))
+    args = { ...args, categoryIds: [...resolved] }
+  }
 
-    const page = Math.max(1, Math.floor(args.page))
-    const pageSize = Math.max(1, Math.min(100, Math.floor(args.pageSize)))
-    const where = buildItemsWhere(orgId, args, db)
-    const offset = (page - 1) * pageSize
+  const page = Math.max(1, Math.floor(args.page))
+  const pageSize = Math.max(1, Math.min(100, Math.floor(args.pageSize)))
+  const where = buildItemsWhere(orgId, args, db)
+  const offset = (page - 1) * pageSize
 
-    const [rows, totalResult] = await Promise.all([
-      db
-        .select()
-        .from(items)
-        .where(where)
-        .orderBy(...buildItemsOrderBy(args.sort))
-        .limit(pageSize)
-        .offset(offset),
-      db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(items)
-        .where(where),
-    ])
+  const rows = await db
+    .select({
+      ...getTableColumns(items),
+      __total: sql<number>`count(*) over()::int`,
+    })
+    .from(items)
+    .where(where)
+    .orderBy(...buildItemsOrderBy(args.sort))
+    .limit(pageSize)
+    .offset(offset)
 
-    const ids = rows.map((r) => r.id)
-    const [tagsByItem, batchesByItem] = await Promise.all([
-      getTagsForItems(orgId, ids),
-      getBatchesForItems(
-        orgId,
-        rows.filter((r) => r.kind === "bulk").map((r) => r.id)
-      ),
-    ])
-    const total = totalResult[0]?.count ?? 0
-    return {
-      items: rows.map((row) => ({
-        ...row,
-        tags: tagsByItem.get(row.id) ?? [],
-        batches: batchesByItem.get(row.id) ?? [],
-      })),
-      total,
-      page,
-      pageSize,
-      totalPages: Math.max(1, Math.ceil(total / pageSize)),
-    }
-  })
+  const total = rows[0]?.__total ?? 0
+  const ids = rows.map((r) => r.id)
+  const [tagsByItem, batchesByItem] = await Promise.all([
+    getTagsForItems(orgId, ids),
+    getBatchesForItems(
+      orgId,
+      rows.filter((r) => r.kind === "bulk").map((r) => r.id)
+    ),
+  ])
+  return {
+    items: rows.map(({ __total: _total, ...row }) => ({
+      ...row,
+      tags: tagsByItem.get(row.id) ?? [],
+      batches: batchesByItem.get(row.id) ?? [],
+    })),
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  }
+}
 
 /**
  * Distinct location values for the org, sorted by most-recently-used
  * (leftmost = most recent). Union of unit-item locations and bulk-batch
- * locations.
+ * locations. Plain query so other server fns can reuse it without a
+ * second auth pass.
  */
+export async function queryLocations(orgId: string): Promise<string[]> {
+  const db = getDb()
+  const [itemRows, batchRows] = await Promise.all([
+    db
+      .select({
+        location: items.location,
+        lastUsed: sql<Date>`max(${items.updatedAt})`.as("last_used"),
+      })
+      .from(items)
+      .where(and(eq(items.orgId, orgId), ne(items.kind, "bulk")))
+      .groupBy(items.location),
+    db
+      .select({
+        location: itemBatches.location,
+        lastUsed: sql<Date>`max(${itemBatches.updatedAt})`.as("last_used"),
+      })
+      .from(itemBatches)
+      .where(eq(itemBatches.orgId, orgId))
+      .groupBy(itemBatches.location),
+  ])
+  const best = new Map<string, Date>()
+  for (const r of itemRows) best.set(r.location, new Date(r.lastUsed))
+  for (const r of batchRows) {
+    const prev = best.get(r.location)
+    const d = new Date(r.lastUsed)
+    if (!prev || d > prev) best.set(r.location, d)
+  }
+  return [...best.entries()]
+    .sort((a, b) => b[1].getTime() - a[1].getTime())
+    .map(([loc]) => loc)
+}
+
 export const getLocations = createServerFn({ method: "GET" })
   .middleware([authRequiredMiddleware])
   .handler(async ({ context }): Promise<string[]> => {
-    const { orgId } = context
-    const db = getDb()
-    const [itemRows, batchRows] = await Promise.all([
-      db
-        .select({
-          location: items.location,
-          lastUsed: sql<Date>`max(${items.updatedAt})`.as("last_used"),
-        })
-        .from(items)
-        .where(and(eq(items.orgId, orgId), ne(items.kind, "bulk")))
-        .groupBy(items.location),
-      db
-        .select({
-          location: itemBatches.location,
-          lastUsed: sql<Date>`max(${itemBatches.updatedAt})`.as("last_used"),
-        })
-        .from(itemBatches)
-        .where(eq(itemBatches.orgId, orgId))
-        .groupBy(itemBatches.location),
-    ])
-    const best = new Map<string, Date>()
-    for (const r of itemRows) best.set(r.location, new Date(r.lastUsed))
-    for (const r of batchRows) {
-      const prev = best.get(r.location)
-      const d = new Date(r.lastUsed)
-      if (!prev || d > prev) best.set(r.location, d)
-    }
-    return [...best.entries()]
-      .sort((a, b) => b[1].getTime() - a[1].getTime())
-      .map(([loc]) => loc)
+    return queryLocations(context.orgId)
   })
 
 /**
@@ -432,6 +456,51 @@ export const getStats = createServerFn({ method: "GET" })
       movesToday: movesTodayResult[0]?.count || 0,
     }
   })
+
+/**
+ * Consolidated data for the `/home` dashboard: status counts, updates
+ * today, and recent activity. Plain query so the route loader can import
+ * it dynamically and keep the drizzle/schema modules out of the client.
+ */
+export async function queryHomeData(orgId: string) {
+  const db = getDb()
+
+  const [statusCounts, movesTodayResult, recent] = await Promise.all([
+    db
+      .select({
+        status: items.status,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(items)
+      .where(eq(items.orgId, orgId))
+      .groupBy(items.status),
+    db
+      .select({
+        count: sql<number>`count(*)::int`,
+      })
+      .from(items)
+      .where(
+        and(
+          eq(items.orgId, orgId),
+          sql`${items.updatedAt} >= date_trunc('day', now())`
+        )
+      ),
+    db
+      .select()
+      .from(activityLogs)
+      .where(eq(activityLogs.orgId, orgId))
+      .orderBy(desc(activityLogs.createdAt))
+      .limit(5),
+  ])
+
+  return {
+    stats: {
+      statusCounts,
+      movesToday: movesTodayResult[0]?.count ?? 0,
+    },
+    recent,
+  }
+}
 
 function statusAction(
   toStatus: typeof items.$inferSelect.status

@@ -25,6 +25,18 @@ export const getRackByQrCode = createServerFn({ method: "GET" })
     return rack ?? null
   })
 
+/** Lightweight rack summary for filter pickers — id + name only. */
+export async function fetchRackOptions(
+  orgId: string
+): Promise<{ id: string; name: string }[]> {
+  const db = getDb()
+  return db
+    .select({ id: racks.id, name: racks.name })
+    .from(racks)
+    .where(eq(racks.orgId, orgId))
+    .orderBy(asc(racks.name))
+}
+
 export const listRacks = createServerFn({ method: "GET" })
   .middleware([authRequiredMiddleware])
   .handler(async ({ context }): Promise<RackWithItems[]> => {

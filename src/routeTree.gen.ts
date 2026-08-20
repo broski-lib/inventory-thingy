@@ -35,22 +35,22 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() => import('./routes/index.lazy').then((d) => d.Route))
 const ActivityRoute = ActivityRouteImport.update({
   id: '/activity',
   path: '/activity',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() => import('./routes/activity.lazy').then((d) => d.Route))
 const HomeRoute = HomeRouteImport.update({
   id: '/home',
   path: '/home',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() => import('./routes/home.lazy').then((d) => d.Route))
 const LegalRoute = LegalRouteImport.update({
   id: '/legal',
   path: '/legal',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() => import('./routes/legal.lazy').then((d) => d.Route))
 const ScanRoute = ScanRouteImport.update({
   id: '/scan',
   path: '/scan',
@@ -65,17 +65,17 @@ const LoginSplatRoute = LoginSplatRouteImport.update({
   id: '/login/$',
   path: '/login/$',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() => import('./routes/login.$.lazy').then((d) => d.Route))
 const ScanIndexRoute = ScanIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ScanRoute,
-} as any)
+} as any).lazy(() => import('./routes/scan/index.lazy').then((d) => d.Route))
 const ScanBulkRoute = ScanBulkRouteImport.update({
   id: '/bulk',
   path: '/bulk',
   getParentRoute: () => ScanRoute,
-} as any)
+} as any).lazy(() => import('./routes/scan/bulk.lazy').then((d) => d.Route))
 const ScanCameraRoute = ScanCameraRouteImport.update({
   id: '/camera',
   path: '/camera',
@@ -85,17 +85,17 @@ const SignUpSplatRoute = SignUpSplatRouteImport.update({
   id: '/sign-up/$',
   path: '/sign-up/$',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() => import('./routes/sign-up.$.lazy').then((d) => d.Route))
 const StockIndexRoute = StockIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => StockRoute,
-} as any)
+} as any).lazy(() => import('./routes/stock/index.lazy').then((d) => d.Route))
 const StockNewRoute = StockNewRouteImport.update({
   id: '/new',
   path: '/new',
   getParentRoute: () => StockRoute,
-} as any)
+} as any).lazy(() => import('./routes/stock/new.lazy').then((d) => d.Route))
 const ApiImagesSplatRoute = ApiImagesSplatRouteImport.update({
   id: '/api/images/$',
   path: '/api/images/$',
@@ -105,37 +105,49 @@ const StockIdEditRoute = StockIdEditRouteImport.update({
   id: '/$id/edit',
   path: '/$id/edit',
   getParentRoute: () => StockRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/stock/$id.edit.lazy').then((d) => d.Route),
+)
 const StockIdHistoryRoute = StockIdHistoryRouteImport.update({
   id: '/$id/history',
   path: '/$id/history',
   getParentRoute: () => StockRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/stock/$id.history.lazy').then((d) => d.Route),
+)
 const StockIdQrRoute = StockIdQrRouteImport.update({
   id: '/$id/qr',
   path: '/$id/qr',
   getParentRoute: () => StockRoute,
-} as any)
+} as any).lazy(() => import('./routes/stock/$id.qr.lazy').then((d) => d.Route))
 const StockRacksIndexRoute = StockRacksIndexRouteImport.update({
   id: '/racks/',
   path: '/racks/',
   getParentRoute: () => StockRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/stock/racks/index.lazy').then((d) => d.Route),
+)
 const StockRacksIdRoute = StockRacksIdRouteImport.update({
   id: '/racks/$id',
   path: '/racks/$id',
   getParentRoute: () => StockRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/stock/racks/$id.lazy').then((d) => d.Route),
+)
 const StockRacksNewRoute = StockRacksNewRouteImport.update({
   id: '/racks/new',
   path: '/racks/new',
   getParentRoute: () => StockRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/stock/racks/new.lazy').then((d) => d.Route),
+)
 const StockRacksIdItemsRoute = StockRacksIdItemsRouteImport.update({
   id: '/items',
   path: '/items',
   getParentRoute: () => StockRacksIdRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/stock/racks/$id.items.lazy').then((d) => d.Route),
+)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
