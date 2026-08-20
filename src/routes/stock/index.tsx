@@ -16,7 +16,7 @@ import {
   Tick02Icon,
   UnfoldMoreIcon,
 } from "@hugeicons/core-free-icons"
-import { getItemsPage, getLocations } from "@/lib/inventory"
+import { getItemsPage, getLocations, getItemsByIds } from "@/lib/inventory"
 import { getCategoryTree } from "@/lib/categories"
 import { listRacks } from "@/lib/racks"
 import type { StockSort, StockStatusFilter } from "@/lib/constants"
@@ -72,6 +72,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Pagination } from "@/components/Pagination"
 import { usePageSize } from "@/hooks/use-page-size"
 import { cn } from "@/lib/utils"
+import { printTagSheet } from "@/lib/print"
 import { parsePage, parsePageSize } from "@/lib/pagination"
 import { pluralize } from "@/lib/format"
 
@@ -535,13 +536,18 @@ function StockRoute() {
     }
   }
 
-  const handleBulkPrint = () => {
+  const handleBulkPrint = async () => {
     if (selectedArray.length === 0) return
-    const ids = selectedArray.join(",")
-    navigate({ to: "/stock/print-bulk", search: { ids } })
-    finishAction(
-      `Print sheet opened for ${selectedArray.length} ${pluralize(selectedArray.length, "item")}`
-    )
+    setBulkBusy(true)
+    try {
+      const items = await getItemsByIds({ data: selectedArray })
+      await printTagSheet(items)
+      finishAction(`Printed ${items.length} ${pluralize(items.length, "tag")}`)
+    } catch (err) {
+      setBulkMessage(err instanceof Error ? err.message : "Print failed")
+    } finally {
+      setBulkBusy(false)
+    }
   }
 
   const selectedCount = selectedIds.size
@@ -989,7 +995,7 @@ function RackFilterCombobox({
               ? `${value.length} rack${value.length === 1 ? "" : "s"} selected`
               : "Search and select racks..."
           }
-          className="h-11 w-full rounded-lg border border-input bg-background px-3 pr-10 text-sm transition-colors outline-none placeholder:text-muted-foreground focus:border-ring"
+          className="h-11 w-full rounded-lg border border-input bg-background px-3 pr-10 text-base transition-colors outline-none placeholder:text-muted-foreground focus:border-ring"
         />
         <ComboboxPrimitive.Trigger
           aria-label="Open rack filter"

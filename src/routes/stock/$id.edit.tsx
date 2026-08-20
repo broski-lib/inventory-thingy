@@ -1,6 +1,6 @@
 import { useAuth } from "@clerk/tanstack-react-start"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { QrCodeIcon, TransactionHistoryIcon } from "@hugeicons/core-free-icons"
+import { PrinterIcon, TransactionHistoryIcon } from "@hugeicons/core-free-icons"
 import {
   createFileRoute,
   notFound,
@@ -18,6 +18,7 @@ import { BatchManager } from "@/components/BatchManager"
 import { PageChrome } from "@/components/PageChrome"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { printSingleTag } from "@/lib/print"
 import type { StockSearch } from "./index"
 
 type EditSearch = {
@@ -112,6 +113,18 @@ function EditItemPage() {
     }
   }
 
+  const handlePrintTag = async () => {
+    try {
+      await printSingleTag({
+        name: item.name,
+        qrCode: item.qrCode,
+        printSize: item.printSize,
+      })
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Print failed")
+    }
+  }
+
   return (
     <PageChrome
       title={item.name}
@@ -145,17 +158,17 @@ function EditItemPage() {
               strokeWidth={1.7}
             />
           </Link>
-          <Link
-            to="/stock/$id/qr"
-            params={{ id: item.id }}
-            aria-label="Show QR"
+          <button
+            type="button"
+            onClick={() => void handlePrintTag()}
+            aria-label="Print tag"
             className={cn(
               buttonVariants({ variant: "ghost", size: "icon" }),
               "size-9 text-muted-foreground"
             )}
           >
-            <HugeiconsIcon icon={QrCodeIcon} size={18} strokeWidth={1.7} />
-          </Link>
+            <HugeiconsIcon icon={PrinterIcon} size={18} strokeWidth={1.7} />
+          </button>
           <button
             type="button"
             onClick={handleDelete}

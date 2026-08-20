@@ -22,11 +22,9 @@ import { Route as ScanCameraRouteImport } from './routes/scan/camera'
 import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
 import { Route as StockIndexRouteImport } from './routes/stock/index'
 import { Route as StockNewRouteImport } from './routes/stock/new'
-import { Route as StockPrintBulkRouteImport } from './routes/stock/print-bulk'
 import { Route as ApiImagesSplatRouteImport } from './routes/api/images/$'
 import { Route as StockIdEditRouteImport } from './routes/stock/$id.edit'
 import { Route as StockIdHistoryRouteImport } from './routes/stock/$id.history'
-import { Route as StockIdPrintRouteImport } from './routes/stock/$id.print'
 import { Route as StockIdQrRouteImport } from './routes/stock/$id.qr'
 import { Route as StockRacksIndexRouteImport } from './routes/stock/racks/index'
 import { Route as StockRacksIdRouteImport } from './routes/stock/racks/$id'
@@ -98,11 +96,6 @@ const StockNewRoute = StockNewRouteImport.update({
   path: '/new',
   getParentRoute: () => StockRoute,
 } as any)
-const StockPrintBulkRoute = StockPrintBulkRouteImport.update({
-  id: '/print-bulk',
-  path: '/print-bulk',
-  getParentRoute: () => StockRoute,
-} as any)
 const ApiImagesSplatRoute = ApiImagesSplatRouteImport.update({
   id: '/api/images/$',
   path: '/api/images/$',
@@ -116,11 +109,6 @@ const StockIdEditRoute = StockIdEditRouteImport.update({
 const StockIdHistoryRoute = StockIdHistoryRouteImport.update({
   id: '/$id/history',
   path: '/$id/history',
-  getParentRoute: () => StockRoute,
-} as any)
-const StockIdPrintRoute = StockIdPrintRouteImport.update({
-  id: '/$id/print',
-  path: '/$id/print',
   getParentRoute: () => StockRoute,
 } as any)
 const StockIdQrRoute = StockIdQrRouteImport.update({
@@ -161,13 +149,11 @@ export interface FileRoutesByFullPath {
   '/scan/camera': typeof ScanCameraRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/stock/new': typeof StockNewRoute
-  '/stock/print-bulk': typeof StockPrintBulkRoute
   '/scan/': typeof ScanIndexRoute
   '/stock/': typeof StockIndexRoute
   '/api/images/$': typeof ApiImagesSplatRoute
   '/stock/$id/edit': typeof StockIdEditRoute
   '/stock/$id/history': typeof StockIdHistoryRoute
-  '/stock/$id/print': typeof StockIdPrintRoute
   '/stock/$id/qr': typeof StockIdQrRoute
   '/stock/racks/$id': typeof StockRacksIdRouteWithChildren
   '/stock/racks/new': typeof StockRacksNewRoute
@@ -184,13 +170,11 @@ export interface FileRoutesByTo {
   '/scan/camera': typeof ScanCameraRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/stock/new': typeof StockNewRoute
-  '/stock/print-bulk': typeof StockPrintBulkRoute
   '/scan': typeof ScanIndexRoute
   '/stock': typeof StockIndexRoute
   '/api/images/$': typeof ApiImagesSplatRoute
   '/stock/$id/edit': typeof StockIdEditRoute
   '/stock/$id/history': typeof StockIdHistoryRoute
-  '/stock/$id/print': typeof StockIdPrintRoute
   '/stock/$id/qr': typeof StockIdQrRoute
   '/stock/racks/$id': typeof StockRacksIdRouteWithChildren
   '/stock/racks/new': typeof StockRacksNewRoute
@@ -210,13 +194,11 @@ export interface FileRoutesById {
   '/scan/camera': typeof ScanCameraRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/stock/new': typeof StockNewRoute
-  '/stock/print-bulk': typeof StockPrintBulkRoute
   '/scan/': typeof ScanIndexRoute
   '/stock/': typeof StockIndexRoute
   '/api/images/$': typeof ApiImagesSplatRoute
   '/stock/$id/edit': typeof StockIdEditRoute
   '/stock/$id/history': typeof StockIdHistoryRoute
-  '/stock/$id/print': typeof StockIdPrintRoute
   '/stock/$id/qr': typeof StockIdQrRoute
   '/stock/racks/$id': typeof StockRacksIdRouteWithChildren
   '/stock/racks/new': typeof StockRacksNewRoute
@@ -237,13 +219,11 @@ export interface FileRouteTypes {
     | '/scan/camera'
     | '/sign-up/$'
     | '/stock/new'
-    | '/stock/print-bulk'
     | '/scan/'
     | '/stock/'
     | '/api/images/$'
     | '/stock/$id/edit'
     | '/stock/$id/history'
-    | '/stock/$id/print'
     | '/stock/$id/qr'
     | '/stock/racks/$id'
     | '/stock/racks/new'
@@ -260,13 +240,11 @@ export interface FileRouteTypes {
     | '/scan/camera'
     | '/sign-up/$'
     | '/stock/new'
-    | '/stock/print-bulk'
     | '/scan'
     | '/stock'
     | '/api/images/$'
     | '/stock/$id/edit'
     | '/stock/$id/history'
-    | '/stock/$id/print'
     | '/stock/$id/qr'
     | '/stock/racks/$id'
     | '/stock/racks/new'
@@ -285,13 +263,11 @@ export interface FileRouteTypes {
     | '/scan/camera'
     | '/sign-up/$'
     | '/stock/new'
-    | '/stock/print-bulk'
     | '/scan/'
     | '/stock/'
     | '/api/images/$'
     | '/stock/$id/edit'
     | '/stock/$id/history'
-    | '/stock/$id/print'
     | '/stock/$id/qr'
     | '/stock/racks/$id'
     | '/stock/racks/new'
@@ -404,13 +380,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StockNewRouteImport
       parentRoute: typeof StockRoute
     }
-    '/stock/print-bulk': {
-      id: '/stock/print-bulk'
-      path: '/print-bulk'
-      fullPath: '/stock/print-bulk'
-      preLoaderRoute: typeof StockPrintBulkRouteImport
-      parentRoute: typeof StockRoute
-    }
     '/api/images/$': {
       id: '/api/images/$'
       path: '/api/images/$'
@@ -430,13 +399,6 @@ declare module '@tanstack/react-router' {
       path: '/$id/history'
       fullPath: '/stock/$id/history'
       preLoaderRoute: typeof StockIdHistoryRouteImport
-      parentRoute: typeof StockRoute
-    }
-    '/stock/$id/print': {
-      id: '/stock/$id/print'
-      path: '/$id/print'
-      fullPath: '/stock/$id/print'
-      preLoaderRoute: typeof StockIdPrintRouteImport
       parentRoute: typeof StockRoute
     }
     '/stock/$id/qr': {
@@ -505,11 +467,9 @@ const StockRacksIdRouteWithChildren = StockRacksIdRoute._addFileChildren(
 
 interface StockRouteChildren {
   StockNewRoute: typeof StockNewRoute
-  StockPrintBulkRoute: typeof StockPrintBulkRoute
   StockIndexRoute: typeof StockIndexRoute
   StockIdEditRoute: typeof StockIdEditRoute
   StockIdHistoryRoute: typeof StockIdHistoryRoute
-  StockIdPrintRoute: typeof StockIdPrintRoute
   StockIdQrRoute: typeof StockIdQrRoute
   StockRacksIdRoute: typeof StockRacksIdRouteWithChildren
   StockRacksNewRoute: typeof StockRacksNewRoute
@@ -518,11 +478,9 @@ interface StockRouteChildren {
 
 const StockRouteChildren: StockRouteChildren = {
   StockNewRoute: StockNewRoute,
-  StockPrintBulkRoute: StockPrintBulkRoute,
   StockIndexRoute: StockIndexRoute,
   StockIdEditRoute: StockIdEditRoute,
   StockIdHistoryRoute: StockIdHistoryRoute,
-  StockIdPrintRoute: StockIdPrintRoute,
   StockIdQrRoute: StockIdQrRoute,
   StockRacksIdRoute: StockRacksIdRouteWithChildren,
   StockRacksNewRoute: StockRacksNewRoute,

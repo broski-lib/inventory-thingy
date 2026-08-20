@@ -1,25 +1,25 @@
 import { useEffect, useState } from "react"
-import { useNavigate } from "@tanstack/react-router"
-import QRCode from "qrcode"
 import { Button } from "@/components/ui/button"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { QrCodeIcon } from "@hugeicons/core-free-icons"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { getQrImage } from "@/lib/qr"
+import { printSingleTag } from "@/lib/print"
+import type { PrintSize } from "@/lib/constants"
 
 type QRTagProps = {
   qrCode: string
   itemName: string
-  itemId: string
+  printSize: PrintSize
 }
 
-export function QRTag({ qrCode, itemName, itemId }: QRTagProps) {
+export function QRTag({ qrCode, itemName, printSize }: QRTagProps) {
   const [dataUrl, setDataUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const navigate = useNavigate()
 
   useEffect(() => {
     let cancelled = false
-    QRCode.toDataURL(qrCode, { width: 384, margin: 2 })
+    getQrImage(qrCode, { width: 256, margin: 2 })
       .then((url) => {
         if (!cancelled) setDataUrl(url)
       })
@@ -45,7 +45,11 @@ export function QRTag({ qrCode, itemName, itemId }: QRTagProps) {
   }
 
   const handlePrint = () => {
-    navigate({ to: "/stock/$id/print", params: { id: itemId } })
+    void printSingleTag({
+      name: itemName,
+      qrCode,
+      printSize,
+    })
   }
 
   const loading = !dataUrl && !error
