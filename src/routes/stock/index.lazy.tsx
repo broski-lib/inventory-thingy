@@ -176,14 +176,34 @@ function StockRoute() {
     kinds: [],
   })
 
-  // Selection state
-  const [selectionMode, setSelectionMode] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  // Selection state — restored from the `sel` URL param so a back
+  // navigation (e.g. from printing or an item view) returns to the same
+  // bulk selection.
+  const [selectionMode, setSelectionMode] = useState(() => {
+    const sel = search.sel
+    return Boolean(sel && sel.length > 0)
+  })
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => {
+    const sel = search.sel
+    return new Set(sel ? sel.split(",").filter(Boolean) : [])
+  })
   const [bulkPanel, setBulkPanel] = useState<BulkPanel>(null)
   const [bulkBusy, setBulkBusy] = useState(false)
   const [bulkStatus, setBulkStatus] = useState<ItemStatus>("Available")
   const [bulkLocation, setBulkLocation] = useState("")
   const [bulkMessage, setBulkMessage] = useState<string | null>(null)
+
+  /** Mirror the bulk selection into the URL (`sel`) so it survives nav. */
+  const syncSelectionToUrl = (mode: boolean, ids: Set<string>) => {
+    navigate({
+      to: "/stock",
+      search: (prev) => ({
+        ...prev,
+        sel: mode && ids.size > 0 ? [...ids].join(",") : undefined,
+      }),
+      replace: true,
+    })
+  }
 
   useEffect(() => {
     setSearchInput(q)
@@ -228,6 +248,10 @@ function StockRoute() {
 
   const handleClearFilters = () => {
     setSearchInput("")
+    setSelectionMode(false)
+    setSelectedIds(new Set())
+    setBulkPanel(null)
+    setBulkMessage(null)
     navigate({
       to: "/stock",
       search: { ps: search.ps },
@@ -301,6 +325,7 @@ function StockRoute() {
     setSelectedIds(new Set(initialIds))
     setBulkPanel(null)
     setBulkMessage(null)
+    syncSelectionToUrl(true, new Set(initialIds))
   }
 
   const exitSelectionMode = () => {
@@ -308,15 +333,15 @@ function StockRoute() {
     setSelectedIds(new Set())
     setBulkPanel(null)
     setBulkMessage(null)
+    syncSelectionToUrl(false, new Set())
   }
 
   const toggleSelected = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+    const next = new Set(selectedIds)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setSelectedIds(next)
+    syncSelectionToUrl(true, next)
   }
 
   const selectedArray = useMemo(() => Array.from(selectedIds), [selectedIds])
@@ -325,20 +350,20 @@ function StockRoute() {
     data.items.length > 0 && data.items.every((it) => selectedIds.has(it.id))
 
   const toggleSelectAllOnPage = () => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (allOnPageSelected) {
-        for (const it of data.items) next.delete(it.id)
-      } else {
-        for (const it of data.items) next.add(it.id)
-      }
-      return next
-    })
+    const next = new Set(selectedIds)
+    if (allOnPageSelected) {
+      for (const it of data.items) next.delete(it.id)
+    } else {
+      for (const it of data.items) next.add(it.id)
+    }
+    setSelectedIds(next)
+    syncSelectionToUrl(true, next)
   }
 
   const clearSelection = () => {
     setSelectedIds(new Set())
     setBulkPanel(null)
+    syncSelectionToUrl(selectionMode, new Set())
   }
 
   const refreshData = () => router.invalidate()
@@ -364,6 +389,7 @@ function StockRoute() {
       const result = await bulkDeleteMutation.mutateAsync(selectedArray)
       setSelectedIds(new Set())
       setBulkPanel(null)
+      syncSelectionToUrl(selectionMode, new Set())
       finishAction(
         `Deleted ${result.deleted} ${pluralize(result.deleted, "item")}${skipNote(result.skipped)}`
       )

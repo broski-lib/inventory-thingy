@@ -8,6 +8,8 @@ import { ITEM_CONDITIONS, ITEM_KINDS, ITEM_STATUSES } from "@/lib/item-status"
 import type { ItemCondition, ItemKind, ItemStatus } from "@/lib/item-status"
 import { getStockPageData } from "@/lib/stock-page"
 import { Skeleton } from "@/components/ui/skeleton"
+import { AppHeader } from "@/components/AppHeader"
+import { useCompactCards } from "@/hooks/use-compact-cards"
 import { parsePage, parsePageSize } from "@/lib/pagination"
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const
@@ -38,6 +40,8 @@ export type StockSearch = {
   rack?: string[]
   sort?: StockSort
   kinds?: ItemKind[]
+  /** CSV of selected item ids (bulk selection), persisted across nav. */
+  sel?: string
 }
 
 function parseCsv(value: unknown): string[] | undefined {
@@ -90,6 +94,9 @@ function parseStatusFilter(value: unknown): StockStatusFilter | undefined {
 export const Route = createFileRoute("/stock/")({
   staleTime: 0,
   preloadStaleTime: 0,
+  // Avoid flashing the skeleton on fast filter/search responses.
+  pendingMs: 120,
+  pendingMinMs: 180,
   validateSearch: (search: Record<string, unknown>): StockSearch => ({
     q: typeof search.q === "string" ? search.q : undefined,
     page: parsePage(search.page),
@@ -103,6 +110,7 @@ export const Route = createFileRoute("/stock/")({
     rack: parseCsv(search.rack),
     sort: parseSort(search.sort),
     kinds: parseEnumCsv(search.kinds, ITEM_KINDS),
+    sel: typeof search.sel === "string" ? search.sel : undefined,
   }),
   loaderDeps: ({ search }) => ({
     q: search.q,
@@ -142,9 +150,11 @@ export const Route = createFileRoute("/stock/")({
 })
 
 function StockPending() {
+  const [compactCards] = useCompactCards()
   return (
     <main className="min-h-svh bg-secondary pb-56 text-foreground">
       <section className="mx-auto flex w-full max-w-md flex-col px-4 pt-[max(1rem,env(safe-area-inset-top))]">
+        <AppHeader />
         <div className="mt-2 space-y-3">
           <div className="flex items-center gap-2">
             <Skeleton className="h-9 flex-1 rounded-lg" />
@@ -156,10 +166,39 @@ function StockPending() {
             <Skeleton className="h-9 w-16" />
             <Skeleton className="h-9 w-[72px]" />
           </div>
-          <div className="space-y-3 pt-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-20 rounded-xl" />
-            ))}
+          <div className="flex items-center justify-between gap-2">
+            <Skeleton className="h-3 w-28" />
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-3 w-12" />
+            </div>
+          </div>
+          <div className="space-y-3 pt-1">
+            {Array.from({ length: compactCards ? 6 : 3 }).map((_, i) =>
+              compactCards ? (
+                <div
+                  key={i}
+                  className="flex h-20 items-center gap-3 rounded-xl border border-border bg-card p-3"
+                >
+                  <Skeleton className="size-14 shrink-0 rounded-lg" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-3 w-2/3" />
+                    <Skeleton className="h-2.5 w-1/3" />
+                  </div>
+                </div>
+              ) : (
+                <div
+                  key={i}
+                  className="overflow-hidden rounded-xl border border-border bg-card"
+                >
+                  <Skeleton className="aspect-[4/3] w-full rounded-none" />
+                  <div className="space-y-2 p-3">
+                    <Skeleton className="h-3 w-2/3" />
+                    <Skeleton className="h-2.5 w-1/3" />
+                  </div>
+                </div>
+              )
+            )}
           </div>
         </div>
       </section>
