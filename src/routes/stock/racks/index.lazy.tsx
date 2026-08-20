@@ -8,6 +8,7 @@ import { useDeleteRack } from "@/lib/queries"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { PageChrome } from "@/components/PageChrome"
+import { BottomNav } from "@/components/BottomNav"
 import { PlusIcon, TrashIcon } from "@/components/icons"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -113,6 +114,7 @@ function RacksListPage() {
           </div>
         )}
       </div>
+      <BottomNav />
     </PageChrome>
   )
 }

@@ -202,6 +202,9 @@ function StockRoute() {
         sel: mode && ids.size > 0 ? [...ids].join(",") : undefined,
       }),
       replace: true,
+      // Toggling selection updates the URL on every tap; don't let that
+      // scroll the viewport back to the top.
+      resetScroll: false,
     })
   }
 
@@ -454,7 +457,7 @@ function StockRoute() {
       <section className="mx-auto flex w-full max-w-md flex-col px-4 pt-[max(1rem,env(safe-area-inset-top))]">
         <AppHeader />
 
-        <div className="mt-2 space-y-3">
+        <div className="mt-5 space-y-3">
           {selectionMode && (
             <div className="flex items-center justify-between">
               <span className="text-sm font-semibold">Select items</span>

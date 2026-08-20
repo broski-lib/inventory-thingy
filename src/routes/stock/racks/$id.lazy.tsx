@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { getStatusBadgeVariant, useCompactCards } from "@/components/ItemCard"
 import { PageChrome } from "@/components/PageChrome"
+import { BottomNav } from "@/components/BottomNav"
 import { LocationChips } from "@/components/LocationChips"
 import { TrashIcon } from "@/components/icons"
 
@@ -373,6 +374,7 @@ function RackDetailView({
           </div>
         )}
       </div>
+      <BottomNav />
     </PageChrome>
   )
 }

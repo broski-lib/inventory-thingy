@@ -61,22 +61,19 @@ function useQrImages(codes: string[], width: number, margin: number) {
 }
 
 /**
- * Auto-open the print dialog once the content is ready. Returns to the
- * opener on `afterprint` (fires when the dialog closes, print or cancel)
- * so the print view never lingers in history. A fallback "Done" button
- * covers browsers that don't fire `afterprint` (e.g. iOS Safari).
+ * Auto-open the print dialog once the content is ready (and every QR <img>
+ * has decoded so the sheet prints complete).
+ *
+ * Returning to the opener is intentionally left to the manual "Done"
+ * button. `afterprint`/`beforeprint` can't be trusted to fire only on a
+ * real dialog close on mobile (iOS Safari fires `afterprint` early, on
+ * every printer change, etc.), so any auto-return ends up closing the
+ * print view pre-emptively.
  */
-function useAutoPrint(ready: boolean, goBack: () => void) {
+function useAutoPrint(ready: boolean) {
   useEffect(() => {
     if (!ready) return
     let disposed = false
-    let printed = false
-    const onAfterPrint = () => {
-      if (printed) return
-      printed = true
-      window.removeEventListener("afterprint", onAfterPrint)
-      goBack()
-    }
     const t = window.setTimeout(async () => {
       // Wait for every QR <img> to decode so the sheet prints complete.
       const imgs = Array.from(document.images)
@@ -92,15 +89,13 @@ function useAutoPrint(ready: boolean, goBack: () => void) {
         )
       )
       if (disposed) return
-      window.addEventListener("afterprint", onAfterPrint)
       window.print()
     }, 100)
     return () => {
       disposed = true
       window.clearTimeout(t)
-      window.removeEventListener("afterprint", onAfterPrint)
     }
-  }, [ready, goBack])
+  }, [ready])
 }
 
 function PrintView() {
@@ -128,11 +123,9 @@ function PrintView() {
       </div>
 
       <div className="print-preview mx-auto max-w-3xl px-4 pb-10">
-        {data.kind === "tags" && <TagSheetPrint items={data.items} goBack={goBack} />}
-        {data.kind === "single" && (
-          <SingleTagPrint item={data.item} goBack={goBack} />
-        )}
-        {data.kind === "rack" && <RackSheetPrint rack={data.rack} goBack={goBack} />}
+        {data.kind === "tags" && <TagSheetPrint items={data.items} />}
+        {data.kind === "single" && <SingleTagPrint item={data.item} />}
+        {data.kind === "rack" && <RackSheetPrint rack={data.rack} />}
       </div>
 
       <style>{PRINT_CSS}</style>
@@ -140,13 +133,7 @@ function PrintView() {
   )
 }
 
-function TagSheetPrint({
-  items,
-  goBack,
-}: {
-  items: InventoryItem[]
-  goBack: () => void
-}) {
+function TagSheetPrint({ items }: { items: InventoryItem[] }) {
   const sorted = useMemo(
     () =>
       [...items].sort(
@@ -159,7 +146,7 @@ function TagSheetPrint({
   const pages = useMemo(() => chunkTagsByPage(sorted), [sorted])
   const codes = useMemo(() => sorted.map((it) => it.qrCode), [sorted])
   const { urls, ready } = useQrImages(codes, 256, 1)
-  useAutoPrint(ready, goBack)
+  useAutoPrint(ready)
 
   return (
     <div className="print-sheet">
@@ -193,15 +180,9 @@ function TagSheetPrint({
   )
 }
 
-function SingleTagPrint({
-  item,
-  goBack,
-}: {
-  item: InventoryItemWithTags
-  goBack: () => void
-}) {
+function SingleTagPrint({ item }: { item: InventoryItemWithTags }) {
   const { urls, ready } = useQrImages([item.qrCode], 256, 2)
-  useAutoPrint(ready, goBack)
+  useAutoPrint(ready)
   const px = PRINT_SIZE_PX[item.printSize]
 
   return (
@@ -223,17 +204,11 @@ function SingleTagPrint({
   )
 }
 
-function RackSheetPrint({
-  rack,
-  goBack,
-}: {
-  rack: RackWithItems
-  goBack: () => void
-}) {
+function RackSheetPrint({ rack }: { rack: RackWithItems }) {
   const rowCodes = useMemo(() => rack.items.map((it) => it.qrCode), [rack])
   const headerQr = useQrImages([rack.qrCode], 256, 1)
   const rowQr = useQrImages(rowCodes, 128, 0)
-  useAutoPrint(headerQr.ready && rowQr.ready, goBack)
+  useAutoPrint(headerQr.ready && rowQr.ready)
 
   const pages = useMemo(
     () =>
