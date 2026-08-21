@@ -61,8 +61,13 @@ function useQrImages(codes: string[], width: number, margin: number) {
 }
 
 /**
- * Auto-open the print dialog once the content is ready (and every QR <img>
- * has decoded so the sheet prints complete).
+ * Auto-open the print dialog once the content is ready. Gives the QR <img>s
+ * a short window to decode (so the sheet prints complete) but caps the wait,
+ * so a stuck image can never silently block the dialog.
+ *
+ * Some browsers (notably iOS Safari) only honor `window.print()` from a
+ * direct user gesture, so after a client-side navigation the auto-open can
+ * be dropped — the toolbar's Print button is the reliable fallback there.
  *
  * Returning to the opener is intentionally left to the manual "Done"
  * button. `afterprint`/`beforeprint` can't be trusted to fire only on a
@@ -75,17 +80,14 @@ function useAutoPrint(ready: boolean) {
     if (!ready) return
     let disposed = false
     const t = window.setTimeout(async () => {
-      // Wait for every QR <img> to decode so the sheet prints complete.
+      const deadline = Date.now() + 1500
       const imgs = Array.from(document.images)
       await Promise.all(
-        imgs.map((img) =>
-          img.complete
-            ? Promise.resolve()
-            : new Promise<void>((resolve) => {
-                img.addEventListener("load", () => resolve(), { once: true })
-                img.addEventListener("error", () => resolve(), { once: true })
-              })
-        )
+        imgs.map(async (img) => {
+          while (!img.complete && Date.now() < deadline) {
+            await new Promise((r) => setTimeout(r, 25))
+          }
+        })
       )
       if (disposed) return
       window.print()
@@ -101,24 +103,38 @@ function PrintView() {
   const data = Route.useLoaderData()
   const router = useRouter()
 
+  const handlePrint = useCallback(() => {
+    // Direct user gesture — always honored, unlike the auto-open attempt.
+    window.print()
+  }, [])
+
   const goBack = useCallback(() => {
     if (window.history.length > 1) router.history.back()
     else void router.navigate({ to: "/home" })
   }, [router])
 
   return (
-    <div className="min-h-svh bg-muted">
+    <div className="print-app min-h-svh bg-white">
       <div className="print-toolbar mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
         <p className="text-sm text-muted-foreground">
-          Printing… close the dialog when done.
+          Print the sheet, then close the dialog when done.
         </p>
-        <button
-          type="button"
-          onClick={goBack}
-          className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-4 text-sm font-medium text-foreground hover:bg-accent print:hidden"
-        >
-          Done
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="inline-flex h-9 items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 print:hidden"
+          >
+            Print
+          </button>
+          <button
+            type="button"
+            onClick={goBack}
+            className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-4 text-sm font-medium text-foreground hover:bg-accent print:hidden"
+          >
+            Done
+          </button>
+        </div>
       </div>
 
       <div className="print-preview mx-auto max-w-3xl px-4 pb-10">
@@ -353,6 +369,7 @@ const PRINT_CSS = `
 @media print {
   @page { margin: 12mm; }
   html, body { background: #fff !important; }
+  .print-app { background: #fff !important; }
   .print-toolbar { display: none !important; }
   .print-preview { max-width: none !important; padding: 0 !important; }
   .print-page {

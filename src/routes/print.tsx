@@ -62,7 +62,7 @@ export const Route = createFileRoute("/print")({
 
 function PrintPending() {
   return (
-    <div className="flex min-h-svh items-center justify-center bg-muted">
+    <div className="flex min-h-svh items-center justify-center bg-white">
       <p className="text-sm text-muted-foreground">Preparing print…</p>
     </div>
   )
