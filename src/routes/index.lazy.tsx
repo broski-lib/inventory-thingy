@@ -4,6 +4,7 @@ import {
   ArmchairIcon,
   ArrowRight01Icon,
   BarcodeScanIcon,
+  BoxIcon,
   Camera01Icon,
   CheckmarkCircle01Icon,
   HistoryIcon,
@@ -122,9 +123,9 @@ function Hero() {
             <span className="text-primary">Inventory Thingy knows.</span>
           </h1>
           <p className="max-w-md text-base text-muted-foreground">
-            Inventory Thingy is a QR-tagged inventory app built for furniture
-            staging teams. Register every piece, scan a tag, and know whether
-            it&apos;s in the warehouse, on a truck, or already on set without
+            QR-tag inventory for furniture staging crews. Register a piece,
+            print its tag, and scan it when it moves. Warehouse, truck, set,
+            back: everyone on the crew gets the same answer, without
             spreadsheet archaeology.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -153,8 +154,8 @@ function Hero() {
             </Link>
           </div>
           <p className="text-xs text-muted-foreground">
-            Free during the pilot. Bring your own team; invite co-workers from
-            the workspace switcher once you&apos;re in.
+            Free during the pilot. Once you&apos;re in, invite your crew from
+            the workspace switcher.
           </p>
         </div>
 
@@ -264,16 +265,16 @@ function ValueSection() {
       <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-12 md:grid-cols-3 md:py-16">
         {[
           {
-            title: "Inventory lives in one place",
-            body: "Photos, condition, location, and a unique tag per item. No more 'ask Devon, he knows where the rug is.'",
+            title: "Every piece has a tag",
+            body: "Photo, condition, location, and one QR tag per piece. No more 'ask Devon, he knows where the rug is.'",
           },
           {
-            title: "Scans update everything",
-            body: "Tap a tag with your phone and the item's status, location, and history update in real time. Bulk-scan a truck in seconds.",
+            title: "A scan updates the record",
+            body: "Point your phone at a tag, pick a status, and the location and history update with it. The next person who scans sees what you changed.",
           },
           {
-            title: "Auditable by default",
-            body: "Every check-out, move, and condition change is logged. Reconstruct a job's history from a tag, not a group chat.",
+            title: "Who moved it, and when",
+            body: "Every check-out, move, and condition change is logged with the crew member who did it. When a client asks where the credenza has been, the answer is on the tag.",
           },
         ].map((card) => (
           <Card key={card.title} className="h-full">
@@ -295,32 +296,32 @@ function FeatureGrid() {
     {
       icon: QrCodeIcon,
       title: "QR per item",
-      body: "Generate and print QR tags in bulk. Each tag is unique to a piece and a workspace.",
+      body: "Every piece gets its own QR code, printed at three sizes: small for plants and jewelry, large for paintings and rugs.",
     },
     {
       icon: BarcodeScanIcon,
       title: "Phone-first scanning",
-      body: "Open the camera on a phone to look up an item. No special hardware, no app install.",
+      body: "Look up an item with a phone camera. No scanner hardware, no app install.",
     },
     {
       icon: Camera01Icon,
       title: "Photo evidence",
-      body: "Snap a photo on intake. Photos follow the item through check-out, repair, and retirement.",
+      body: "Snap a photo on intake. Photos follow the piece through check-out, repair, and retirement.",
     },
     {
       icon: HistoryIcon,
       title: "Full item history",
-      body: "Every status change, location move, and condition update is timestamped and attributed.",
+      body: "Every status change, move, and condition update shows who did it and when. No more arguing about it at wrap.",
     },
     {
-      icon: Tag01Icon,
-      title: "Status you control",
-      body: "Available · In Storage · Reserved · Staged · Repair · Retired. Move items through the lifecycle in one tap.",
+      icon: BoxIcon,
+      title: "Bulk stock on racks",
+      body: "Pillows and glassware can't wear tags. Track them as quantities on a rack with its own QR, and print a rack sheet for counting.",
     },
     {
       icon: UserMultipleIcon,
       title: "Per-workspace data",
-      body: "Workspaces isolate inventories between teams. Switch between staging companies from the header.",
+      body: "One workspace per staging company. The other outfit sharing your warehouse can't see your counts.",
     },
   ]
   return (
@@ -331,11 +332,11 @@ function FeatureGrid() {
             What you get
           </p>
           <h2 className="text-3xl font-semibold tracking-tight text-foreground">
-            Everything a staging team needs to track furniture.
+            From the warehouse floor to the install.
           </h2>
           <p className="text-sm text-muted-foreground">
-            Built around the actual workflow of moving pieces between warehouse,
-            truck, and project — not a generic asset tracker.
+            Built around the real workflow of moving furniture between
+            warehouse, truck, and project. Not a generic asset tracker.
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -367,17 +368,17 @@ function WorkflowSection() {
     {
       n: "01",
       title: "Register a piece",
-      body: "Snap a photo, name it, set condition, and print a QR tag. Takes about 30 seconds.",
+      body: "Snap a photo, name it, set the condition, and print a QR tag. About 30 seconds.",
     },
     {
       n: "02",
       title: "Scan to update",
-      body: "Open the scanner, point at the tag, and check it out, move it, or mark it for repair.",
+      body: "Point the camera at the tag and check it out, move it, or send it to repair. Bulk-scan a truck of tagged pieces without stopping.",
     },
     {
       n: "03",
-      title: "Watch the timeline",
-      body: "Every action is logged against the item, so you can replay its journey from a single screen.",
+      title: "Read the history",
+      body: "Every action is logged against the item with who did it and when. One screen for the whole story at wrap, or after damage.",
     },
   ]
   return (
@@ -417,17 +418,17 @@ function AudienceSection() {
     {
       icon: Sofa01Icon,
       title: "Furniture staging companies",
-      body: "Keep warehouses organized across dozens of active projects. Hand off a tag and the new crew knows exactly what they're loading.",
+      body: "Warehouses full of pieces moving across a dozen active jobs. Hand off a tag and the new crew knows exactly what they're loading.",
     },
     {
       icon: ArmchairIcon,
       title: "Interior designers",
-      body: "Track the consignment pieces, client-owned antiques, and loaners that move through every install.",
+      body: "Consignment pieces, client-owned antiques, and loaners that move through every install.",
     },
     {
       icon: Table01Icon,
       title: "Set decorators & production",
-      body: "Short-run film and TV staging: a tag per piece, a record per move, an audit trail per wrap.",
+      body: "Film and TV staging runs short and moves fast. A tag per piece and a record per move, so wrap is a scan instead of a search.",
     },
   ]
   return (
