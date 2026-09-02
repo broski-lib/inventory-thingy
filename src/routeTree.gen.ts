@@ -71,7 +71,7 @@ const LoginSplatRoute = LoginSplatRouteImport.update({
   id: '/login/$',
   path: '/login/$',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/login.$.lazy').then((d) => d.Route))
+} as any)
 const ScanIndexRoute = ScanIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -91,7 +91,7 @@ const SignUpSplatRoute = SignUpSplatRouteImport.update({
   id: '/sign-up/$',
   path: '/sign-up/$',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/sign-up.$.lazy').then((d) => d.Route))
+} as any)
 const StockIndexRoute = StockIndexRouteImport.update({
   id: '/',
   path: '/',
